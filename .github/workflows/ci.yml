@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  AVALONIA_TELEMETRY_OPTOUT: 1
+
+jobs:
+  desktop:
+    name: Desktop (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+
+      - name: Restore
+        run: dotnet restore P2PMessenger.Desktop.slnf --locked-mode
+
+      - name: Check format
+        run: dotnet format P2PMessenger.Desktop.slnf --verify-no-changes --no-restore
+
+      - name: Build
+        run: dotnet build P2PMessenger.Desktop.slnf --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --solution P2PMessenger.Desktop.slnf --configuration Release --no-build --results-directory TestResults
+
+      - name: Check for vulnerable packages
+        if: runner.os == 'Linux'
+        run: |
+          dotnet list P2PMessenger.Desktop.slnf package --vulnerable --include-transitive --no-restore | tee "$RUNNER_TEMP/vulnerable.txt"
+          if grep -q 'has the following vulnerable packages' "$RUNNER_TEMP/vulnerable.txt"; then
+            exit 1
+          fi
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: test-results-${{ runner.os }}
+          path: TestResults/
+          if-no-files-found: ignore
+
+      - name: Upload desktop build
+        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: desktop-${{ runner.os }}
+          path: src/P2PMessenger.Desktop/bin/Release/net10.0/
+          if-no-files-found: error
+
+  android:
+    name: Android
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78
+        with:
+          distribution: microsoft
+          java-version: '21'
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: src/P2PMessenger.Android/packages.lock.json
+          workloads: android
+
+      - name: Restore
+        run: dotnet restore src/P2PMessenger.Android --locked-mode
+
+      - name: Install Android SDK components
+        run: dotnet build src/P2PMessenger.Android -t:InstallAndroidDependencies --no-restore -p:AndroidSdkDirectory="$ANDROID_HOME" -p:AcceptAndroidSDKLicenses=true
+
+      - name: Build
+        run: dotnet build src/P2PMessenger.Android --configuration Debug --no-restore -p:EmbedAssembliesIntoApk=true
+
+      - name: Check for vulnerable packages
+        run: |
+          dotnet list src/P2PMessenger.Android package --vulnerable --include-transitive --no-restore | tee "$RUNNER_TEMP/vulnerable.txt"
+          if grep -q 'has the following vulnerable packages' "$RUNNER_TEMP/vulnerable.txt"; then
+            exit 1
+          fi
+
+      - name: Upload APK
+        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: android-apk
+          path: src/P2PMessenger.Android/bin/Debug/net10.0-android36.1/*-Signed.apk
+          if-no-files-found: error
