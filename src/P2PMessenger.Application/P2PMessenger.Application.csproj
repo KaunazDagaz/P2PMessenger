@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\P2PMessenger.Core\P2PMessenger.Core.csproj" />
+    <ProjectReference Include="..\P2PMessenger.Transport\P2PMessenger.Transport.csproj" />
+    <ProjectReference Include="..\P2PMessenger.Storage\P2PMessenger.Storage.csproj" />
+  </ItemGroup>
+</Project>

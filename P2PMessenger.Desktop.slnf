@@ -1,0 +1,19 @@
+{
+  "solution": {
+    "path": "P2PMessenger.slnx",
+    "projects": [
+      "src\\P2PMessenger.Application\\P2PMessenger.Application.csproj",
+      "src\\P2PMessenger.Core\\P2PMessenger.Core.csproj",
+      "src\\P2PMessenger.Desktop\\P2PMessenger.Desktop.csproj",
+      "src\\P2PMessenger.Storage\\P2PMessenger.Storage.csproj",
+      "src\\P2PMessenger.Transport\\P2PMessenger.Transport.csproj",
+      "src\\P2PMessenger.UI\\P2PMessenger.UI.csproj",
+      "tests\\P2PMessenger.Application.Tests\\P2PMessenger.Application.Tests.csproj",
+      "tests\\P2PMessenger.Core.Tests\\P2PMessenger.Core.Tests.csproj",
+      "tests\\P2PMessenger.Integration.Tests\\P2PMessenger.Integration.Tests.csproj",
+      "tests\\P2PMessenger.Storage.Tests\\P2PMessenger.Storage.Tests.csproj",
+      "tests\\P2PMessenger.Transport.Tests\\P2PMessenger.Transport.Tests.csproj",
+      "tests\\P2PMessenger.UI.Tests\\P2PMessenger.UI.Tests.csproj"
+    ]
+  }
+}

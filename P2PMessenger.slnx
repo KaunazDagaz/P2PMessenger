@@ -1,0 +1,21 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/P2PMessenger.Android/P2PMessenger.Android.csproj">
+      <Deploy />
+    </Project>
+    <Project Path="src/P2PMessenger.Application/P2PMessenger.Application.csproj" />
+    <Project Path="src/P2PMessenger.Core/P2PMessenger.Core.csproj" />
+    <Project Path="src/P2PMessenger.Desktop/P2PMessenger.Desktop.csproj" />
+    <Project Path="src/P2PMessenger.Storage/P2PMessenger.Storage.csproj" />
+    <Project Path="src/P2PMessenger.Transport/P2PMessenger.Transport.csproj" />
+    <Project Path="src/P2PMessenger.UI/P2PMessenger.UI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/P2PMessenger.Application.Tests/P2PMessenger.Application.Tests.csproj" />
+    <Project Path="tests/P2PMessenger.Core.Tests/P2PMessenger.Core.Tests.csproj" />
+    <Project Path="tests/P2PMessenger.Integration.Tests/P2PMessenger.Integration.Tests.csproj" />
+    <Project Path="tests/P2PMessenger.Storage.Tests/P2PMessenger.Storage.Tests.csproj" />
+    <Project Path="tests/P2PMessenger.Transport.Tests/P2PMessenger.Transport.Tests.csproj" />
+    <Project Path="tests/P2PMessenger.UI.Tests/P2PMessenger.UI.Tests.csproj" />
+  </Folder>
+</Solution>
