@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\P2PMessenger.Core\P2PMessenger.Core.csproj" />
+  </ItemGroup>
+
+  <Target Name="CopyCoreAssemblyForArchitectureTest" AfterTargets="CopyFilesToOutputDirectory">
+    <ItemGroup>
+      <_CoreAssemblyForArchitectureTest Include="@(ReferenceCopyLocalPaths)" Condition="'%(Filename)%(Extension)' == 'P2PMessenger.Core.dll'" />
+      <FileWrites Include="@(_CoreAssemblyForArchitectureTest->'$(OutDir)architecture\%(Filename)%(Extension)')" />
+    </ItemGroup>
+
+    <Copy SourceFiles="@(_CoreAssemblyForArchitectureTest)" DestinationFolder="$(OutDir)architecture" SkipUnchangedFiles="true" />
+  </Target>
+</Project>
