@@ -56,7 +56,7 @@ GitHub Actions runs `.github/workflows/ci.yml` on every push and pull request. T
 - **Android**, on Linux: Microsoft OpenJDK 21 (the newest JDK the android workload supports), the android workload and the Android SDK parts the project needs, then a locked restore, a Debug build with the .NET code inside the APK, and the same check for vulnerable packages.
 - For pull requests and `main`, the desktop builds and the APK are uploaded as artifacts. Each run signs the APK with a new debug key, so uninstall the previous build before installing another one.
 
-Dependabot (`.github/dependabot.yml`) proposes updates once a week for the NuGet packages (all Avalonia packages in one pull request), the .NET SDK in `global.json` (within .NET 10) and the actions. It skips xunit.v3.mtp-v2 4.x and Xamarin.AndroidX.Core.SplashScreen 1.2.0.3, which do not work with Avalonia 12.1.5 yet.
+Dependabot (`.github/dependabot.yml`) proposes updates once a week for the NuGet packages (all of them in one pull request), the .NET SDK in `global.json` (within .NET 10) and the actions. It skips xunit.v3.mtp-v2 4.x and Xamarin.AndroidX.Core.SplashScreen 1.2.0.3, which do not work with Avalonia 12.1.5 yet.
 
 The Android head's lock file records `Microsoft.NET.ILLink.Tasks`, whose version comes with the .NET SDK, so CI has to use the SDK that wrote the lock file: `global.json` pins it with `rollForward: patch`, and CI installs exactly that version. To move to a newer SDK, change `global.json`, run `dotnet restore P2PMessenger.slnx --force-evaluate` with that SDK, and commit both. A Dependabot pull request that updates the SDK fails the Android job until its branch gets the updated lock file.
 
