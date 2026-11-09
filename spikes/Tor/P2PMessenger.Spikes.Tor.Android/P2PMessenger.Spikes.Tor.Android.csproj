@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-android36.1</TargetFramework>
+    <SupportedOSPlatformVersion>26</SupportedOSPlatformVersion>
+    <RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
+    <ApplicationId>io.github.kaunazdagaz.p2pmessenger.torspike</ApplicationId>
+    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationDisplayVersion>0.1.0</ApplicationDisplayVersion>
+    <AndroidPackageFormat>apk</AndroidPackageFormat>
+    <TorBundle>$(MSBuildThisFileDirectory)..\tor-bundles\16.0\</TorBundle>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\P2PMessenger.Spikes.Tor.Cli\*.cs" Exclude="..\P2PMessenger.Spikes.Tor.Cli\Program.cs" LinkBase="Cli" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AndroidNativeLibrary Include="$(TorBundle)android-aarch64\tor\libTor.so" Abi="arm64-v8a" Condition="Exists('$(TorBundle)android-aarch64\tor\libTor.so')" />
+    <AndroidNativeLibrary Include="$(TorBundle)android-x86_64\tor\libTor.so" Abi="x86_64" Condition="Exists('$(TorBundle)android-x86_64\tor\libTor.so')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\P2PMessenger.Spikes.Tor\P2PMessenger.Spikes.Tor.csproj" />
+  </ItemGroup>
+
+  <Target Name="CheckTorBundle" BeforeTargets="BeforeBuild" Condition="!Exists('$(TorBundle)android-aarch64\tor\libTor.so')">
+    <Error Text="The Android tor binary is missing. Run: powershell -ExecutionPolicy Bypass -File spikes\Tor\get-tor.ps1 -Platform android-aarch64,android-x86_64" />
+  </Target>
+</Project>
