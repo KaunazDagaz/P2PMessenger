@@ -2,7 +2,7 @@
 
 A friend-to-friend messenger for small groups of people, for the times their usual messenger stops working: weak or no internet, travel without mobile data, or an internet shutdown. Messages are end-to-end encrypted and travel directly between the devices, over a shared Wi-Fi network or one phone's hotspot, or over Tor onion services. There is no server. Clients for Windows, Linux and Android.
 
-Bachelor diploma project "Development of a Secure Decentralized P2P Messenger with End-to-End Encryption" by Mikita Besau, European Humanities University.
+Bachelor diploma project "Secure Decentralized P2P Messenger with End-to-End Encryption" by Mikita Besau, European Humanities University.
 
 **Status:** the repository is scaffolded and the app opens an empty window. No feature is built yet.
 
