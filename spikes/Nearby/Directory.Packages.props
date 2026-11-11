@@ -1,0 +1,7 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Packages.props', '$(MSBuildThisFileDirectory)..'))" />
+
+  <ItemGroup Label="Nearby spike">
+    <PackageVersion Include="NSec.Cryptography" Version="26.4.0" />
+  </ItemGroup>
+</Project>

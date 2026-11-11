@@ -490,7 +490,8 @@ tor.exe
 libtor.so
 tor-expert-bundle*
 
-/spikes/
+/spikes/Tor
+/spikes/Noise
 /docs/
 /AGENTS.md
 /CLAUDE.md
