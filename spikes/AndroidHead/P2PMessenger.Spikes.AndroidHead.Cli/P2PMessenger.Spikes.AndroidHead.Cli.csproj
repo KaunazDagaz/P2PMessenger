@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>p2pm-androidhead-spike</AssemblyName>
+    <RootNamespace>P2PMessenger.Spikes.AndroidHead.Cli</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FlashCap" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\P2PMessenger.Spikes.AndroidHead\P2PMessenger.Spikes.AndroidHead.csproj" />
+  </ItemGroup>
+</Project>
