@@ -4,7 +4,7 @@ A friend-to-friend messenger for small groups of people, for the times their usu
 
 Bachelor diploma project "Secure Decentralized P2P Messenger with End-to-End Encryption" by Mikita Besau, European Humanities University.
 
-**Status:** the repository is scaffolded and the app opens an empty window. No feature is built yet.
+**Status:** the repository is scaffolded and the app opens an empty window. The local database schema, its migrations and their tests exist (see [Database](#database)); no feature is built yet.
 
 ## Repository layout
 
@@ -43,10 +43,37 @@ dotnet list P2PMessenger.Desktop.slnf package --vulnerable --include-transitive
 - Warnings are errors, and code style, unnecessary usings included, is checked on build (`Directory.Build.props`, `.editorconfig`). Missing XML documentation is not reported. A failed download of vulnerability data (NU1900) stays a warning, so building offline works.
 - The tests run on Microsoft Testing Platform (`global.json`). Every `dotnet test` run also writes a Cobertura coverage report into the `TestResults` folder next to each test assembly (`tests/Directory.Build.props`).
 - Coverage instrumentation rewrites `P2PMessenger.Core.dll` next to the test assembly while the tests run, so the Core architecture test reads the copy that `P2PMessenger.Core.Tests.csproj` puts in the `architecture` subfolder on build.
-- A test project that runs no tests ends with exit code 8, and then `dotnet test` fails. `P2PMessenger.Transport.Tests`, `P2PMessenger.Storage.Tests` and `P2PMessenger.Application.Tests` have no tests yet, so their project files pass `--ignore-exit-code 8`. Remove it from a project when it gets its first test.
+- A test project that runs no tests ends with exit code 8, and then `dotnet test` fails. `P2PMessenger.Transport.Tests` and `P2PMessenger.Application.Tests` have no tests yet, so their project files pass `--ignore-exit-code 8`. Remove it from a project when it gets its first test.
 - A Debug APK from `dotnet build` holds only the Android part of the app and runs only when deployed with `dotnet build src/P2PMessenger.Android -t:Run`. To install it by hand, build it with `-p:EmbedAssembliesIntoApk=true`.
 - Every restore writes a `packages.lock.json` file next to each project. Commit them. After changing a version in `Directory.Packages.props`, run `dotnet restore --force-evaluate` to update them.
 - Avalonia's build tooling sends anonymous build-time telemetry to Avalonia, and the .NET CLI sends its own; neither affects the app. Set `AVALONIA_TELEMETRY_OPTOUT=1` and `DOTNET_CLI_TELEMETRY_OPTOUT=1` to turn them off.
+
+## Database
+
+Each device keeps its data in one local SQLite database; there is no server. The database materials:
+
+| What | Where |
+| --- | --- |
+| Data dictionary (tables, columns, types, keys, constraints), logical schema with an ER diagram, how stored data is protected, normalisation | [`src/P2PMessenger.Storage/README.md`](src/P2PMessenger.Storage/README.md) |
+| DDL: the migration scripts that create and change the schema | [`src/P2PMessenger.Storage/Migrations`](src/P2PMessenger.Storage/Migrations) |
+| Migration runner and connection settings | `MigrationCatalog`, `MigrationRunner` and `SqliteDatabase` in [`src/P2PMessenger.Storage`](src/P2PMessenger.Storage) |
+| Tests that create a database from the scripts and check it | [`tests/P2PMessenger.Storage.Tests`](tests/P2PMessenger.Storage.Tests) |
+
+The schema is created only by the scripts, never by hand. To create a database from them and check it:
+
+```
+dotnet test --project tests/P2PMessenger.Storage.Tests
+```
+
+or, with the SQLite command-line shell (3.37 or later):
+
+```
+sqlite3 :memory: ".read src/P2PMessenger.Storage/Migrations/0001_initial.sql" ".tables"
+```
+
+Give a file name instead of `:memory:` to keep the database, for example to open it in DB Browser for SQLite; delete the file afterwards, it is not part of the repository.
+
+The first working version of the app keeps its data in memory; a later milestone connects the app to this database.
 
 ## Continuous integration
 

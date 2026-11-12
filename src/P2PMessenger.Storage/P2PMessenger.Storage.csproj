@@ -6,4 +6,12 @@
   <ItemGroup>
     <ProjectReference Include="..\P2PMessenger.Core\P2PMessenger.Core.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Migrations\*.sql" LogicalName="P2PMessenger.Storage.Migrations.%(Filename)%(Extension)" />
+  </ItemGroup>
 </Project>
