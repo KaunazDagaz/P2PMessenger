@@ -4,7 +4,7 @@ A friend-to-friend messenger for small groups of people, for the times their usu
 
 Bachelor diploma project "Secure Decentralized P2P Messenger with End-to-End Encryption" by Mikita Besau, European Humanities University.
 
-**Status:** the repository is scaffolded and the app opens an empty window. The local database schema, its migrations and their tests exist (see [Database](#database)), and so do the key set, the contact codes and the fingerprints in `P2PMessenger.Core` with their tests; no feature is built yet.
+**Status:** the repository is scaffolded and the app opens an empty window. The local database schema, its migrations and their tests exist (see [Database](#database)), and so do, in `P2PMessenger.Core` with their tests, the key set, the contact codes and the fingerprints, and the encrypted sessions between two contacts (a Noise KK handshake), their frames and the first message types; no feature is built yet.
 
 ## Repository layout
 
@@ -23,7 +23,7 @@ Dependency rules: `Core` references no other project and uses no I/O or platform
 
 ## Prerequisites
 
-- .NET SDK 10.0.403 (`global.json`). A later 10.0.4xx patch also builds, but its restore changes the Android head's lock file (see Continuous integration).
+- .NET SDK 10.0.404 (`global.json`). A later 10.0.4xx patch also builds, but its restore changes the Android head's lock file (see Continuous integration).
 - For the Android head only: the android workload (`dotnet workload install android`), the Android SDK with the API 36.1 platform, and a JDK (Microsoft OpenJDK 21 is recommended). On a machine without them, `dotnet build src/P2PMessenger.Android -t:InstallAndroidDependencies -p:AndroidSdkDirectory=C:\Android\sdk -p:JavaSdkDirectory=C:\Android\jdk -p:AcceptAndroidSDKLicenses=true` installs both into the given folders (absolute paths without spaces). Then set the `ANDROID_HOME` and `JAVA_HOME` environment variables to those folders so later builds find them.
 - On Windows, NSec's installation notes say that the native libsodium it loads needs the Microsoft Visual C++ Redistributable (x64). A developer machine usually has it and a clean Windows installation may not, so the tests of `P2PMessenger.Core.Tests` may fail to load the library there.
 
