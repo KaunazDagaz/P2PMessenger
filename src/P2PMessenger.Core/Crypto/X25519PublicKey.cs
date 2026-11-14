@@ -41,6 +41,17 @@ public sealed class X25519PublicKey : IEquatable<X25519PublicKey>
 
     internal static X25519PublicKey FromTrustedBytes(ReadOnlySpan<byte> bytes) => new(bytes.ToArray());
 
+    internal bool TryImportNsec([NotNullWhen(true)] out PublicKey? key)
+    {
+        if (!PublicKey.TryImport(KeyAgreementAlgorithm.X25519, _bytes, KeyBlobFormat.RawPublicKey, out key) || key is null)
+        {
+            key = null;
+            return false;
+        }
+
+        return true;
+    }
+
     internal bool IsUsable()
     {
         if (!PublicKey.TryImport(KeyAgreementAlgorithm.X25519, _bytes, KeyBlobFormat.RawPublicKey, out PublicKey? other) || other is null)
