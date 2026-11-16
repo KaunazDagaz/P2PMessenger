@@ -15,7 +15,7 @@ public sealed class TextMessage : SessionMessage, IEquatable<TextMessage>
     private const int WrittenAtOffset = SequenceOffset + sizeof(long);
     private const int FixedBodyLength = WrittenAtOffset + sizeof(long);
 
-    private readonly byte[] _utf8;
+    private readonly byte[] utf8;
 
     private TextMessage(MessageId id, long sequence, long writtenAtMilliseconds, string text, byte[] utf8)
     {
@@ -23,7 +23,7 @@ public sealed class TextMessage : SessionMessage, IEquatable<TextMessage>
         Sequence = sequence;
         WrittenAt = DateTimeOffset.FromUnixTimeMilliseconds(writtenAtMilliseconds);
         Text = text;
-        _utf8 = utf8;
+        this.utf8 = utf8;
     }
 
     public MessageId Id { get; }
@@ -36,7 +36,7 @@ public sealed class TextMessage : SessionMessage, IEquatable<TextMessage>
 
     public override SessionMessageType Type => SessionMessageType.Text;
 
-    internal override int BodyLength => FixedBodyLength + _utf8.Length;
+    internal override int BodyLength => FixedBodyLength + utf8.Length;
 
     public static bool TryCreate(MessageId id, long sequence, DateTimeOffset writtenAt, string? text, [NotNullWhen(true)] out TextMessage? message)
     {
@@ -92,7 +92,7 @@ public sealed class TextMessage : SessionMessage, IEquatable<TextMessage>
         Id.Bytes.CopyTo(body);
         BinaryPrimitives.WriteInt64BigEndian(body[SequenceOffset..WrittenAtOffset], Sequence);
         BinaryPrimitives.WriteInt64BigEndian(body[WrittenAtOffset..FixedBodyLength], WrittenAt.ToUnixTimeMilliseconds());
-        _utf8.CopyTo(body[FixedBodyLength..]);
+        utf8.CopyTo(body[FixedBodyLength..]);
     }
 
     private static bool TryEncode(string text, [NotNullWhen(true)] out byte[]? utf8)

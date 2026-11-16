@@ -8,12 +8,12 @@ internal sealed class NoiseHash
     private const byte InnerPad = 0x36;
     private const byte OuterPad = 0x5C;
 
-    private readonly HashAlgorithm _algorithm;
+    private readonly HashAlgorithm algorithm;
 
     private NoiseHash(string name, HashAlgorithm algorithm, int blockLength)
     {
         Name = name;
-        _algorithm = algorithm;
+        this.algorithm = algorithm;
         BlockLength = blockLength;
     }
 
@@ -25,13 +25,13 @@ internal sealed class NoiseHash
 
     public string Name { get; }
 
-    public int HashLength => _algorithm.HashSize;
+    public int HashLength => algorithm.HashSize;
 
     public int BlockLength { get; }
 
     public void Hash(ReadOnlySpan<byte> first, ReadOnlySpan<byte> second, Span<byte> output)
     {
-        IncrementalHash.Initialize(_algorithm, out IncrementalHash state);
+        IncrementalHash.Initialize(algorithm, out IncrementalHash state);
         IncrementalHash.Update(ref state, first);
         IncrementalHash.Update(ref state, second);
         IncrementalHash.Finalize(ref state, output);
@@ -49,14 +49,14 @@ internal sealed class NoiseHash
         try
         {
             FillPad(key, InnerPad, pad);
-            IncrementalHash.Initialize(_algorithm, out IncrementalHash state);
+            IncrementalHash.Initialize(algorithm, out IncrementalHash state);
             IncrementalHash.Update(ref state, pad);
             IncrementalHash.Update(ref state, first);
             IncrementalHash.Update(ref state, second);
             IncrementalHash.Finalize(ref state, inner);
 
             FillPad(key, OuterPad, pad);
-            IncrementalHash.Initialize(_algorithm, out state);
+            IncrementalHash.Initialize(algorithm, out state);
             IncrementalHash.Update(ref state, pad);
             IncrementalHash.Update(ref state, inner);
             IncrementalHash.Finalize(ref state, output);

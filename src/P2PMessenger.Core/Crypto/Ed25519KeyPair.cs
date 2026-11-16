@@ -8,11 +8,11 @@ public sealed class Ed25519KeyPair : IDisposable
     public const int SeedLength = 32;
     public const int SignatureLength = 64;
 
-    private readonly Key _key;
+    private readonly Key key;
 
     private Ed25519KeyPair(Key key)
     {
-        _key = key;
+        this.key = key;
         PublicKey = Ed25519PublicKey.FromTrustedBytes(key.PublicKey.Export(KeyBlobFormat.RawPublicKey));
     }
 
@@ -35,14 +35,14 @@ public sealed class Ed25519KeyPair : IDisposable
     }
 
     public bool TryExportSeed(Span<byte> destination, out int written) =>
-        _key.TryExport(KeyBlobFormat.RawPrivateKey, destination, out written);
+        key.TryExport(KeyBlobFormat.RawPrivateKey, destination, out written);
 
     public void Sign(ReadOnlySpan<byte> message, Span<byte> signature) =>
-        SignatureAlgorithm.Ed25519.Sign(_key, message, signature);
+        SignatureAlgorithm.Ed25519.Sign(key, message, signature);
 
-    public byte[] Sign(ReadOnlySpan<byte> message) => SignatureAlgorithm.Ed25519.Sign(_key, message);
+    public byte[] Sign(ReadOnlySpan<byte> message) => SignatureAlgorithm.Ed25519.Sign(key, message);
 
-    public void Dispose() => _key.Dispose();
+    public void Dispose() => key.Dispose();
 
     private static KeyCreationParameters ExportableParameters() => new() { ExportPolicy = KeyExportPolicies.AllowPlaintextExport };
 }

@@ -7,14 +7,14 @@ public sealed class MessageId : IEquatable<MessageId>
 {
     public const int Length = 16;
 
-    private readonly byte[] _bytes;
+    private readonly byte[] bytes;
 
     private MessageId(byte[] bytes)
     {
-        _bytes = bytes;
+        this.bytes = bytes;
     }
 
-    public ReadOnlySpan<byte> Bytes => _bytes;
+    public ReadOnlySpan<byte> Bytes => bytes;
 
     public static MessageId Create() => new(RandomNumberGenerator.GetBytes(Length));
 
@@ -30,14 +30,14 @@ public sealed class MessageId : IEquatable<MessageId>
         return true;
     }
 
-    public bool Equals(MessageId? other) => other is not null && _bytes.AsSpan().SequenceEqual(other._bytes);
+    public bool Equals(MessageId? other) => other is not null && bytes.AsSpan().SequenceEqual(other.bytes);
 
     public override bool Equals(object? obj) => obj is MessageId other && Equals(other);
 
     public override int GetHashCode()
     {
         var hash = new HashCode();
-        hash.AddBytes(_bytes);
+        hash.AddBytes(bytes);
         return hash.ToHashCode();
     }
 }

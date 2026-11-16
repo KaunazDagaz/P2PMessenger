@@ -4,13 +4,13 @@ internal sealed class TransportCipher : IDisposable
 {
     public const int MaxPayloadLength = KkHandshake.MaxMessageLength - CipherState.TagLength;
 
-    private readonly CipherState _sending;
-    private readonly CipherState _receiving;
+    private readonly CipherState sending;
+    private readonly CipherState receiving;
 
     public TransportCipher(CipherState sending, CipherState receiving)
     {
-        _sending = sending;
-        _receiving = receiving;
+        this.sending = sending;
+        this.receiving = receiving;
     }
 
     public int Encrypt(ReadOnlySpan<byte> payload, Span<byte> message)
@@ -25,7 +25,7 @@ internal sealed class TransportCipher : IDisposable
             throw new ArgumentException("The message buffer is too small.", nameof(message));
         }
 
-        return _sending.EncryptWithAd(default, payload, message);
+        return sending.EncryptWithAd(default, payload, message);
     }
 
     public bool TryDecrypt(ReadOnlySpan<byte> message, Span<byte> payload, out int payloadLength)
@@ -36,12 +36,12 @@ internal sealed class TransportCipher : IDisposable
             return false;
         }
 
-        return _receiving.TryDecryptWithAd(default, message, payload, out payloadLength);
+        return receiving.TryDecryptWithAd(default, message, payload, out payloadLength);
     }
 
     public void Dispose()
     {
-        _sending.Dispose();
-        _receiving.Dispose();
+        sending.Dispose();
+        receiving.Dispose();
     }
 }

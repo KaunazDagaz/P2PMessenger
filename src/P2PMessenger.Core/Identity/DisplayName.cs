@@ -9,17 +9,17 @@ public sealed class DisplayName : IEquatable<DisplayName>
 {
     public const int MaxUtf8Length = 64;
 
-    private readonly byte[] _utf8;
+    private readonly byte[] utf8;
 
     private DisplayName(string value, byte[] utf8)
     {
         Value = value;
-        _utf8 = utf8;
+        this.utf8 = utf8;
     }
 
     public string Value { get; }
 
-    internal ReadOnlySpan<byte> Utf8Bytes => _utf8;
+    internal ReadOnlySpan<byte> Utf8Bytes => utf8;
 
     public static bool TryCreate(string? text, [NotNullWhen(true)] out DisplayName? name)
     {

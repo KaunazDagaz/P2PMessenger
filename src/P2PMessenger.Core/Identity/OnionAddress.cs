@@ -13,11 +13,11 @@ public sealed class OnionAddress : IEquatable<OnionAddress>
     private const int ChecksumLength = 2;
     private const string Suffix = ".onion";
 
-    private readonly byte[] _bytes;
+    private readonly byte[] bytes;
 
     private OnionAddress(byte[] bytes, Ed25519PublicKey publicKey)
     {
-        _bytes = bytes;
+        this.bytes = bytes;
         PublicKey = publicKey;
         Label = Base32.Encode(bytes, lowerCase: true);
     }
@@ -28,7 +28,7 @@ public sealed class OnionAddress : IEquatable<OnionAddress>
 
     public string Host => Label + Suffix;
 
-    public ReadOnlySpan<byte> Bytes => _bytes;
+    public ReadOnlySpan<byte> Bytes => bytes;
 
     private static ReadOnlySpan<byte> ChecksumLabel => ".onion checksum"u8;
 
@@ -66,14 +66,14 @@ public sealed class OnionAddress : IEquatable<OnionAddress>
         return true;
     }
 
-    public bool Equals(OnionAddress? other) => other is not null && _bytes.AsSpan().SequenceEqual(other._bytes);
+    public bool Equals(OnionAddress? other) => other is not null && bytes.AsSpan().SequenceEqual(other.bytes);
 
     public override bool Equals(object? obj) => obj is OnionAddress other && Equals(other);
 
     public override int GetHashCode()
     {
         var hash = new HashCode();
-        hash.AddBytes(_bytes);
+        hash.AddBytes(bytes);
         return hash.ToHashCode();
     }
 

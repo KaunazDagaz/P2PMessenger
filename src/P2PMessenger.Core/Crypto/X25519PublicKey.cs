@@ -7,14 +7,14 @@ public sealed class X25519PublicKey : IEquatable<X25519PublicKey>
 {
     public const int Length = 32;
 
-    private readonly byte[] _bytes;
+    private readonly byte[] bytes;
 
     private X25519PublicKey(byte[] bytes)
     {
-        _bytes = bytes;
+        this.bytes = bytes;
     }
 
-    public ReadOnlySpan<byte> Bytes => _bytes;
+    public ReadOnlySpan<byte> Bytes => bytes;
 
     public static bool TryCreate(ReadOnlySpan<byte> bytes, [NotNullWhen(true)] out X25519PublicKey? key)
     {
@@ -28,14 +28,14 @@ public sealed class X25519PublicKey : IEquatable<X25519PublicKey>
         return true;
     }
 
-    public bool Equals(X25519PublicKey? other) => other is not null && _bytes.AsSpan().SequenceEqual(other._bytes);
+    public bool Equals(X25519PublicKey? other) => other is not null && bytes.AsSpan().SequenceEqual(other.bytes);
 
     public override bool Equals(object? obj) => obj is X25519PublicKey other && Equals(other);
 
     public override int GetHashCode()
     {
         var hash = new HashCode();
-        hash.AddBytes(_bytes);
+        hash.AddBytes(bytes);
         return hash.ToHashCode();
     }
 
@@ -43,7 +43,7 @@ public sealed class X25519PublicKey : IEquatable<X25519PublicKey>
 
     internal bool TryImportNsec([NotNullWhen(true)] out PublicKey? key)
     {
-        if (!PublicKey.TryImport(KeyAgreementAlgorithm.X25519, _bytes, KeyBlobFormat.RawPublicKey, out key) || key is null)
+        if (!PublicKey.TryImport(KeyAgreementAlgorithm.X25519, bytes, KeyBlobFormat.RawPublicKey, out key) || key is null)
         {
             key = null;
             return false;
@@ -54,7 +54,7 @@ public sealed class X25519PublicKey : IEquatable<X25519PublicKey>
 
     internal bool IsUsable()
     {
-        if (!PublicKey.TryImport(KeyAgreementAlgorithm.X25519, _bytes, KeyBlobFormat.RawPublicKey, out PublicKey? other) || other is null)
+        if (!PublicKey.TryImport(KeyAgreementAlgorithm.X25519, bytes, KeyBlobFormat.RawPublicKey, out PublicKey? other) || other is null)
         {
             return false;
         }

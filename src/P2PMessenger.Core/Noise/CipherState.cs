@@ -12,41 +12,41 @@ internal sealed class CipherState : IDisposable
     private const int NonceLength = 12;
     private const ulong ReservedNonce = ulong.MaxValue;
 
-    private Key? _key;
-    private ulong _nonce;
+    private Key? key;
+    private ulong nonce;
 
-    public void InitializeKey(ReadOnlySpan<byte> key)
+    public void InitializeKey(ReadOnlySpan<byte> keyBytes)
     {
-        _key?.Dispose();
-        _key = Key.Import(AeadAlgorithm.ChaCha20Poly1305, key, KeyBlobFormat.RawSymmetricKey);
-        _nonce = 0;
+        key?.Dispose();
+        key = Key.Import(AeadAlgorithm.ChaCha20Poly1305, keyBytes, KeyBlobFormat.RawSymmetricKey);
+        nonce = 0;
     }
 
     public int EncryptWithAd(ReadOnlySpan<byte> associatedData, ReadOnlySpan<byte> plaintext, Span<byte> ciphertext)
     {
-        if (_key is null)
+        if (key is null)
         {
             plaintext.CopyTo(ciphertext);
             return plaintext.Length;
         }
 
-        if (_nonce == ReservedNonce)
+        if (nonce == ReservedNonce)
         {
             throw new InvalidOperationException("The nonce is used up; the session has to end.");
         }
 
-        Span<byte> nonce = stackalloc byte[NonceLength];
-        WriteNonce(_nonce, nonce);
+        Span<byte> nonceBytes = stackalloc byte[NonceLength];
+        WriteNonce(nonce, nonceBytes);
         int length = plaintext.Length + TagLength;
-        AeadAlgorithm.ChaCha20Poly1305.Encrypt(_key, nonce, associatedData, plaintext, ciphertext[..length]);
-        _nonce++;
+        AeadAlgorithm.ChaCha20Poly1305.Encrypt(key, nonceBytes, associatedData, plaintext, ciphertext[..length]);
+        nonce++;
         return length;
     }
 
     public bool TryDecryptWithAd(ReadOnlySpan<byte> associatedData, ReadOnlySpan<byte> ciphertext, Span<byte> plaintext, out int plaintextLength)
     {
         plaintextLength = 0;
-        if (_key is null)
+        if (key is null)
         {
             if (ciphertext.Length > plaintext.Length)
             {
@@ -58,29 +58,29 @@ internal sealed class CipherState : IDisposable
             return true;
         }
 
-        if (_nonce == ReservedNonce || ciphertext.Length < TagLength || ciphertext.Length - TagLength > plaintext.Length)
+        if (nonce == ReservedNonce || ciphertext.Length < TagLength || ciphertext.Length - TagLength > plaintext.Length)
         {
             return false;
         }
 
-        Span<byte> nonce = stackalloc byte[NonceLength];
-        WriteNonce(_nonce, nonce);
+        Span<byte> nonceBytes = stackalloc byte[NonceLength];
+        WriteNonce(nonce, nonceBytes);
         Span<byte> output = plaintext[..(ciphertext.Length - TagLength)];
-        if (!AeadAlgorithm.ChaCha20Poly1305.Decrypt(_key, nonce, associatedData, ciphertext, output))
+        if (!AeadAlgorithm.ChaCha20Poly1305.Decrypt(key, nonceBytes, associatedData, ciphertext, output))
         {
             CryptographicOperations.ZeroMemory(output);
             return false;
         }
 
-        _nonce++;
+        nonce++;
         plaintextLength = output.Length;
         return true;
     }
 
     public void Dispose()
     {
-        _key?.Dispose();
-        _key = null;
+        key?.Dispose();
+        key = null;
     }
 
     private static void WriteNonce(ulong counter, Span<byte> nonce)

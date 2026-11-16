@@ -39,13 +39,13 @@ public sealed class SeenMessageIdsTests
 
     private sealed class InMemorySeenMessageIds : ISeenMessageIds
     {
-        private readonly HashSet<MessageId> _ids = [];
+        private readonly HashSet<MessageId> ids = [];
 
-        public ValueTask<bool> ContainsAsync(MessageId id, CancellationToken cancellationToken) => ValueTask.FromResult(_ids.Contains(id));
+        public ValueTask<bool> ContainsAsync(MessageId id, CancellationToken cancellationToken) => ValueTask.FromResult(ids.Contains(id));
 
         public ValueTask AddAsync(MessageId id, CancellationToken cancellationToken)
         {
-            _ids.Add(id);
+            ids.Add(id);
             return ValueTask.CompletedTask;
         }
     }
