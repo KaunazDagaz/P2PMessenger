@@ -14,9 +14,11 @@ internal sealed class CipherState : IDisposable
 
     private Key? key;
     private ulong nonce;
+    private bool disposed;
 
     public void InitializeKey(ReadOnlySpan<byte> keyBytes)
     {
+        ObjectDisposedException.ThrowIf(disposed, this);
         key?.Dispose();
         key = Key.Import(AeadAlgorithm.ChaCha20Poly1305, keyBytes, KeyBlobFormat.RawSymmetricKey);
         nonce = 0;
@@ -24,7 +26,9 @@ internal sealed class CipherState : IDisposable
 
     public int EncryptWithAd(ReadOnlySpan<byte> associatedData, ReadOnlySpan<byte> plaintext, Span<byte> ciphertext)
     {
-        if (key is null)
+        ObjectDisposedException.ThrowIf(disposed, this);
+        Key? currentKey = key;
+        if (currentKey is null)
         {
             plaintext.CopyTo(ciphertext);
             return plaintext.Length;
@@ -38,7 +42,7 @@ internal sealed class CipherState : IDisposable
         Span<byte> nonceBytes = stackalloc byte[NonceLength];
         WriteNonce(nonce, nonceBytes);
         int length = plaintext.Length + TagLength;
-        AeadAlgorithm.ChaCha20Poly1305.Encrypt(key, nonceBytes, associatedData, plaintext, ciphertext[..length]);
+        AeadAlgorithm.ChaCha20Poly1305.Encrypt(currentKey, nonceBytes, associatedData, plaintext, ciphertext[..length]);
         nonce++;
         return length;
     }
@@ -46,7 +50,13 @@ internal sealed class CipherState : IDisposable
     public bool TryDecryptWithAd(ReadOnlySpan<byte> associatedData, ReadOnlySpan<byte> ciphertext, Span<byte> plaintext, out int plaintextLength)
     {
         plaintextLength = 0;
-        if (key is null)
+        if (disposed)
+        {
+            return false;
+        }
+
+        Key? currentKey = key;
+        if (currentKey is null)
         {
             if (ciphertext.Length > plaintext.Length)
             {
@@ -66,7 +76,7 @@ internal sealed class CipherState : IDisposable
         Span<byte> nonceBytes = stackalloc byte[NonceLength];
         WriteNonce(nonce, nonceBytes);
         Span<byte> output = plaintext[..(ciphertext.Length - TagLength)];
-        if (!AeadAlgorithm.ChaCha20Poly1305.Decrypt(key, nonceBytes, associatedData, ciphertext, output))
+        if (!AeadAlgorithm.ChaCha20Poly1305.Decrypt(currentKey, nonceBytes, associatedData, ciphertext, output))
         {
             CryptographicOperations.ZeroMemory(output);
             return false;
@@ -79,8 +89,8 @@ internal sealed class CipherState : IDisposable
 
     public void Dispose()
     {
+        disposed = true;
         key?.Dispose();
-        key = null;
     }
 
     private static void WriteNonce(ulong counter, Span<byte> nonce)
