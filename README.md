@@ -4,7 +4,7 @@ A friend-to-friend messenger for small groups of people, for the times their usu
 
 Bachelor diploma project "Secure Decentralized P2P Messenger with End-to-End Encryption" by Mikita Besau, European Humanities University.
 
-**Status:** the repository is scaffolded and the app opens an empty window. The local database schema, its migrations and their tests exist (see [Database](#database)), and so do, in `P2PMessenger.Core` with their tests, the key set, the contact codes and the fingerprints, and the encrypted sessions between two contacts (a Noise KK handshake), their frames and the first message types; no feature is built yet.
+**Status:** the repository is scaffolded and the app opens an empty window. The local database schema, its migrations and their tests exist (see [Database](#database)), and so do, in `P2PMessenger.Core` with their tests, the key set, the contact codes and the fingerprints, and the encrypted sessions between two contacts (a Noise KK handshake), their frames and the first message types. `P2PMessenger.Transport` and its tests hold the connections between two apps over TCP: a listener and a dialer, refusal of callers that are not contacts before anything else happens, limits against flooding, one session per contact, reconnects and keep-alives. No feature is built yet.
 
 ## Repository layout
 
@@ -44,7 +44,7 @@ dotnet list P2PMessenger.Desktop.slnf package --vulnerable --include-transitive
 - Warnings are errors, and code style, unnecessary usings included, is checked on build (`Directory.Build.props`, `.editorconfig`). Missing XML documentation is not reported. A failed download of vulnerability data (NU1900) stays a warning, so building offline works.
 - The tests run on Microsoft Testing Platform (`global.json`). Every `dotnet test` run also writes a Cobertura coverage report into the `TestResults` folder next to each test assembly (`tests/Directory.Build.props`).
 - Coverage instrumentation rewrites `P2PMessenger.Core.dll` next to the test assembly while the tests run, so the Core architecture test reads the copy that `P2PMessenger.Core.Tests.csproj` puts in the `architecture` subfolder on build.
-- A test project that runs no tests ends with exit code 8, and then `dotnet test` fails. `P2PMessenger.Transport.Tests` and `P2PMessenger.Application.Tests` have no tests yet, so their project files pass `--ignore-exit-code 8`. Remove it from a project when it gets its first test.
+- A test project that runs no tests ends with exit code 8, and then `dotnet test` fails. `P2PMessenger.Application.Tests` has no tests yet, so its project file passes `--ignore-exit-code 8`. Remove it when the project gets its first test.
 - A Debug APK from `dotnet build` holds only the Android part of the app and runs only when deployed with `dotnet build src/P2PMessenger.Android -t:Run`. To install it by hand, build it with `-p:EmbedAssembliesIntoApk=true`.
 - Every restore writes a `packages.lock.json` file next to each project. Commit them. After changing a version in `Directory.Packages.props`, run `dotnet restore --force-evaluate` to update them.
 - Avalonia's build tooling sends anonymous build-time telemetry to Avalonia, and the .NET CLI sends its own; neither affects the app. Set `AVALONIA_TELEMETRY_OPTOUT=1` and `DOTNET_CLI_TELEMETRY_OPTOUT=1` to turn them off.

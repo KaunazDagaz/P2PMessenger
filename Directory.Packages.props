@@ -16,6 +16,10 @@
     <PackageVersion Include="NSec.Cryptography" Version="26.4.0" />
   </ItemGroup>
 
+  <ItemGroup Label="Logging">
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="11.0.0" />
+  </ItemGroup>
+
   <ItemGroup Label="Android">
     <PackageVersion Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.2.0.2" />
   </ItemGroup>

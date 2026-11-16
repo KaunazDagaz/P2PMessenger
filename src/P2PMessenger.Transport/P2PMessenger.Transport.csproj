@@ -6,4 +6,12 @@
   <ItemGroup>
     <ProjectReference Include="..\P2PMessenger.Core\P2PMessenger.Core.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="P2PMessenger.Transport.Tests" />
+  </ItemGroup>
 </Project>
