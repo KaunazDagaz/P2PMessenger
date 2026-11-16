@@ -7,14 +7,14 @@ public sealed class Ed25519PublicKey : IEquatable<Ed25519PublicKey>
 {
     public const int Length = 32;
 
-    private readonly byte[] _bytes;
+    private readonly byte[] bytes;
 
     private Ed25519PublicKey(byte[] bytes)
     {
-        _bytes = bytes;
+        this.bytes = bytes;
     }
 
-    public ReadOnlySpan<byte> Bytes => _bytes;
+    public ReadOnlySpan<byte> Bytes => bytes;
 
     public static bool TryCreate(ReadOnlySpan<byte> bytes, [NotNullWhen(true)] out Ed25519PublicKey? key)
     {
@@ -31,7 +31,7 @@ public sealed class Ed25519PublicKey : IEquatable<Ed25519PublicKey>
     public bool Verify(ReadOnlySpan<byte> message, ReadOnlySpan<byte> signature)
     {
         if (signature.Length != Ed25519KeyPair.SignatureLength
-            || !PublicKey.TryImport(SignatureAlgorithm.Ed25519, _bytes, KeyBlobFormat.RawPublicKey, out PublicKey? key)
+            || !PublicKey.TryImport(SignatureAlgorithm.Ed25519, bytes, KeyBlobFormat.RawPublicKey, out PublicKey? key)
             || key is null)
         {
             return false;
@@ -40,14 +40,14 @@ public sealed class Ed25519PublicKey : IEquatable<Ed25519PublicKey>
         return SignatureAlgorithm.Ed25519.Verify(key, message, signature);
     }
 
-    public bool Equals(Ed25519PublicKey? other) => other is not null && _bytes.AsSpan().SequenceEqual(other._bytes);
+    public bool Equals(Ed25519PublicKey? other) => other is not null && bytes.AsSpan().SequenceEqual(other.bytes);
 
     public override bool Equals(object? obj) => obj is Ed25519PublicKey other && Equals(other);
 
     public override int GetHashCode()
     {
         var hash = new HashCode();
-        hash.AddBytes(_bytes);
+        hash.AddBytes(bytes);
         return hash.ToHashCode();
     }
 

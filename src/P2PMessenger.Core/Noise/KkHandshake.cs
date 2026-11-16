@@ -20,18 +20,18 @@ internal sealed class KkHandshake : IDisposable
         [Token.E, Token.Ee, Token.Se],
     ];
 
-    private readonly bool _initiator;
-    private readonly Key _localStatic;
-    private readonly PublicKey _remoteStatic;
-    private readonly byte[]? _fixedEphemeral;
-    private SymmetricState? _state;
-    private Key? _ephemeral;
-    private PublicKey? _remoteEphemeral;
-    private int _nextMessage;
-    private bool _failed;
-    private bool _disposed;
-    private byte[]? _handshakeHash;
-    private TransportCipher? _transport;
+    private readonly bool initiator;
+    private readonly Key localStatic;
+    private readonly PublicKey remoteStatic;
+    private readonly byte[]? fixedEphemeral;
+    private SymmetricState? state;
+    private Key? ephemeral;
+    private PublicKey? remoteEphemeral;
+    private int nextMessage;
+    private bool failed;
+    private bool disposed;
+    private byte[]? handshakeHash;
+    private TransportCipher? transport;
 
     public KkHandshake(
         NoiseHash hash,
@@ -55,17 +55,17 @@ internal sealed class KkHandshake : IDisposable
             throw new ArgumentException("The ephemeral key is not 32 bytes long.", nameof(fixedEphemeralPrivateKey));
         }
 
-        _initiator = initiator;
-        _localStatic = localStatic.NsecKey;
-        _remoteStatic = remote;
-        _fixedEphemeral = fixedEphemeralPrivateKey.IsEmpty ? null : fixedEphemeralPrivateKey.ToArray();
+        this.initiator = initiator;
+        this.localStatic = localStatic.NsecKey;
+        this.remoteStatic = remote;
+        this.fixedEphemeral = fixedEphemeralPrivateKey.IsEmpty ? null : fixedEphemeralPrivateKey.ToArray();
 
         ReadOnlySpan<byte> localStaticPublicKey = localStatic.PublicKey.Bytes;
         ReadOnlySpan<byte> remoteStaticPublicKey = remoteStatic.Bytes;
-        _state = new SymmetricState(hash, Encoding.ASCII.GetBytes(ProtocolNamePrefix + hash.Name));
-        _state.MixHash(prologue);
-        _state.MixHash(initiator ? localStaticPublicKey : remoteStaticPublicKey);
-        _state.MixHash(initiator ? remoteStaticPublicKey : localStaticPublicKey);
+        this.state = new SymmetricState(hash, Encoding.ASCII.GetBytes(ProtocolNamePrefix + hash.Name));
+        this.state.MixHash(prologue);
+        this.state.MixHash(initiator ? localStaticPublicKey : remoteStaticPublicKey);
+        this.state.MixHash(initiator ? remoteStaticPublicKey : localStaticPublicKey);
     }
 
     private enum Token
@@ -77,17 +77,17 @@ internal sealed class KkHandshake : IDisposable
         Ss,
     }
 
-    public bool IsCompleted => _handshakeHash is not null;
+    public bool IsCompleted => handshakeHash is not null;
 
-    public bool HasFailed => _failed;
+    public bool HasFailed => failed;
 
-    public ReadOnlySpan<byte> HandshakeHash => _handshakeHash ?? throw new InvalidOperationException("The handshake is not complete.");
+    public ReadOnlySpan<byte> HandshakeHash => handshakeHash ?? throw new InvalidOperationException("The handshake is not complete.");
 
-    private bool IsWriteTurn => (_nextMessage % 2 == 0) == _initiator;
+    private bool IsWriteTurn => (nextMessage % 2 == 0) == initiator;
 
-    private Key Ephemeral => _ephemeral ?? throw new InvalidOperationException("No ephemeral key yet.");
+    private Key Ephemeral => ephemeral ?? throw new InvalidOperationException("No ephemeral key yet.");
 
-    private PublicKey RemoteEphemeral => _remoteEphemeral ?? throw new InvalidOperationException("No remote ephemeral key yet.");
+    private PublicKey RemoteEphemeral => remoteEphemeral ?? throw new InvalidOperationException("No remote ephemeral key yet.");
 
     public bool TryWriteMessage(ReadOnlySpan<byte> payload, Span<byte> message, out int written)
     {
@@ -109,14 +109,14 @@ internal sealed class KkHandshake : IDisposable
         }
 
         int offset = 0;
-        foreach (Token token in MessagePatterns[_nextMessage])
+        foreach (Token token in MessagePatterns[nextMessage])
         {
             if (token == Token.E)
             {
-                Key ephemeral = CreateEphemeral();
-                _ephemeral = ephemeral;
+                Key newEphemeral = CreateEphemeral();
+                ephemeral = newEphemeral;
                 Span<byte> ephemeralPublicKey = message.Slice(offset, DhLength);
-                if (!ephemeral.PublicKey.TryExport(KeyBlobFormat.RawPublicKey, ephemeralPublicKey, out int exported) || exported != DhLength)
+                if (!newEphemeral.PublicKey.TryExport(KeyBlobFormat.RawPublicKey, ephemeralPublicKey, out int exported) || exported != DhLength)
                 {
                     throw new InvalidOperationException("The ephemeral public key could not be written.");
                 }
@@ -139,7 +139,7 @@ internal sealed class KkHandshake : IDisposable
     public bool TryReadMessage(ReadOnlySpan<byte> message, Span<byte> payload, out int payloadLength)
     {
         payloadLength = 0;
-        if (_failed)
+        if (failed)
         {
             return false;
         }
@@ -156,18 +156,18 @@ internal sealed class KkHandshake : IDisposable
         }
 
         int offset = 0;
-        foreach (Token token in MessagePatterns[_nextMessage])
+        foreach (Token token in MessagePatterns[nextMessage])
         {
             if (token == Token.E)
             {
                 ReadOnlySpan<byte> ephemeralPublicKey = message.Slice(offset, DhLength);
-                if (!PublicKey.TryImport(KeyAgreementAlgorithm.X25519, ephemeralPublicKey, KeyBlobFormat.RawPublicKey, out PublicKey? remoteEphemeral)
-                    || remoteEphemeral is null)
+                if (!PublicKey.TryImport(KeyAgreementAlgorithm.X25519, ephemeralPublicKey, KeyBlobFormat.RawPublicKey, out PublicKey? newRemoteEphemeral)
+                    || newRemoteEphemeral is null)
                 {
                     return Fail();
                 }
 
-                _remoteEphemeral = remoteEphemeral;
+                remoteEphemeral = newRemoteEphemeral;
                 state.MixHash(ephemeralPublicKey);
                 offset += DhLength;
             }
@@ -188,50 +188,50 @@ internal sealed class KkHandshake : IDisposable
 
     public TransportCipher TakeTransport()
     {
-        TransportCipher transport = _transport ?? throw new InvalidOperationException("The handshake has no transport to hand over.");
-        _transport = null;
-        return transport;
+        TransportCipher currentTransport = transport ?? throw new InvalidOperationException("The handshake has no transport to hand over.");
+        transport = null;
+        return currentTransport;
     }
 
     public void Dispose()
     {
-        _disposed = true;
-        _state?.Dispose();
-        _state = null;
-        _ephemeral?.Dispose();
-        _ephemeral = null;
-        _remoteEphemeral = null;
-        _transport?.Dispose();
-        _transport = null;
-        if (_handshakeHash is not null)
+        disposed = true;
+        state?.Dispose();
+        state = null;
+        ephemeral?.Dispose();
+        ephemeral = null;
+        remoteEphemeral = null;
+        transport?.Dispose();
+        transport = null;
+        if (handshakeHash is not null)
         {
-            CryptographicOperations.ZeroMemory(_handshakeHash);
+            CryptographicOperations.ZeroMemory(handshakeHash);
         }
 
-        if (_fixedEphemeral is not null)
+        if (fixedEphemeral is not null)
         {
-            CryptographicOperations.ZeroMemory(_fixedEphemeral);
+            CryptographicOperations.ZeroMemory(fixedEphemeral);
         }
     }
 
     private SymmetricState ActiveState()
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        if (_failed)
+        ObjectDisposedException.ThrowIf(disposed, this);
+        if (failed)
         {
             throw new InvalidOperationException("The handshake has failed.");
         }
 
-        return _state ?? throw new InvalidOperationException("The handshake is already complete.");
+        return state ?? throw new InvalidOperationException("The handshake is already complete.");
     }
 
     private Key CreateEphemeral()
     {
-        _ephemeral?.Dispose();
-        _ephemeral = null;
-        return _fixedEphemeral is null
+        ephemeral?.Dispose();
+        ephemeral = null;
+        return fixedEphemeral is null
             ? Key.Create(KeyAgreementAlgorithm.X25519)
-            : Key.Import(KeyAgreementAlgorithm.X25519, _fixedEphemeral, KeyBlobFormat.RawPrivateKey);
+            : Key.Import(KeyAgreementAlgorithm.X25519, fixedEphemeral, KeyBlobFormat.RawPrivateKey);
     }
 
     private bool TryMixDh(SymmetricState state, Token token)
@@ -239,9 +239,9 @@ internal sealed class KkHandshake : IDisposable
         (Key privateKey, PublicKey publicKey) = token switch
         {
             Token.Ee => (Ephemeral, RemoteEphemeral),
-            Token.Es => _initiator ? (Ephemeral, _remoteStatic) : (_localStatic, RemoteEphemeral),
-            Token.Se => _initiator ? (_localStatic, RemoteEphemeral) : (Ephemeral, _remoteStatic),
-            Token.Ss => (_localStatic, _remoteStatic),
+            Token.Es => initiator ? (Ephemeral, remoteStatic) : (localStatic, RemoteEphemeral),
+            Token.Se => initiator ? (localStatic, RemoteEphemeral) : (Ephemeral, remoteStatic),
+            Token.Ss => (localStatic, remoteStatic),
             _ => throw new UnreachableException(),
         };
 
@@ -264,15 +264,15 @@ internal sealed class KkHandshake : IDisposable
 
     private void Advance(SymmetricState state)
     {
-        _nextMessage++;
-        if (_nextMessage < MessagePatterns.Length)
+        nextMessage++;
+        if (nextMessage < MessagePatterns.Length)
         {
             return;
         }
 
         (CipherState initiatorToResponder, CipherState responderToInitiator) = state.Split();
-        _handshakeHash = state.HandshakeHash.ToArray();
-        _transport = _initiator
+        handshakeHash = state.HandshakeHash.ToArray();
+        transport = initiator
             ? new TransportCipher(initiatorToResponder, responderToInitiator)
             : new TransportCipher(responderToInitiator, initiatorToResponder);
         ReleaseHandshakeState();
@@ -280,17 +280,17 @@ internal sealed class KkHandshake : IDisposable
 
     private bool Fail()
     {
-        _failed = true;
+        failed = true;
         ReleaseHandshakeState();
         return false;
     }
 
     private void ReleaseHandshakeState()
     {
-        _state?.Dispose();
-        _state = null;
-        _ephemeral?.Dispose();
-        _ephemeral = null;
-        _remoteEphemeral = null;
+        state?.Dispose();
+        state = null;
+        ephemeral?.Dispose();
+        ephemeral = null;
+        remoteEphemeral = null;
     }
 }

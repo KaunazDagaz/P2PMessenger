@@ -8,16 +8,16 @@ namespace P2PMessenger.Core.Sessions;
 
 public sealed class SecureSession : IDisposable
 {
-    private readonly byte[] _handshakeHash;
-    private TransportCipher? _transport;
+    private readonly byte[] handshakeHash;
+    private TransportCipher? transport;
 
     internal SecureSession(SessionContact peer, bool isInitiator, TransportCipher transport, byte[] handshakeHash)
     {
         Peer = peer;
         IsInitiator = isInitiator;
         IsConfirmed = isInitiator;
-        _transport = transport;
-        _handshakeHash = handshakeHash;
+        this.transport = transport;
+        this.handshakeHash = handshakeHash;
     }
 
     public SessionContact Peer { get; }
@@ -26,16 +26,16 @@ public sealed class SecureSession : IDisposable
 
     public bool IsConfirmed { get; private set; }
 
-    public bool IsClosed => _transport is null;
+    public bool IsClosed => transport is null;
 
-    internal ReadOnlySpan<byte> HandshakeHash => _handshakeHash;
+    internal ReadOnlySpan<byte> HandshakeHash => handshakeHash;
 
     public byte[] WriteFrame(SessionMessage message)
     {
         ArgumentNullException.ThrowIfNull(message);
 
-        TransportCipher? transport = _transport;
-        ObjectDisposedException.ThrowIf(transport is null, this);
+        TransportCipher? currentTransport = transport;
+        ObjectDisposedException.ThrowIf(currentTransport is null, this);
         if (!IsConfirmed)
         {
             throw new InvalidOperationException("The responder writes nothing before the initiator's first transport message has been read.");
@@ -45,7 +45,7 @@ public sealed class SecureSession : IDisposable
         try
         {
             byte[] frame = new byte[Frame.HeaderLength + plaintext.Length + Frame.TagLength];
-            int written = transport.Encrypt(plaintext, frame.AsSpan(Frame.HeaderLength));
+            int written = currentTransport.Encrypt(plaintext, frame.AsSpan(Frame.HeaderLength));
             BinaryPrimitives.WriteUInt16BigEndian(frame, (ushort)written);
             return frame;
         }
@@ -58,8 +58,8 @@ public sealed class SecureSession : IDisposable
     public bool TryReadFrame(ReadOnlySpan<byte> body, [NotNullWhen(true)] out SessionMessage? message)
     {
         message = null;
-        TransportCipher? transport = _transport;
-        if (transport is null)
+        TransportCipher? currentTransport = transport;
+        if (currentTransport is null)
         {
             return false;
         }
@@ -73,7 +73,7 @@ public sealed class SecureSession : IDisposable
         byte[] plaintext = new byte[body.Length - Frame.TagLength];
         try
         {
-            if (!transport.TryDecrypt(body, plaintext, out int length)
+            if (!currentTransport.TryDecrypt(body, plaintext, out int length)
                 || length != plaintext.Length
                 || !MessageCodec.TryDecode(plaintext, out SessionMessage? decoded))
             {
@@ -93,14 +93,14 @@ public sealed class SecureSession : IDisposable
 
     public void Dispose()
     {
-        _transport?.Dispose();
-        _transport = null;
-        CryptographicOperations.ZeroMemory(_handshakeHash);
+        transport?.Dispose();
+        transport = null;
+        CryptographicOperations.ZeroMemory(handshakeHash);
     }
 
     private void Close()
     {
-        _transport?.Dispose();
-        _transport = null;
+        transport?.Dispose();
+        transport = null;
     }
 }

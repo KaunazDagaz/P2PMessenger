@@ -11,20 +11,20 @@ public sealed class SessionInitiator : IDisposable
     public const int FirstFlightLength = ConnectionHint.Length + Frame.HeaderLength + Frame.HandshakeMessageLength;
     public const int ResponseLength = Frame.HeaderLength + Frame.HandshakeMessageLength;
 
-    private readonly byte[] _firstFlight;
-    private KkHandshake? _handshake;
-    private bool _finished;
+    private readonly byte[] firstFlight;
+    private KkHandshake? handshake;
+    private bool finished;
 
     private SessionInitiator(SessionContact contact, KkHandshake handshake, byte[] firstFlight)
     {
         Contact = contact;
-        _handshake = handshake;
-        _firstFlight = firstFlight;
+        this.handshake = handshake;
+        this.firstFlight = firstFlight;
     }
 
     public SessionContact Contact { get; }
 
-    public ReadOnlySpan<byte> FirstFlight => _firstFlight;
+    public ReadOnlySpan<byte> FirstFlight => firstFlight;
 
     public static SessionInitiator Start(KeySet own, SessionContact contact)
     {
@@ -39,15 +39,15 @@ public sealed class SessionInitiator : IDisposable
     public bool TryFinish(ReadOnlySpan<byte> response, [NotNullWhen(true)] out SecureSession? session)
     {
         session = null;
-        if (_finished)
+        if (finished)
         {
             throw new InvalidOperationException("The handshake has already finished.");
         }
 
-        KkHandshake? pending = _handshake;
+        KkHandshake? pending = handshake;
         ObjectDisposedException.ThrowIf(pending is null, this);
-        _handshake = null;
-        _finished = true;
+        handshake = null;
+        finished = true;
 
         using (pending)
         {
@@ -67,8 +67,8 @@ public sealed class SessionInitiator : IDisposable
 
     public void Dispose()
     {
-        _handshake?.Dispose();
-        _handshake = null;
+        handshake?.Dispose();
+        handshake = null;
     }
 
     internal static SessionInitiator Start(KeySet own, SessionContact contact, ReadOnlySpan<byte> hintNonce, ReadOnlySpan<byte> fixedEphemeralPrivateKey)

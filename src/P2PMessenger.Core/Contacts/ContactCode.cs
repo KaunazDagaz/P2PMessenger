@@ -26,11 +26,11 @@ public sealed class ContactCode : IEquatable<ContactCode>
     private const int TextMarkerLength = 4;
     private const int MaxCompactTextLength = TextMarkerLength + 1 + (((MaxLength * 8) + 4) / 5);
 
-    private readonly byte[] _bytes;
+    private readonly byte[] bytes;
 
     private ContactCode(byte[] bytes, Ed25519PublicKey identityKey, X25519PublicKey staticKey, OnionAddress onionAddress, DisplayName displayName)
     {
-        _bytes = bytes;
+        this.bytes = bytes;
         IdentityKey = identityKey;
         StaticKey = staticKey;
         OnionAddress = onionAddress;
@@ -184,18 +184,18 @@ public sealed class ContactCode : IEquatable<ContactCode>
         return TryParse(bytes[..written], out code, out error);
     }
 
-    public byte[] ToBytes() => _bytes.ToArray();
+    public byte[] ToBytes() => bytes.ToArray();
 
-    public string ToText() => TextPrefix + Base32.Encode(_bytes, lowerCase: false);
+    public string ToText() => TextPrefix + Base32.Encode(bytes, lowerCase: false);
 
-    public bool Equals(ContactCode? other) => other is not null && _bytes.AsSpan().SequenceEqual(other._bytes);
+    public bool Equals(ContactCode? other) => other is not null && bytes.AsSpan().SequenceEqual(other.bytes);
 
     public override bool Equals(object? obj) => obj is ContactCode other && Equals(other);
 
     public override int GetHashCode()
     {
         var hash = new HashCode();
-        hash.AddBytes(_bytes);
+        hash.AddBytes(bytes);
         return hash.ToHashCode();
     }
 
