@@ -1,0 +1,35 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:P2PMessenger.UI.ViewModels"
+             xmlns:res="using:P2PMessenger.UI.Resources"
+             x:Class="P2PMessenger.UI.Views.ProfileView"
+             x:DataType="vm:ProfileViewModel">
+    <ScrollViewer>
+        <StackPanel Margin="16" Spacing="8" MaxWidth="640">
+            <TextBlock Text="{x:Static res:UiText.ProfileNameLabel}" FontWeight="SemiBold" />
+            <SelectableTextBlock x:Name="NameText" Text="{Binding Name}" />
+            <TextBlock Text="{x:Static res:UiText.ProfileFingerprintLabel}" FontWeight="SemiBold" Margin="0,8,0,0" />
+            <SelectableTextBlock x:Name="FingerprintText" Text="{Binding Fingerprint}" FontFamily="monospace" FontSize="16" />
+            <TextBlock Text="{x:Static res:UiText.ProfileCodeLabel}" FontWeight="SemiBold" Margin="0,8,0,0" />
+            <TextBox x:Name="CodeBox"
+                     Text="{Binding CodeText, Mode=OneWay}"
+                     IsReadOnly="True"
+                     TextWrapping="Wrap"
+                     FontFamily="monospace"
+                     AutomationProperties.Name="{x:Static res:UiText.ProfileCodeLabel}" />
+            <TextBlock Text="{x:Static res:UiText.ProfileCodeHelp}" TextWrapping="Wrap" />
+            <WrapPanel>
+                <Button x:Name="CopyButton" Margin="0,0,8,8" Content="{x:Static res:UiText.ProfileCopy}" Command="{Binding CopyCommand}" />
+                <Button x:Name="SaveButton" Margin="0,0,8,8" Content="{x:Static res:UiText.ProfileSave}" Command="{Binding SaveCommand}" />
+            </WrapPanel>
+            <TextBlock x:Name="StatusText"
+                       Text="{Binding StatusMessage}"
+                       IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            <TextBlock x:Name="ErrorText"
+                       Text="{Binding ErrorMessage}"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
+                       TextWrapping="Wrap" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

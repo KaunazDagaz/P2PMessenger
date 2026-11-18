@@ -1,0 +1,19 @@
+<Project>
+  <Target Name="GenerateResourceDesigners">
+    <ItemGroup>
+      <ResourceDesignerSource Include="@(EmbeddedResource)" Condition="'%(EmbeddedResource.Generator)' == 'PublicResXFileCodeGenerator' or '%(EmbeddedResource.Generator)' == 'ResXFileCodeGenerator'">
+        <ClassNamespace>$(RootNamespace).$([System.String]::Copy('%(RelativeDir)').TrimEnd('\').TrimEnd('/').Replace('\', '.').Replace('/', '.'))</ClassNamespace>
+      </ResourceDesignerSource>
+    </ItemGroup>
+    <GenerateResource Condition="'@(ResourceDesignerSource)' != ''"
+                      Sources="%(ResourceDesignerSource.Identity)"
+                      OutputResources="$(IntermediateOutputPath)%(ResourceDesignerSource.Filename).designer.resources"
+                      StronglyTypedLanguage="CSharp"
+                      StronglyTypedNamespace="%(ResourceDesignerSource.ClassNamespace)"
+                      StronglyTypedClassName="%(ResourceDesignerSource.Filename)"
+                      StronglyTypedFileName="%(ResourceDesignerSource.RelativeDir)%(ResourceDesignerSource.LastGenOutput)"
+                      StronglyTypedManifestPrefix="%(ResourceDesignerSource.ClassNamespace)"
+                      PublicClass="$([System.String]::Equals('%(ResourceDesignerSource.Generator)', 'PublicResXFileCodeGenerator'))"
+                      ExecuteAsTool="false" />
+  </Target>
+</Project>

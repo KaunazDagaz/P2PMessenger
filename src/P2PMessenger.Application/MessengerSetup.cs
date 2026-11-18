@@ -1,0 +1,37 @@
+using System.Net;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using P2PMessenger.Application.Chats;
+using P2PMessenger.Application.Contacts;
+using P2PMessenger.Core.Messages;
+using P2PMessenger.Transport.Connections;
+
+namespace P2PMessenger.Application;
+
+public sealed record MessengerSetup
+{
+    public const int DefaultPort = 45821;
+
+    public required IContactStore ContactStore { get; init; }
+
+    public required IChatStore ChatStore { get; init; }
+
+    public required ISeenMessageIds SeenMessageIds { get; init; }
+
+    public ConnectionOptions Connection { get; init; } = new();
+
+    public IPAddress ListenAddress { get; init; } = IPAddress.Any;
+
+    public int ListenPort { get; init; } = DefaultPort;
+
+    public TimeProvider TimeProvider { get; init; } = TimeProvider.System;
+
+    public ILoggerFactory Loggers { get; init; } = NullLoggerFactory.Instance;
+
+    public static MessengerSetup InMemory() => new()
+    {
+        ContactStore = new InMemoryContactStore(),
+        ChatStore = new InMemoryChatStore(),
+        SeenMessageIds = new InMemorySeenMessageIds(),
+    };
+}

@@ -1,0 +1,27 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:P2PMessenger.UI.ViewModels"
+             xmlns:res="using:P2PMessenger.UI.Resources"
+             x:Class="P2PMessenger.UI.Views.VerifyContactView"
+             x:DataType="vm:VerifyContactViewModel">
+    <ScrollViewer>
+        <StackPanel Margin="16" Spacing="8" MaxWidth="640">
+            <TextBlock x:Name="IntroText" Text="{Binding IntroText}" TextWrapping="Wrap" />
+            <TextBlock x:Name="FirstLabel" Text="{Binding FirstLabel}" FontWeight="SemiBold" Margin="0,8,0,0" />
+            <SelectableTextBlock x:Name="FirstFingerprint" Text="{Binding FirstFingerprint}" FontFamily="monospace" FontSize="18" />
+            <TextBlock x:Name="SecondLabel" Text="{Binding SecondLabel}" FontWeight="SemiBold" Margin="0,8,0,0" />
+            <SelectableTextBlock x:Name="SecondFingerprint" Text="{Binding SecondFingerprint}" FontFamily="monospace" FontSize="18" />
+            <TextBlock x:Name="StatusText" Text="{Binding StatusText}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,8,0,0" />
+            <WrapPanel IsVisible="{Binding IsNotChecked}">
+                <Button x:Name="MatchButton" Margin="0,0,8,8" Content="{x:Static res:UiText.VerifyMatch}" Command="{Binding MatchCommand}" />
+                <Button x:Name="NoMatchButton" Margin="0,0,8,8" Content="{x:Static res:UiText.VerifyNoMatch}" Command="{Binding NoMatchCommand}" />
+            </WrapPanel>
+            <Button x:Name="UncheckButton" Content="{x:Static res:UiText.VerifyUncheck}" Command="{Binding UncheckCommand}" IsVisible="{Binding IsChecked}" />
+            <TextBlock x:Name="MismatchText"
+                       Text="{Binding MismatchText}"
+                       IsVisible="{Binding MismatchText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
+                       TextWrapping="Wrap" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

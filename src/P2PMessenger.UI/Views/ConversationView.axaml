@@ -1,0 +1,115 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:P2PMessenger.UI.ViewModels"
+             xmlns:res="using:P2PMessenger.UI.Resources"
+             x:Class="P2PMessenger.UI.Views.ConversationView"
+             x:DataType="vm:ConversationViewModel">
+    <DockPanel Margin="16">
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+            <Button x:Name="DetailsButton" DockPanel.Dock="Right" VerticalAlignment="Top" Content="{x:Static res:UiText.ConversationDetails}" Command="{Binding CompareCommand}" />
+            <StackPanel>
+                <TextBlock x:Name="StatusText" Text="{Binding StatusText}" />
+                <TextBlock x:Name="FingerprintText" Text="{Binding Fingerprint}" FontFamily="monospace" FontSize="12" />
+            </StackPanel>
+        </DockPanel>
+        <Border x:Name="WaitingPanel"
+                DockPanel.Dock="Top"
+                Margin="0,0,0,8"
+                Padding="12"
+                BorderThickness="1"
+                CornerRadius="4"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                IsVisible="{Binding IsWaiting}">
+            <TextBlock x:Name="WaitingText" Text="{Binding WaitingText}" TextWrapping="Wrap" />
+        </Border>
+        <Border x:Name="AttemptPanel"
+                DockPanel.Dock="Top"
+                Margin="0,0,0,8"
+                Padding="12"
+                BorderThickness="1"
+                CornerRadius="4"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                IsVisible="{Binding HasAttemptText}">
+            <TextBlock x:Name="AttemptText" Text="{Binding AttemptText}" TextWrapping="Wrap" />
+        </Border>
+        <Border x:Name="KeyNotComparedPanel"
+                DockPanel.Dock="Top"
+                Margin="0,0,0,8"
+                Padding="12"
+                BorderThickness="1"
+                CornerRadius="4"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                IsVisible="{Binding IsKeyNotCompared}">
+            <StackPanel Spacing="8">
+                <TextBlock x:Name="KeyNotComparedText" Text="{Binding KeyNotComparedText}" TextWrapping="Wrap" />
+                <Button x:Name="CompareButton" Content="{x:Static res:UiText.ConversationCompare}" Command="{Binding CompareCommand}" />
+            </StackPanel>
+        </Border>
+        <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="0,8,0,0">
+            <TextBlock x:Name="ErrorText"
+                       Text="{Binding ErrorMessage}"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
+                       TextWrapping="Wrap" />
+            <DockPanel>
+                <Button x:Name="SendButton"
+                        DockPanel.Dock="Right"
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Bottom"
+                        Content="{x:Static res:UiText.ConversationSend}"
+                        Command="{Binding SendCommand}" />
+                <TextBox x:Name="DraftBox"
+                         Text="{Binding Draft}"
+                         PlaceholderText="{x:Static res:UiText.ConversationMessagePlaceholder}"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         MaxHeight="160"
+                         AutomationProperties.Name="{x:Static res:UiText.ConversationMessagePlaceholder}">
+                    <TextBox.KeyBindings>
+                        <KeyBinding Gesture="Ctrl+Enter" Command="{Binding SendCommand}" />
+                    </TextBox.KeyBindings>
+                </TextBox>
+            </DockPanel>
+        </StackPanel>
+        <Grid>
+            <TextBlock x:Name="EmptyText"
+                       Text="{x:Static res:UiText.ConversationEmpty}"
+                       IsVisible="{Binding IsEmpty}"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center" />
+            <ScrollViewer>
+                <ItemsControl x:Name="MessageItems" ItemsSource="{Binding Messages}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:MessageItemViewModel">
+                            <Border Margin="0,0,0,8"
+                                    Padding="10,6"
+                                    CornerRadius="6"
+                                    MaxWidth="560"
+                                    BorderThickness="1"
+                                    BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                                    Classes.own="{Binding IsOwn}"
+                                    Classes.theirs="{Binding IsTheirs}">
+                                <StackPanel Spacing="2">
+                                    <TextBlock FontSize="12">
+                                        <Run Text="{Binding Sender}" FontWeight="SemiBold" />
+                                        <Run Text=" · " />
+                                        <Run Text="{Binding WrittenAt}" />
+                                    </TextBlock>
+                                    <SelectableTextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                    <ItemsControl.Styles>
+                        <Style Selector="Border.own">
+                            <Setter Property="HorizontalAlignment" Value="Right" />
+                        </Style>
+                        <Style Selector="Border.theirs">
+                            <Setter Property="HorizontalAlignment" Value="Left" />
+                        </Style>
+                    </ItemsControl.Styles>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+    </DockPanel>
+</UserControl>

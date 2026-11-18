@@ -1,0 +1,112 @@
+using System.Text;
+using Avalonia.Controls;
+using Avalonia.Input.Platform;
+using Avalonia.Platform.Storage;
+using P2PMessenger.UI.Resources;
+
+namespace P2PMessenger.UI.Services;
+
+public sealed class TopLevelServices : IClipboardService, ICodeFileService
+{
+    public const int MaxCodeFileBytes = 8192;
+
+    private static readonly FilePickerFileType TextFiles = new("Text") { Patterns = ["*.txt"], MimeTypes = ["text/plain"] };
+
+    private readonly Func<TopLevel?> topLevel;
+
+    public TopLevelServices(Func<TopLevel?> topLevel)
+    {
+        ArgumentNullException.ThrowIfNull(topLevel);
+        this.topLevel = topLevel;
+    }
+
+    public async Task<bool> SetTextAsync(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        IClipboard? clipboard = topLevel()?.Clipboard;
+        if (clipboard is null)
+        {
+            return false;
+        }
+
+        await clipboard.SetTextAsync(text);
+        return true;
+    }
+
+    public async Task<CodeFileResult> SaveAsync(string suggestedName, string text, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        IStorageProvider? storage = topLevel()?.StorageProvider;
+        if (storage is null || !storage.CanSave)
+        {
+            return new CodeFileResult(CodeFileStatus.Failed, null);
+        }
+
+        IStorageFile? file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = UiText.ProfileFileTitle,
+            SuggestedFileName = suggestedName,
+            DefaultExtension = "txt",
+            FileTypeChoices = [TextFiles],
+        });
+        if (file is null)
+        {
+            return new CodeFileResult(CodeFileStatus.Cancelled, null);
+        }
+
+        try
+        {
+            await using Stream stream = await file.OpenWriteAsync();
+            stream.SetLength(0);
+            byte[] bytes = Encoding.UTF8.GetBytes(text);
+            await stream.WriteAsync(bytes, cancellationToken);
+            return new CodeFileResult(CodeFileStatus.Done, text);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or NotSupportedException)
+        {
+            return new CodeFileResult(CodeFileStatus.Failed, null);
+        }
+    }
+
+    public async Task<CodeFileResult> OpenAsync(CancellationToken cancellationToken)
+    {
+        IStorageProvider? storage = topLevel()?.StorageProvider;
+        if (storage is null || !storage.CanOpen)
+        {
+            return new CodeFileResult(CodeFileStatus.Failed, null);
+        }
+
+        IReadOnlyList<IStorageFile> files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = UiText.AddContactFileTitle,
+            AllowMultiple = false,
+            FileTypeFilter = [TextFiles, FilePickerFileTypes.All],
+        });
+        if (files.Count == 0)
+        {
+            return new CodeFileResult(CodeFileStatus.Cancelled, null);
+        }
+
+        try
+        {
+            await using Stream stream = await files[0].OpenReadAsync();
+            byte[] buffer = new byte[MaxCodeFileBytes + 1];
+            int length = 0;
+            int read;
+            while (length < buffer.Length && (read = await stream.ReadAsync(buffer.AsMemory(length), cancellationToken)) > 0)
+            {
+                length += read;
+            }
+
+            return length > MaxCodeFileBytes
+                ? new CodeFileResult(CodeFileStatus.TooLarge, null)
+                : new CodeFileResult(CodeFileStatus.Done, Encoding.UTF8.GetString(buffer, 0, length));
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or NotSupportedException)
+        {
+            return new CodeFileResult(CodeFileStatus.Failed, null);
+        }
+    }
+}

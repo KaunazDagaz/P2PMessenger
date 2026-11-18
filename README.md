@@ -4,7 +4,7 @@ A friend-to-friend messenger for small groups of people, for the times their usu
 
 Bachelor diploma project "Secure Decentralized P2P Messenger with End-to-End Encryption" by Mikita Besau, European Humanities University.
 
-**Status:** the repository is scaffolded and the app opens an empty window. The local database schema, its migrations and their tests exist (see [Database](#database)), and so do, in `P2PMessenger.Core` with their tests, the key set, the contact codes and the fingerprints, and the encrypted sessions between two contacts (a Noise KK handshake), their frames and the first message types. `P2PMessenger.Transport` and its tests hold the connections between two apps over TCP: a listener and a dialer, refusal of callers that are not contacts before anything else happens, limits against flooding, one session per contact, reconnects and keep-alives. No feature is built yet.
+**Status:** a first working version. Two apps on one network create identities, add each other by contact codes passed as text or files, compare fingerprints and chat, end-to-end encrypted; apps whose codes were not added are refused. Everything is kept in memory and lost when the app closes, a message can be sent only while the contact is connected, and in Debug builds the contact's address is typed in by hand (see [Trying the app](#trying-the-app)). Underneath: `P2PMessenger.Core` holds the key set, the contact codes and the fingerprints, and the encrypted sessions between two contacts (a Noise KK handshake), their frames and the message types; `P2PMessenger.Transport` holds the TCP connections, the refusal of callers that are not contacts, limits against flooding, one session per contact, reconnects and keep-alives; `P2PMessenger.Application` holds the identity, the contacts, the chats and the connections to contacts; `P2PMessenger.UI` holds the screens. The local database schema, its migrations and their tests exist (see [Database](#database)) but are not used by the app yet.
 
 ## Repository layout
 
@@ -44,10 +44,24 @@ dotnet list P2PMessenger.Desktop.slnf package --vulnerable --include-transitive
 - Warnings are errors, and code style, unnecessary usings included, is checked on build (`Directory.Build.props`, `.editorconfig`). Missing XML documentation is not reported. A failed download of vulnerability data (NU1900) stays a warning, so building offline works.
 - The tests run on Microsoft Testing Platform (`global.json`). Every `dotnet test` run also writes a Cobertura coverage report into the `TestResults` folder next to each test assembly (`tests/Directory.Build.props`).
 - Coverage instrumentation rewrites `P2PMessenger.Core.dll` next to the test assembly while the tests run, so the Core architecture test reads the copy that `P2PMessenger.Core.Tests.csproj` puts in the `architecture` subfolder on build.
-- A test project that runs no tests ends with exit code 8, and then `dotnet test` fails. `P2PMessenger.Application.Tests` has no tests yet, so its project file passes `--ignore-exit-code 8`. Remove it when the project gets its first test.
+- A test project that runs no tests ends with exit code 8, and then `dotnet test` fails; a new test project without tests needs `--ignore-exit-code 8` in its project file until its first test.
+- The integration tests and the UI tests open TCP connections on the loopback interface.
 - A Debug APK from `dotnet build` holds only the Android part of the app and runs only when deployed with `dotnet build src/P2PMessenger.Android -t:Run`. To install it by hand, build it with `-p:EmbedAssembliesIntoApk=true`.
 - Every restore writes a `packages.lock.json` file next to each project. Commit them. After changing a version in `Directory.Packages.props`, run `dotnet restore --force-evaluate` to update them.
+- Every text the app shows is in `src/P2PMessenger.UI/Resources/UiText.resx`, with its class `UiText.Designer.cs` checked in next to it. Visual Studio and Rider regenerate the class when the `.resx` is saved; elsewhere, after editing the `.resx`, run `dotnet msbuild src/P2PMessenger.UI -t:GenerateResourceDesigners` (a target in `Directory.Build.targets`). A test fails when the class and the `.resx` differ.
 - Avalonia's build tooling sends anonymous build-time telemetry to Avalonia, and the .NET CLI sends its own; neither affects the app. Set `AVALONIA_TELEMETRY_OPTOUT=1` and `DOTNET_CLI_TELEMETRY_OPTOUT=1` to turn them off.
+
+## Trying the app
+
+Until the apps find each other on the network, a Debug build connects to addresses typed in by hand. To try two apps:
+
+1. Start two Debug builds, on two devices on one network or both on one PC (`dotnet run --project src/P2PMessenger.Desktop`, or the Android head deployed with `dotnet build src/P2PMessenger.Android -t:Run`).
+2. In each, create an identity. Each app listens on TCP port 45821. A second app on the same PC finds the port taken: open "Network (debug)", enter another port, such as 45822, and choose "Listen on this port". The page also shows the device's own addresses.
+3. In each, open "My code", copy the code or save it to a file, and pass it to the other app.
+4. In each, open "Add contact", paste the other's code or open their file, and choose "Check code" and "Add contact". In at least one of the two, enter the other's address in the form `192.168.1.20:45821` (or `127.0.0.1:45822` on one PC), here or later on the "Network (debug)" page.
+5. When the first connection succeeds, both apps say that the contact is added and that the app checked the key, not the person. Compare the fingerprints under "Fingerprints", then send messages.
+
+On Windows, the firewall asks on the first run whether the app may accept connections; allow it for the network you use. Release builds listen on the same port but have no way to enter an address yet. If a first connection fails, the "Network (debug)" page and the contact's conversation list the possible reasons.
 
 ## Database
 
