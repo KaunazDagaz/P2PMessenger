@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:P2PMessenger.UI.ViewModels"
+             xmlns:s="using:P2PMessenger.UI.Services"
+             xmlns:res="using:P2PMessenger.UI.Resources"
+             x:Class="P2PMessenger.UI.Views.ContactListView"
+             x:DataType="vm:ContactListViewModel">
+    <DockPanel Margin="16">
+        <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <Button x:Name="AddContactButton" Margin="0,0,8,8" Content="{x:Static res:UiText.ContactListAddContact}" Command="{Binding AddContactCommand}" />
+            <Button x:Name="MyCodeButton" Margin="0,0,8,8" Content="{x:Static res:UiText.ContactListMyCode}" Command="{Binding MyCodeCommand}" />
+            <Button x:Name="NetworkButton"
+                    Margin="0,0,8,8"
+                    Content="{x:Static res:UiText.ContactListNetwork}"
+                    Command="{Binding NetworkCommand}"
+                    IsVisible="{x:Static s:BuildInfo.IsDebug}" />
+        </WrapPanel>
+        <TextBlock x:Name="EmptyText"
+                   DockPanel.Dock="Top"
+                   Text="{x:Static res:UiText.ContactListEmpty}"
+                   TextWrapping="Wrap"
+                   IsVisible="{Binding IsEmpty}" />
+        <ScrollViewer>
+            <ItemsControl x:Name="ContactItems" ItemsSource="{Binding Contacts}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:ContactItemViewModel">
+                        <Button Command="{Binding OpenCommand}"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Margin="0,0,0,8"
+                                Padding="12"
+                                AutomationProperties.Name="{Binding Name}">
+                            <StackPanel Spacing="2">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Right"
+                                               Text="{Binding UnreadText}"
+                                               IsVisible="{Binding HasUnread}"
+                                               FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                </DockPanel>
+                                <TextBlock Text="{Binding Fingerprint}" FontFamily="monospace" FontSize="12" />
+                                <TextBlock Text="{Binding StatusText}" />
+                                <TextBlock Text="{Binding KeyText}" />
+                            </StackPanel>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

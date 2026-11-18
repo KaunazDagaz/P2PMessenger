@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AppTitle" xml:space="preserve">
+    <value>P2PMessenger</value>
+  </data>
+  <data name="AppStarting" xml:space="preserve">
+    <value>Starting…</value>
+  </data>
+  <data name="AppStartFailed" xml:space="preserve">
+    <value>The app could not start. Close it and open it again.</value>
+  </data>
+  <data name="CommonBack" xml:space="preserve">
+    <value>Back</value>
+  </data>
+  <data name="CommonDismiss" xml:space="preserve">
+    <value>Dismiss</value>
+  </data>
+  <data name="CreateIdentityTitle" xml:space="preserve">
+    <value>Create your identity</value>
+  </data>
+  <data name="CreateIdentityIntro" xml:space="preserve">
+    <value>Choose the name your contacts will see. The app creates your keys on this device. No phone number, email or account is needed.</value>
+  </data>
+  <data name="CreateIdentityNameLabel" xml:space="preserve">
+    <value>Display name</value>
+  </data>
+  <data name="CreateIdentityNamePlaceholder" xml:space="preserve">
+    <value>Your name</value>
+  </data>
+  <data name="CreateIdentityCreate" xml:space="preserve">
+    <value>Create identity</value>
+  </data>
+  <data name="CreateIdentityCreating" xml:space="preserve">
+    <value>Creating your keys…</value>
+  </data>
+  <data name="CreateIdentityInvalidName" xml:space="preserve">
+    <value>Enter a name of up to 64 bytes (fewer letters in some alphabets) without control characters.</value>
+  </data>
+  <data name="CreateIdentityAlreadyCreated" xml:space="preserve">
+    <value>This device already has an identity.</value>
+  </data>
+  <data name="CreateIdentityFailed" xml:space="preserve">
+    <value>The identity could not be created. Try again.</value>
+  </data>
+  <data name="ContactListTitle" xml:space="preserve">
+    <value>Contacts</value>
+  </data>
+  <data name="ContactListEmpty" xml:space="preserve">
+    <value>No contacts yet. Add a contact with the code they sent you, and send them yours.</value>
+  </data>
+  <data name="ContactListAddContact" xml:space="preserve">
+    <value>Add contact</value>
+  </data>
+  <data name="ContactListMyCode" xml:space="preserve">
+    <value>My code</value>
+  </data>
+  <data name="ContactListNetwork" xml:space="preserve">
+    <value>Network (debug)</value>
+  </data>
+  <data name="ContactWaiting" xml:space="preserve">
+    <value>Waiting for the first connection</value>
+  </data>
+  <data name="ContactConnected" xml:space="preserve">
+    <value>Connected now</value>
+  </data>
+  <data name="ContactNotConnected" xml:space="preserve">
+    <value>Not connected</value>
+  </data>
+  <data name="ContactKeyNotCompared" xml:space="preserve">
+    <value>Key not compared</value>
+  </data>
+  <data name="ContactKeyChecked" xml:space="preserve">
+    <value>Key checked by you</value>
+  </data>
+  <data name="ContactUnreadFormat" xml:space="preserve">
+    <value>{0} new</value>
+  </data>
+  <data name="ContactAddedNoticeFormat" xml:space="preserve">
+    <value>{0} is added. The app checked their key, not who they are.</value>
+  </data>
+  <data name="ProfileTitle" xml:space="preserve">
+    <value>My code</value>
+  </data>
+  <data name="ProfileNameLabel" xml:space="preserve">
+    <value>Your name</value>
+  </data>
+  <data name="ProfileFingerprintLabel" xml:space="preserve">
+    <value>Your key fingerprint</value>
+  </data>
+  <data name="ProfileCodeLabel" xml:space="preserve">
+    <value>Your contact code</value>
+  </data>
+  <data name="ProfileCodeHelp" xml:space="preserve">
+    <value>Send this code to your contacts through another messenger, or save it as a file and pass it on. It holds your public keys and your name, never your private key. Anyone who reads it learns your public keys, so send it only to the people you want to add you.</value>
+  </data>
+  <data name="ProfileCopy" xml:space="preserve">
+    <value>Copy code</value>
+  </data>
+  <data name="ProfileCopied" xml:space="preserve">
+    <value>The code is copied.</value>
+  </data>
+  <data name="ProfileCopyFailed" xml:space="preserve">
+    <value>The code could not be copied.</value>
+  </data>
+  <data name="ProfileSave" xml:space="preserve">
+    <value>Save to a file</value>
+  </data>
+  <data name="ProfileSaved" xml:space="preserve">
+    <value>The code is saved.</value>
+  </data>
+  <data name="ProfileSaveFailed" xml:space="preserve">
+    <value>The file could not be saved.</value>
+  </data>
+  <data name="ProfileFileTitle" xml:space="preserve">
+    <value>Save your contact code</value>
+  </data>
+  <data name="ProfileFileNameFormat" xml:space="preserve">
+    <value>{0} contact code.txt</value>
+  </data>
+  <data name="AddContactTitle" xml:space="preserve">
+    <value>Add contact</value>
+  </data>
+  <data name="AddContactIntro" xml:space="preserve">
+    <value>Paste the code your contact sent you, or open their code file. They must add your code too.</value>
+  </data>
+  <data name="AddContactCodeLabel" xml:space="preserve">
+    <value>Contact code</value>
+  </data>
+  <data name="AddContactCodePlaceholder" xml:space="preserve">
+    <value>P2PM1-…</value>
+  </data>
+  <data name="AddContactOpenFile" xml:space="preserve">
+    <value>Open a code file</value>
+  </data>
+  <data name="AddContactFileTitle" xml:space="preserve">
+    <value>Open a contact code</value>
+  </data>
+  <data name="AddContactFileTooLarge" xml:space="preserve">
+    <value>This file is too large to be a contact code.</value>
+  </data>
+  <data name="AddContactFileUnreadable" xml:space="preserve">
+    <value>The file could not be read.</value>
+  </data>
+  <data name="AddContactCheck" xml:space="preserve">
+    <value>Check code</value>
+  </data>
+  <data name="AddContactNotACode" xml:space="preserve">
+    <value>This is not a P2PMessenger contact code.</value>
+  </data>
+  <data name="AddContactUnsupportedVersion" xml:space="preserve">
+    <value>This code comes from another version of the app and cannot be read.</value>
+  </data>
+  <data name="AddContactDamaged" xml:space="preserve">
+    <value>This code is damaged. Ask for it again.</value>
+  </data>
+  <data name="AddContactOwnCode" xml:space="preserve">
+    <value>This is your own code.</value>
+  </data>
+  <data name="AddContactKeysInUse" xml:space="preserve">
+    <value>This code holds keys that belong to you or to another contact, so it cannot be added.</value>
+  </data>
+  <data name="AddContactAlreadyContactFormat" xml:space="preserve">
+    <value>{0} is already a contact.</value>
+  </data>
+  <data name="AddContactNameLabel" xml:space="preserve">
+    <value>Name in the code</value>
+  </data>
+  <data name="AddContactFingerprintLabel" xml:space="preserve">
+    <value>Their key fingerprint</value>
+  </data>
+  <data name="AddContactNewHint" xml:space="preserve">
+    <value>The app will ask you both to compare fingerprints, because a code sent as text or a file can be swapped on the way.</value>
+  </data>
+  <data name="AddContactNewKeysFormat" xml:space="preserve">
+    <value>{0} is already a contact, and this code has new connection keys for them. It is signed with the same identity key, so the fingerprint is the same. Accept the new keys only if {0} expects it.</value>
+  </data>
+  <data name="AddContactLooksLikeFormat" xml:space="preserve">
+    <value>A saved contact is called {0}, but this code has a different key. If it really comes from {0}, they now have a new identity, for example after reinstalling the app. You can add it as a new contact and compare fingerprints with them.</value>
+  </data>
+  <data name="AddContactAdd" xml:space="preserve">
+    <value>Add contact</value>
+  </data>
+  <data name="AddContactAcceptNewKeys" xml:space="preserve">
+    <value>Accept the new keys</value>
+  </data>
+  <data name="AddContactAddAsNew" xml:space="preserve">
+    <value>Add as a new contact</value>
+  </data>
+  <data name="AddContactStale" xml:space="preserve">
+    <value>Your contacts changed meanwhile. Check the code again.</value>
+  </data>
+  <data name="AddContactAddressLabel" xml:space="preserve">
+    <value>Contact's address (debug builds only)</value>
+  </data>
+  <data name="AddContactAddressPlaceholder" xml:space="preserve">
+    <value>192.168.1.20:45821</value>
+  </data>
+  <data name="AddContactAddressInvalid" xml:space="preserve">
+    <value>Enter an IP address and a port, such as 192.168.1.20:45821.</value>
+  </data>
+  <data name="ConversationWaitingFormat" xml:space="preserve">
+    <value>Waiting for the first connection with {0}. They become a contact when their app proves that it holds the key in their code. They must add your code too.</value>
+  </data>
+  <data name="ConversationKeyNotComparedFormat" xml:space="preserve">
+    <value>You have not compared keys with {0}. Their code came as text or a file, which can be swapped on the way.</value>
+  </data>
+  <data name="ConversationCompare" xml:space="preserve">
+    <value>Compare fingerprints</value>
+  </data>
+  <data name="ConversationDetails" xml:space="preserve">
+    <value>Fingerprints</value>
+  </data>
+  <data name="ConversationMessagePlaceholder" xml:space="preserve">
+    <value>Write a message</value>
+  </data>
+  <data name="ConversationSend" xml:space="preserve">
+    <value>Send</value>
+  </data>
+  <data name="ConversationNotConnectedFormat" xml:space="preserve">
+    <value>Not sent: {0} is not connected now. Try again when they are connected.</value>
+  </data>
+  <data name="ConversationNotAddedFormat" xml:space="preserve">
+    <value>Not sent: {0} becomes a contact only after the first connection.</value>
+  </data>
+  <data name="ConversationTooLong" xml:space="preserve">
+    <value>Not sent: the message is too long.</value>
+  </data>
+  <data name="ConversationNotSendable" xml:space="preserve">
+    <value>Not sent: the message contains characters that cannot be sent.</value>
+  </data>
+  <data name="ConversationNotAContact" xml:space="preserve">
+    <value>Not sent: this person is not a contact.</value>
+  </data>
+  <data name="ConversationEmpty" xml:space="preserve">
+    <value>No messages yet.</value>
+  </data>
+  <data name="VerifyTitle" xml:space="preserve">
+    <value>Compare fingerprints</value>
+  </data>
+  <data name="VerifyIntroFormat" xml:space="preserve">
+    <value>Compare these numbers with {0}, in person or on a call. Both apps show the same two numbers in the same order.</value>
+  </data>
+  <data name="VerifyYoursLabel" xml:space="preserve">
+    <value>Yours</value>
+  </data>
+  <data name="VerifyTheirsFormat" xml:space="preserve">
+    <value>{0}'s</value>
+  </data>
+  <data name="VerifyMatch" xml:space="preserve">
+    <value>They match</value>
+  </data>
+  <data name="VerifyNoMatch" xml:space="preserve">
+    <value>They do not match</value>
+  </data>
+  <data name="VerifyCheckedFormat" xml:space="preserve">
+    <value>Key checked by you. The key matches the one {0} showed you; this does not prove who they are.</value>
+  </data>
+  <data name="VerifyNotComparedFormat" xml:space="preserve">
+    <value>Key not compared. Compare the numbers with {0} before you trust this contact.</value>
+  </data>
+  <data name="VerifyMismatch" xml:space="preserve">
+    <value>Do not trust this contact. Their code may have been swapped on the way. Exchange codes again, in person if you can.</value>
+  </data>
+  <data name="VerifyUncheck" xml:space="preserve">
+    <value>Mark as not compared</value>
+  </data>
+  <data name="NetworkTitle" xml:space="preserve">
+    <value>Network (debug)</value>
+  </data>
+  <data name="NetworkIntro" xml:space="preserve">
+    <value>Debug builds only. Until the app finds contacts by itself, it connects to the addresses you enter here.</value>
+  </data>
+  <data name="NetworkListeningFormat" xml:space="preserve">
+    <value>This device listens on port {0}.</value>
+  </data>
+  <data name="NetworkPortInUseFormat" xml:space="preserve">
+    <value>Port {0} is used by another program. Choose another port.</value>
+  </data>
+  <data name="NetworkNotListening" xml:space="preserve">
+    <value>This device is not listening.</value>
+  </data>
+  <data name="NetworkAddressesLabel" xml:space="preserve">
+    <value>Addresses of this device</value>
+  </data>
+  <data name="NetworkNoAddresses" xml:space="preserve">
+    <value>No network address found.</value>
+  </data>
+  <data name="NetworkPortLabel" xml:space="preserve">
+    <value>Port</value>
+  </data>
+  <data name="NetworkListen" xml:space="preserve">
+    <value>Listen on this port</value>
+  </data>
+  <data name="NetworkInvalidPort" xml:space="preserve">
+    <value>Enter a port from 1 to 65535.</value>
+  </data>
+  <data name="NetworkContactsLabel" xml:space="preserve">
+    <value>Contacts' addresses</value>
+  </data>
+  <data name="NetworkNoContacts" xml:space="preserve">
+    <value>No contacts yet.</value>
+  </data>
+  <data name="NetworkSave" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="NetworkClear" xml:space="preserve">
+    <value>Clear</value>
+  </data>
+  <data name="DialConnecting" xml:space="preserve">
+    <value>Connecting…</value>
+  </data>
+  <data name="DialUnreachable" xml:space="preserve">
+    <value>No answer at this address. Possible reasons:
+• their app is not running, or it listens on another port;
+• the address is wrong or has changed;
+• the two devices are not on the same network.</value>
+  </data>
+  <data name="DialTimedOut" xml:space="preserve">
+    <value>The attempt timed out. Possible reasons:
+• a firewall on their device blocks the app (Windows asks about it when the app first runs);
+• their device is switched off, asleep or out of range;
+• the address is wrong;
+• the network is too slow, or their app did not answer in time.</value>
+  </data>
+  <data name="DialRefused" xml:space="preserve">
+    <value>Their app did not accept the connection. Possible reasons:
+• they have not added your code yet;
+• the codes do not match: a code was swapped on the way, or one of you has created a new identity since you exchanged codes;
+• another program or another device answers at this address;
+• their app is turning away new connections for a moment because too many arrived at once.</value>
+  </data>
+  <data name="DialNoAddress" xml:space="preserve">
+    <value>No address.</value>
+  </data>
+</root>

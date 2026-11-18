@@ -8,4 +8,8 @@
     <ProjectReference Include="..\P2PMessenger.Transport\P2PMessenger.Transport.csproj" />
     <ProjectReference Include="..\P2PMessenger.Storage\P2PMessenger.Storage.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="P2PMessenger.Application.Tests" />
+  </ItemGroup>
 </Project>
