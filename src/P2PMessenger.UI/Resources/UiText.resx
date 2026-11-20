@@ -344,4 +344,31 @@
   <data name="DialNoAddress" xml:space="preserve">
     <value>No address.</value>
   </data>
+  <data name="StorageProblemTitle" xml:space="preserve">
+    <value>Stored data</value>
+  </data>
+  <data name="StorageKeyStoreUnavailable" xml:space="preserve">
+    <value>Your stored data is protected by this device's key store, which the app cannot reach now. On Linux the key store is a Secret Service such as GNOME Keyring or KWallet. Start it, then try again.</value>
+  </data>
+  <data name="StorageKeyStoreRefused" xml:space="preserve">
+    <value>The key store did not give the app the key that protects your stored data. Unlock the key store when it asks (on Linux, often the login keyring), then try again.</value>
+  </data>
+  <data name="StorageKeyNotFound" xml:space="preserve">
+    <value>The key that protects this data is not in this device's key store, so the data cannot be read here. It may have been copied from another device or user account, or its key was removed from the key store.</value>
+  </data>
+  <data name="StorageNewerVersion" xml:space="preserve">
+    <value>This data was saved by a newer version of the app. Use that version or a newer one.</value>
+  </data>
+  <data name="StorageDamaged" xml:space="preserve">
+    <value>The stored data was changed or damaged, so the app cannot read it.</value>
+  </data>
+  <data name="StorageTryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="StorageOpening" xml:space="preserve">
+    <value>Opening the stored data…</value>
+  </data>
+  <data name="StorageMemoryOnly" xml:space="preserve">
+    <value>Nothing is saved on this device, because the app has no key store here to protect stored data. Your identity, contacts and messages stay in memory and are lost when the app closes.</value>
+  </data>
 </root>

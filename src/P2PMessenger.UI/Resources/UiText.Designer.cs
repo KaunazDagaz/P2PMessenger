@@ -661,7 +661,11 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Their app closed the connection: it may not have your code yet, or the codes do not match..
+        ///   Looks up a localized string similar to Their app did not accept the connection. Possible reasons:
+        ///• they have not added your code yet;
+        ///• the codes do not match: a code was swapped on the way, or one of you has created a new identity since you exchanged codes;
+        ///• another program or another device answers at this address;
+        ///• their app is turning away new connections for a moment because too many arrived at once..
         /// </summary>
         public static string DialRefused {
             get {
@@ -670,7 +674,11 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The attempt timed out..
+        ///   Looks up a localized string similar to The attempt timed out. Possible reasons:
+        ///• a firewall on their device blocks the app (Windows asks about it when the app first runs);
+        ///• their device is switched off, asleep or out of range;
+        ///• the address is wrong;
+        ///• the network is too slow, or their app did not answer in time..
         /// </summary>
         public static string DialTimedOut {
             get {
@@ -679,7 +687,10 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to No answer at this address..
+        ///   Looks up a localized string similar to No answer at this address. Possible reasons:
+        ///• their app is not running, or it listens on another port;
+        ///• the address is wrong or has changed;
+        ///• the two devices are not on the same network..
         /// </summary>
         public static string DialUnreachable {
             get {
@@ -927,6 +938,87 @@ namespace P2PMessenger.UI.Resources {
         public static string ProfileTitle {
             get {
                 return ResourceManager.GetString("ProfileTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The stored data was changed or damaged, so the app cannot read it..
+        /// </summary>
+        public static string StorageDamaged {
+            get {
+                return ResourceManager.GetString("StorageDamaged", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The key that protects this data is not in this device&apos;s key store, so the data cannot be read here. It may have been copied from another device or user account, or its key was removed from the key store..
+        /// </summary>
+        public static string StorageKeyNotFound {
+            get {
+                return ResourceManager.GetString("StorageKeyNotFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The key store did not give the app the key that protects your stored data. Unlock the key store when it asks (on Linux, often the login keyring), then try again..
+        /// </summary>
+        public static string StorageKeyStoreRefused {
+            get {
+                return ResourceManager.GetString("StorageKeyStoreRefused", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Your stored data is protected by this device&apos;s key store, which the app cannot reach now. On Linux the key store is a Secret Service such as GNOME Keyring or KWallet. Start it, then try again..
+        /// </summary>
+        public static string StorageKeyStoreUnavailable {
+            get {
+                return ResourceManager.GetString("StorageKeyStoreUnavailable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing is saved on this device, because the app has no key store here to protect stored data. Your identity, contacts and messages stay in memory and are lost when the app closes..
+        /// </summary>
+        public static string StorageMemoryOnly {
+            get {
+                return ResourceManager.GetString("StorageMemoryOnly", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This data was saved by a newer version of the app. Use that version or a newer one..
+        /// </summary>
+        public static string StorageNewerVersion {
+            get {
+                return ResourceManager.GetString("StorageNewerVersion", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Opening the stored data….
+        /// </summary>
+        public static string StorageOpening {
+            get {
+                return ResourceManager.GetString("StorageOpening", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Stored data.
+        /// </summary>
+        public static string StorageProblemTitle {
+            get {
+                return ResourceManager.GetString("StorageProblemTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Try again.
+        /// </summary>
+        public static string StorageTryAgain {
+            get {
+                return ResourceManager.GetString("StorageTryAgain", resourceCulture);
             }
         }
         

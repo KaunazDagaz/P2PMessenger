@@ -20,6 +20,11 @@
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="11.0.0" />
   </ItemGroup>
 
+  <ItemGroup Label="Desktop">
+    <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="11.0.0" />
+    <PackageVersion Include="Tmds.DBus.Protocol" Version="0.95.2" />
+  </ItemGroup>
+
   <ItemGroup Label="Android">
     <PackageVersion Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.2.0.2" />
   </ItemGroup>

@@ -4,7 +4,7 @@ Each device keeps its data in one SQLite database of its own. There is no server
 
 This file documents the database: the design rules, the logical schema, how stored data is protected, the data dictionary, normalisation, migrations, and how to create and inspect a database. The schema is created and changed only by the numbered scripts in [`Migrations`](Migrations); nothing is created by hand.
 
-**Status:** the schema, the migration runner and their tests exist. The first working version of the app keeps its data in memory; a later milestone connects the app to this database and adds the encryption described in [How stored data is protected](#how-stored-data-is-protected).
+**Status:** the schema, its migrations, the encryption described in [How stored data is protected](#how-stored-data-is-protected) and the repositories exist, with their tests. The Windows and Linux app keeps its identity, contacts, messages and the IDs of seen messages here. The Android app still keeps them in memory, and says so, until it gets the Android Keystore. Groups, deliveries and the PC copy have tables but no code yet.
 
 ## Contents
 
@@ -104,6 +104,8 @@ erDiagram
         BLOB text_enc "encrypted"
         BLOB written_at_enc "encrypted"
         BLOB group_envelope_enc "encrypted, groups only"
+        BLOB message_id_enc "encrypted"
+        BLOB recorded_at_enc "encrypted"
     }
     message_delivery {
         INTEGER message_id PK, FK
@@ -151,6 +153,27 @@ A copy of the database file must not reveal keys, contacts or messages on anothe
 
 The data key is 32 random bytes made on the device. It is never stored unwrapped, and every `_enc` and `_mac` value depends on it. Plain columns still show how many contacts, chats and messages there are and which rows refer to which; they show no content.
 
+### Keys, values and MACs in detail
+
+All cryptography comes from libsodium through NSec (`Protection/RecordKeys.cs`).
+
+- **Two keys from the data key.** HKDF-SHA-256 extracts a pseudorandom key from the data key with the salt `P2PM/storage/v1` and expands two keys from it: with the info `P2PM/storage/v1/record-key` the XChaCha20-Poly1305 key for `_enc` values, and with `P2PM/storage/v1/lookup-key` the BLAKE2b-256 key for `_mac` values. The data key itself is cleared from memory once the two keys exist.
+- **An encrypted value** is a random 24-byte nonce, then the ciphertext, then the 16-byte tag. The associated data is the ASCII text `P2PM/storage/v1`, a zero byte, the table name, a zero byte, the column name, a zero byte and the row's key as a big-endian 64-bit integer. For example, the name in row 2 of `person` is bound to the bytes of `P2PM/storage/v1`, `00`, `person`, `00`, `display_name_enc`, `00` and `00 00 00 00 00 00 00 02`. A value copied to another row, column or table does not decrypt.
+- **A MAC** is BLAKE2b-256 under the lookup key of `P2PM/lookup/v1/` and a domain name (`identity-key`, `static-key` or `message-id`), a zero byte and the value. The same message ID gives the same MAC in `message` and in `seen_message`.
+- **What is inside an encrypted value:** public keys as their 32 bytes, the user's private keys as one 97-byte block (a version byte and the three 32-byte private keys), names and texts as UTF-8, a contact code's signature as its 64 bytes, a message ID as its 16 bytes, and times as an 8-byte big-endian count of 100-nanosecond ticks since 0001-01-01 UTC.
+- **Reading checks everything.** Every value must decrypt with its own associated data, every MAC must match the value it was made from, and a contact code rebuilt from its parts must carry a valid signature. If anything fails, the app reads nothing and says that the stored data was changed or damaged.
+
+### How the data key is wrapped
+
+| `data_key.protection` | On | `data_key.wrapped_key` |
+| --- | --- | --- |
+| 2, Windows DPAPI | Windows | The data key protected by DPAPI for the current Windows user |
+| 4, Linux Secret Service | Linux | A format byte (1), a random 16-byte key ID, a 24-byte nonce, the data key encrypted with XChaCha20-Poly1305 under a 32-byte wrapping key, and the tag (89 bytes). The wrapping key is a secret in the user's Secret Service (for example GNOME Keyring or KWallet), labelled "P2PMessenger data key" and found by the key ID |
+| 1, passphrase | Not built yet | A key derived from the user's passphrase with Argon2id will wrap the data key; the salt and the parameters go into the `kdf_` columns |
+| 3, Android Keystore | Not built yet | A non-exportable Android Keystore key will wrap the data key |
+
+A copy of the database on another computer, or under another user account on the same computer, cannot be read, because that account's key store does not hold the key. Without any key store (a Linux desktop with no Secret Service, and Android for now) the app writes no database: it keeps the session's data in memory and says that nothing is saved.
+
 ## Data dictionary
 
 Column **Key**: PK primary key, FK foreign key, UK unique. **Class**: see [How stored data is protected](#how-stored-data-is-protected). Every table is `STRICT`.
@@ -163,7 +186,7 @@ The data key that encrypts every `_enc` column, wrapped by a passphrase or by th
 | --- | --- | --- | --- | --- | --- |
 | `id` | INTEGER | No | PK | Plain | Always 1 (`CHECK (id = 1)`) |
 | `protection` | INTEGER | No | | Plain | What wraps the data key: 1 = a key derived from the user's passphrase with Argon2id, 2 = Windows DPAPI (current user), 3 = Android Keystore, 4 = Linux Secret Service |
-| `wrapped_key` | BLOB | No | | Wrapped | The wrapped data key; not empty |
+| `wrapped_key` | BLOB | No | | Wrapped | The wrapped data key; not empty. Its format depends on `protection` ([How the data key is wrapped](#how-the-data-key-is-wrapped)) |
 | `kdf_salt` | BLOB | Yes | | Plain | Argon2id salt, 16 bytes |
 | `kdf_memory_kib` | INTEGER | Yes | | Plain | Argon2id memory cost in KiB, above 0 |
 | `kdf_passes` | INTEGER | Yes | | Plain | Argon2id number of passes, above 0 |
@@ -261,13 +284,15 @@ A message in a chat, written by the user or received.
 | `id` | INTEGER | No | PK | Plain | Surrogate key; also the order in which messages reached this device |
 | `conversation_id` | INTEGER | No | FK `conversation.id` | Plain | The chat; deleting the chat deletes its messages |
 | `author_person_id` | INTEGER | No | FK `person.id` | Plain | Who wrote it; the user's own person for the user's messages |
-| `message_id_mac` | BLOB | No | UK | MAC | MAC of the message's random 16-byte ID; matches acknowledgements to the message |
+| `message_id_mac` | BLOB | No | UK | MAC | MAC of the message's random 16-byte ID; matches acknowledgements to the message and keeps one row per message |
 | `sender_sequence` | INTEGER | No | | Plain | The author's running number in this chat, from 1; keeps each author's messages in the order written |
 | `text_enc` | BLOB | No | | Encrypted | The text |
 | `written_at_enc` | BLOB | No | | Encrypted | When the author wrote it, by the author's clock: shown, never trusted |
 | `group_envelope_enc` | BLOB | Yes | | Encrypted | In a group: the message as its author signed it, kept so that it can be passed on to other members unchanged. NULL in one-to-one chats |
+| `message_id_enc` | BLOB | No | | Encrypted | The message's random 16-byte ID, the same on every device; a waiting message is sent again under it, so that the recipient drops a copy it already has. Added by `0002_message_id.sql` |
+| `recorded_at_enc` | BLOB | No | | Encrypted | When this device recorded the message (sent or received), by this device's clock; orders the user's messages and the other person's in a chat. Added by `0002_message_id.sql` |
 
-Constraint: `UNIQUE (conversation_id, author_person_id, sender_sequence)`. Indexes: `ix_message_conversation (conversation_id, id)`, a chat's messages in order; `ix_message_author (author_person_id)`.
+Constraint: `UNIQUE (conversation_id, author_person_id, sender_sequence)`. The two columns of `0002_message_id.sql` have the default `x''`, which their `CHECK (length(...) >= 40)` refuses, so every insert must give a real value (SQLite needs a default to add a `NOT NULL` column to an existing table). Indexes: `ix_message_conversation (conversation_id, id)`, a chat's messages in order; `ix_message_author (author_person_id)`.
 
 ### `message_delivery`
 
@@ -283,11 +308,11 @@ Index `ix_message_delivery_waiting (recipient_person_id) WHERE state = 1`: the w
 
 ### `seen_message`
 
-The IDs of messages already received, so that a repeated or replayed message is dropped. Kept when a chat is deleted. `WITHOUT ROWID`.
+The IDs of messages already received or sent, so that a repeated, replayed or reflected message is dropped. Kept when a chat is deleted. `WITHOUT ROWID`.
 
 | Column | Type | Null | Key | Class | Description |
 | --- | --- | --- | --- | --- | --- |
-| `message_id_mac` | BLOB | No | PK | MAC | MAC of a received message's ID |
+| `message_id_mac` | BLOB | No | PK | MAC | MAC of a received or sent message's ID |
 
 ### `copied_conversation`
 
@@ -343,7 +368,13 @@ Two kinds of derived values are kept on purpose:
 
 ## Migrations
 
-- The schema lives in numbered SQL scripts, `Migrations/NNNN_name.sql`, starting at `0001_initial.sql`. They are embedded in the assembly (`MigrationCatalog`).
+- The schema lives in numbered SQL scripts, `Migrations/NNNN_name.sql`. They are embedded in the assembly (`MigrationCatalog`):
+
+  | Script | What it does |
+  | --- | --- |
+  | `0001_initial.sql` | Creates the 13 tables, the 4 indexes and the `outbox` view |
+  | `0002_message_id.sql` | Adds `message.message_id_enc` and `message.recorded_at_enc`. It is refused, and rolled back, in a database that already holds messages, because those would have no value for the new columns; no released version of the app stored messages before it |
+
 - `MigrationRunner.MigrateAsync` reads the schema version from `PRAGMA user_version`, applies every newer script in order, and records the new version. Each script runs in one transaction together with the version update, so a failing script leaves the database at the previous version.
 - A database whose version is newer than the newest script is refused, not changed.
 - A script that has been released is never edited. A change to the schema is a new script with the next number.
@@ -361,10 +392,10 @@ A database can be built from the scripts in two ways: with the SQLite command-li
 ### Create a database
 
 ```
-sqlite3 review.db ".read src/P2PMessenger.Storage/Migrations/0001_initial.sql"
+sqlite3 review.db ".read src/P2PMessenger.Storage/Migrations/0001_initial.sql" ".read src/P2PMessenger.Storage/Migrations/0002_message_id.sql"
 ```
 
-When there is more than one script, read them all in number order. The shell leaves `user_version` at 0, because the migration runner, not the script, records the version.
+Read the scripts in number order. The shell leaves `user_version` at 0, because the migration runner, not the script, records the version.
 
 To look at the result:
 
@@ -393,8 +424,8 @@ INSERT INTO identity (id, person_id, key_set_enc) VALUES (1, 1, randomblob(40));
 INSERT INTO contact (person_id, code_version, static_key_mac, static_key_enc, onion_key_enc, code_signature_enc, added_via, status)
     VALUES (2, 1, randomblob(32), randomblob(40), randomblob(40), randomblob(40), 1, 1);
 INSERT INTO conversation (id, contact_person_id) VALUES (1, 2);
-INSERT INTO message (id, conversation_id, author_person_id, message_id_mac, sender_sequence, text_enc, written_at_enc)
-    VALUES (1, 1, 1, randomblob(32), 1, randomblob(40), randomblob(40));
+INSERT INTO message (id, conversation_id, author_person_id, message_id_mac, message_id_enc, sender_sequence, text_enc, written_at_enc, recorded_at_enc)
+    VALUES (1, 1, 1, randomblob(32), randomblob(40), 1, randomblob(40), randomblob(40), randomblob(40));
 INSERT INTO message_delivery (message_id, recipient_person_id, state) VALUES (1, 2, 1);
 SELECT * FROM outbox;
 ```
@@ -437,7 +468,12 @@ The tests build temporary databases with `MigrationRunner` and `SqliteDatabase`,
 - every connection turns on foreign keys, the `WAL` journal and `secure_delete`;
 - the tables are the documented ones and all `STRICT`, and a new database passes `PRAGMA integrity_check` and `PRAGMA foreign_key_check`;
 - a message in a missing conversation, a MAC of the wrong length and a conversation with both a contact and a group are refused;
-- deleting a chat deletes its messages and removes them from the outbox.
+- deleting a chat deletes its messages and removes them from the outbox;
+- a message without its ID or its recorded time is refused, and `0002_message_id.sql` is rolled back over a database that already holds a message;
+- the key derivation and XChaCha20-Poly1305 give the published test vectors (RFC 5869, draft-irtf-cfrg-xchacha), and the associated data, two encrypted values and the MACs match an independent Python implementation;
+- every flipped bit of every stored encrypted value and MAC, and a value moved to another row or column, is refused;
+- a stored identity, contacts, messages and seen IDs come back unchanged after the database is closed and opened again;
+- the database files hold no name, text, public or private key, message ID or data key in plain, and a copy opened with another data key gives nothing.
 
 ### Clean up
 
