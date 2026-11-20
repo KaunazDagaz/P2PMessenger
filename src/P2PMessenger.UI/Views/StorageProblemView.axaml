@@ -1,0 +1,17 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:P2PMessenger.UI.ViewModels"
+             xmlns:res="using:P2PMessenger.UI.Resources"
+             x:Class="P2PMessenger.UI.Views.StorageProblemView"
+             x:DataType="vm:StorageProblemViewModel">
+    <ScrollViewer>
+        <StackPanel Margin="16" Spacing="12" MaxWidth="560" HorizontalAlignment="Stretch">
+            <TextBlock x:Name="MessageText" Text="{Binding Message}" TextWrapping="Wrap" />
+            <Button x:Name="TryAgainButton"
+                    Content="{x:Static res:UiText.StorageTryAgain}"
+                    Command="{Binding TryAgainCommand}"
+                    IsDefault="True" />
+            <TextBlock x:Name="BusyText" Text="{x:Static res:UiText.StorageOpening}" IsVisible="{Binding IsBusy}" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

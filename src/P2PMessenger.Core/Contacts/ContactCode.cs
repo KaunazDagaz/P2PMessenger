@@ -48,6 +48,8 @@ public sealed class ContactCode : IEquatable<ContactCode>
 
     public Fingerprint Fingerprint { get; }
 
+    public ReadOnlySpan<byte> Signature => bytes.AsSpan(bytes.Length - SignatureLength);
+
     internal static ReadOnlySpan<byte> SignatureContext => "P2PM/contact-code/v1"u8;
 
     public static ContactCode Create(KeySet keySet, DisplayName displayName)
@@ -115,6 +117,43 @@ public sealed class ContactCode : IEquatable<ContactCode>
         code = new ContactCode(bytes.ToArray(), identityKey, staticKey, onionAddress, displayName);
         error = ContactCodeError.None;
         return true;
+    }
+
+    public static bool TryAssemble(
+        byte version,
+        Ed25519PublicKey identityKey,
+        X25519PublicKey staticKey,
+        OnionAddress onionAddress,
+        DisplayName displayName,
+        ReadOnlySpan<byte> signature,
+        [NotNullWhen(true)] out ContactCode? code,
+        out ContactCodeError error)
+    {
+        ArgumentNullException.ThrowIfNull(identityKey);
+        ArgumentNullException.ThrowIfNull(staticKey);
+        ArgumentNullException.ThrowIfNull(onionAddress);
+        ArgumentNullException.ThrowIfNull(displayName);
+
+        code = null;
+        error = ContactCodeError.Damaged;
+
+        if (signature.Length != SignatureLength)
+        {
+            return false;
+        }
+
+        ReadOnlySpan<byte> name = displayName.Utf8Bytes;
+        int bodyLength = HeaderLength + name.Length;
+        byte[] assembled = new byte[bodyLength + SignatureLength];
+        assembled[0] = version;
+        identityKey.Bytes.CopyTo(assembled.AsSpan(IdentityOffset));
+        staticKey.Bytes.CopyTo(assembled.AsSpan(StaticOffset));
+        onionAddress.Bytes.CopyTo(assembled.AsSpan(OnionOffset));
+        assembled[NameLengthOffset] = (byte)name.Length;
+        name.CopyTo(assembled.AsSpan(HeaderLength));
+        signature.CopyTo(assembled.AsSpan(bodyLength));
+
+        return TryParse(assembled, out code, out error);
     }
 
     public static bool TryParseText(string? text, [NotNullWhen(true)] out ContactCode? code, out ContactCodeError error)

@@ -111,6 +111,59 @@ public sealed class SchemaTests
         Assert.Equal(ConstraintFailed, exception.SqliteErrorCode);
     }
 
+    [Theory]
+    [Trait("Story", "US-15")]
+    [InlineData("message_id_enc")]
+    [InlineData("recorded_at_enc")]
+    public async Task Schema_MessageWithoutItsIdOrRecordedTime_IsRefused(string missing)
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        using var database = new TemporaryDatabase();
+        await using var connection = await database.OpenMigratedAsync(cancellationToken);
+        await AddUserAndContactAsync(connection, cancellationToken);
+        await Sql.ExecuteAsync(connection, "INSERT INTO conversation (id, contact_person_id) VALUES (1, 2);", [], cancellationToken);
+        var statement = missing == "message_id_enc"
+            ? "INSERT INTO message (id, conversation_id, author_person_id, message_id_mac, sender_sequence, text_enc, written_at_enc, recorded_at_enc) VALUES (1, 1, 1, $mac, 1, $sealed, $sealed, $sealed);"
+            : "INSERT INTO message (id, conversation_id, author_person_id, message_id_mac, message_id_enc, sender_sequence, text_enc, written_at_enc) VALUES (1, 1, 1, $mac, $sealed, 1, $sealed, $sealed);";
+
+        var exception = await Assert.ThrowsAsync<SqliteException>(() => Sql.ExecuteAsync(connection, statement, [("$mac", Mac(5)), ("$sealed", Sealed)], cancellationToken));
+
+        Assert.Equal(ConstraintFailed, exception.SqliteErrorCode);
+    }
+
+    [Fact]
+    public async Task Schema_MessageIdShorterThanAnEncryptedValue_IsRefused()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        using var database = new TemporaryDatabase();
+        await using var connection = await database.OpenMigratedAsync(cancellationToken);
+        await AddUserAndContactAsync(connection, cancellationToken);
+        await Sql.ExecuteAsync(connection, "INSERT INTO conversation (id, contact_person_id) VALUES (1, 2);", [], cancellationToken);
+        await AddMessageAsync(connection, 1, cancellationToken);
+
+        var exception = await Assert.ThrowsAsync<SqliteException>(() => Sql.ExecuteAsync(connection, "UPDATE message SET message_id_enc = $short;", [("$short", new byte[39])], cancellationToken));
+
+        Assert.Equal(ConstraintFailed, exception.SqliteErrorCode);
+    }
+
+    [Fact]
+    public async Task Migrate_MessageStoredBeforeVersion2_IsRefusedAndRolledBack()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        using var database = new TemporaryDatabase();
+        await using var connection = await database.OpenAsync(cancellationToken);
+        await MigrationRunner.MigrateAsync(connection, [MigrationCatalog.Load()[0]], cancellationToken);
+        await AddUserAndContactAsync(connection, cancellationToken);
+        await Sql.ExecuteAsync(connection, "INSERT INTO conversation (id, contact_person_id) VALUES (1, 2);", [], cancellationToken);
+        await Sql.ExecuteAsync(connection, "INSERT INTO message (id, conversation_id, author_person_id, message_id_mac, sender_sequence, text_enc, written_at_enc) VALUES (1, 1, 1, $mac, 1, $sealed, $sealed);", [("$mac", Mac(5)), ("$sealed", Sealed)], cancellationToken);
+
+        await Assert.ThrowsAsync<SqliteException>(() => MigrationRunner.MigrateAsync(connection, cancellationToken));
+
+        Assert.Equal(1, await MigrationRunner.ReadVersionAsync(connection, cancellationToken));
+        Assert.Equal(0, await Sql.ScalarAsync(connection, "SELECT count(*) FROM pragma_table_info('message') WHERE name IN ('message_id_enc', 'recorded_at_enc');", cancellationToken));
+        Assert.Equal(1, await Sql.ScalarAsync(connection, "SELECT count(*) FROM message;", cancellationToken));
+    }
+
     private static async Task AddUserAndContactAsync(SqliteConnection connection, CancellationToken cancellationToken)
     {
         await Sql.ExecuteAsync(connection, "INSERT INTO person (id, identity_key_mac, identity_key_enc, display_name_enc) VALUES (1, $mac, $sealed, $sealed);", [("$mac", Mac(1)), ("$sealed", Sealed)], cancellationToken);
@@ -120,7 +173,7 @@ public sealed class SchemaTests
     }
 
     private static Task<int> AddMessageAsync(SqliteConnection connection, long conversationId, CancellationToken cancellationToken) =>
-        Sql.ExecuteAsync(connection, "INSERT INTO message (id, conversation_id, author_person_id, message_id_mac, sender_sequence, text_enc, written_at_enc) VALUES (1, $conversation, 1, $mac, 1, $sealed, $sealed);", [("$conversation", conversationId), ("$mac", Mac(5)), ("$sealed", Sealed)], cancellationToken);
+        Sql.ExecuteAsync(connection, "INSERT INTO message (id, conversation_id, author_person_id, message_id_mac, message_id_enc, sender_sequence, text_enc, written_at_enc, recorded_at_enc) VALUES (1, $conversation, 1, $mac, $sealed, 1, $sealed, $sealed, $sealed);", [("$conversation", conversationId), ("$mac", Mac(5)), ("$sealed", Sealed)], cancellationToken);
 
     private static byte[] Mac(byte fill)
     {

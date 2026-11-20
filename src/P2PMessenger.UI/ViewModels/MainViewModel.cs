@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using P2PMessenger.Application.Contacts;
 using P2PMessenger.Application.Identity;
+using P2PMessenger.Application.LocalData;
 using P2PMessenger.UI.Resources;
 using P2PMessenger.UI.Services;
 
@@ -46,9 +47,22 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        IsStarting = true;
+        IsStarting = CurrentPage is null;
+        ErrorMessage = null;
         try
         {
+            LocalDataResult localData = await services.OpenLocalDataAsync(cancellationToken);
+            if (!localData.IsOpen)
+            {
+                ResetTo(new StorageProblemViewModel(localData.Problem, StartAsync));
+                return;
+            }
+
+            if (localData.Stores.Mode == LocalDataMode.MemoryOnlyNoKeyStore && Notice?.Contains(UiText.StorageMemoryOnly, StringComparison.Ordinal) != true)
+            {
+                Notice = Notice is null ? UiText.StorageMemoryOnly : UiText.StorageMemoryOnly + Environment.NewLine + Notice;
+            }
+
             OwnIdentity? identity = await services.Identities.LoadAsync(cancellationToken);
             if (identity is null)
             {

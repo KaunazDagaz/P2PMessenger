@@ -5,6 +5,7 @@ using Avalonia.VisualTree;
 using P2PMessenger.Application;
 using P2PMessenger.Application.Contacts;
 using P2PMessenger.Application.Identity;
+using P2PMessenger.Application.LocalData;
 using P2PMessenger.Core.Contacts;
 using P2PMessenger.Core.Identity;
 using P2PMessenger.Transport.Connections;
@@ -32,7 +33,9 @@ internal sealed class UiHarness : IAsyncDisposable
 
     public Messenger Messenger => Services.Messenger ?? throw new InvalidOperationException("The messenger has not started.");
 
-    public static UiHarness Create()
+    public static UiHarness Create() => Create(new InMemoryLocalData());
+
+    public static UiHarness Create(ILocalData localData)
     {
         FakePlatform platform = new();
         MessengerSetup setup = MessengerSetup.InMemory() with
@@ -45,13 +48,14 @@ internal sealed class UiHarness : IAsyncDisposable
                 ReconnectDelayMax = TimeSpan.FromMilliseconds(400),
             },
         };
-        AppServices services = new(new IdentityService(new InMemoryIdentityStore()), setup, new AvaloniaUiThread(), platform, platform);
+        AppServices services = new(localData, setup, new AvaloniaUiThread(), platform, platform);
         return new UiHarness(services, platform);
     }
 
     public static async Task<UiHarness> StartAsync(string name)
     {
         UiHarness harness = Create();
+        Assert.True((await harness.Services.OpenLocalDataAsync(CancellationToken.None)).IsOpen);
         CreateIdentityResult created = await harness.Services.Identities.CreateAsync(name, CancellationToken.None);
         Assert.True(created.IsCreated);
         await harness.Shell.StartAsync(CancellationToken.None);

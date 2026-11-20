@@ -4,7 +4,6 @@ using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using P2PMessenger.Application;
-using P2PMessenger.Application.Identity;
 using P2PMessenger.Application.Logging;
 using P2PMessenger.UI.Services;
 using P2PMessenger.UI.ViewModels;
@@ -14,7 +13,19 @@ namespace P2PMessenger.UI;
 
 public partial class App : Avalonia.Application
 {
+    private readonly AppPlatform platform;
     private MainView? activityView;
+
+    public App()
+        : this(AppPlatform.WithoutKeyStore)
+    {
+    }
+
+    public App(AppPlatform platform)
+    {
+        ArgumentNullException.ThrowIfNull(platform);
+        this.platform = platform;
+    }
 
     public override void Initialize()
     {
@@ -46,14 +57,14 @@ public partial class App : Avalonia.Application
     private static ILoggerFactory CreateLoggers() =>
         BuildInfo.IsDebug ? new TraceLoggerFactory(LogLevel.Information) : NullLoggerFactory.Instance;
 
-    private static AppServices CreateServices(Func<TopLevel?> topLevel)
+    private AppServices CreateServices(Func<TopLevel?> topLevel)
     {
-        TopLevelServices platform = new(topLevel);
+        TopLevelServices topLevelServices = new(topLevel);
         return new AppServices(
-            new IdentityService(new InMemoryIdentityStore()),
+            platform.CreateLocalData(),
             MessengerSetup.InMemory() with { Loggers = CreateLoggers() },
             new AvaloniaUiThread(),
-            platform,
-            platform);
+            topLevelServices,
+            topLevelServices);
     }
 }

@@ -6,6 +6,9 @@
              x:Class="P2PMessenger.UI.Views.MainView"
              x:DataType="vm:MainViewModel">
     <UserControl.DataTemplates>
+        <DataTemplate DataType="vm:StorageProblemViewModel">
+            <v:StorageProblemView />
+        </DataTemplate>
         <DataTemplate DataType="vm:CreateIdentityViewModel">
             <v:CreateIdentityView />
         </DataTemplate>

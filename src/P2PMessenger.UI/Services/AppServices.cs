@@ -1,35 +1,38 @@
 using P2PMessenger.Application;
 using P2PMessenger.Application.Identity;
+using P2PMessenger.Application.LocalData;
 
 namespace P2PMessenger.UI.Services;
 
 public sealed class AppServices : IAsyncDisposable
 {
-    private readonly MessengerSetup setup;
+    private readonly ILocalData localData;
     private readonly SemaphoreSlim starting = new(1, 1);
+    private MessengerSetup setup;
+    private IdentityService? identities;
     private OwnIdentity? identity;
 
     public AppServices(
-        IdentityService identities,
+        ILocalData localData,
         MessengerSetup setup,
         IUiThread uiThread,
         IClipboardService clipboard,
         ICodeFileService codeFiles)
     {
-        ArgumentNullException.ThrowIfNull(identities);
+        ArgumentNullException.ThrowIfNull(localData);
         ArgumentNullException.ThrowIfNull(setup);
         ArgumentNullException.ThrowIfNull(uiThread);
         ArgumentNullException.ThrowIfNull(clipboard);
         ArgumentNullException.ThrowIfNull(codeFiles);
 
-        Identities = identities;
+        this.localData = localData;
         this.setup = setup;
         UiThread = uiThread;
         Clipboard = clipboard;
         CodeFiles = codeFiles;
     }
 
-    public IdentityService Identities { get; }
+    public IdentityService Identities => identities ?? throw new InvalidOperationException("The local data has not been opened yet.");
 
     public IUiThread UiThread { get; }
 
@@ -42,6 +45,24 @@ public sealed class AppServices : IAsyncDisposable
     public Messenger? Messenger { get; private set; }
 
     public event EventHandler? MessengerStarted;
+
+    public async Task<LocalDataResult> OpenLocalDataAsync(CancellationToken cancellationToken)
+    {
+        LocalDataResult result = await localData.OpenAsync(cancellationToken).ConfigureAwait(false);
+        if (result.IsOpen && identities is null)
+        {
+            LocalDataStores stores = result.Stores;
+            setup = setup with
+            {
+                ContactStore = stores.Contacts,
+                ChatStore = stores.Chats,
+                SeenMessageIds = stores.SeenMessageIds,
+            };
+            identities = new IdentityService(stores.Identity);
+        }
+
+        return result;
+    }
 
     public async Task<Messenger> StartMessengerAsync(OwnIdentity owner, CancellationToken cancellationToken)
     {
@@ -78,5 +99,6 @@ public sealed class AppServices : IAsyncDisposable
 
         identity?.Dispose();
         starting.Dispose();
+        await localData.DisposeAsync().ConfigureAwait(false);
     }
 }
