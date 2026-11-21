@@ -9,7 +9,9 @@ public sealed class MessageRepository
 {
     private const string SelectMessages =
         "SELECT message.id, message.author_person_id, message.message_id_mac, message.message_id_enc, message.sender_sequence, message.text_enc, "
-        + "message.written_at_enc, message.recorded_at_enc, conversation.contact_person_id, person.identity_key_mac, person.identity_key_enc "
+        + "message.written_at_enc, message.recorded_at_enc, conversation.contact_person_id, person.identity_key_mac, person.identity_key_enc, "
+        + "(SELECT delivery.state FROM message_delivery AS delivery WHERE delivery.message_id = message.id AND delivery.recipient_person_id = conversation.contact_person_id), "
+        + "(SELECT count(*) FROM message_delivery AS delivery WHERE delivery.message_id = message.id) "
         + "FROM message "
         + "JOIN conversation ON conversation.id = message.conversation_id "
         + "JOIN person ON person.id = conversation.contact_person_id "
@@ -29,6 +31,22 @@ public sealed class MessageRepository
     private const string InsertMessage =
         "INSERT INTO message (id, conversation_id, author_person_id, message_id_mac, message_id_enc, sender_sequence, text_enc, written_at_enc, recorded_at_enc) "
         + "VALUES ($id, $conversation_id, $author_person_id, $message_id_mac, $message_id_enc, $sender_sequence, $text_enc, $written_at_enc, $recorded_at_enc);";
+
+    private const string InsertDelivery =
+        "INSERT INTO message_delivery (message_id, recipient_person_id, state) VALUES ($message_id, $recipient_person_id, $state);";
+
+    private const string InsertSeen =
+        "INSERT INTO seen_message (message_id_mac) VALUES ($message_id_mac) ON CONFLICT (message_id_mac) DO NOTHING;";
+
+    private const string MarkDeliveryReceived =
+        "UPDATE message_delivery SET state = 2 "
+        + "WHERE state = 1 "
+        + "AND message_id = (SELECT message.id FROM message WHERE message.message_id_mac = $message_id_mac) "
+        + "AND recipient_person_id = ("
+        + "SELECT conversation.contact_person_id FROM message "
+        + "JOIN conversation ON conversation.id = message.conversation_id "
+        + "JOIN person ON person.id = conversation.contact_person_id "
+        + "WHERE message.message_id_mac = $message_id_mac AND person.identity_key_mac = $identity_key_mac);";
 
     private readonly SqliteGate gate;
     private readonly RecordKeys keys;
@@ -54,7 +72,54 @@ public sealed class MessageRepository
             throw new ArgumentException("The message has an unknown direction.", nameof(message));
         }
 
+        bool deliveryFits = message.Direction == StoredMessageDirection.Outgoing
+            ? message.Delivery is StoredDeliveryState.Waiting or StoredDeliveryState.Received
+            : message.Delivery == StoredDeliveryState.None;
+        if (!deliveryFits)
+        {
+            throw new ArgumentException("An outgoing message is waiting or received, and an incoming one has no delivery state.", nameof(message));
+        }
+
         return gate.WriteAsync((connection, transaction, token) => AddAsync(connection, transaction, message, token), cancellationToken);
+    }
+
+    public Task<bool> MarkReceivedAsync(Ed25519PublicKey contactKey, MessageId id, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(contactKey);
+        ArgumentNullException.ThrowIfNull(id);
+
+        byte[] contactLookup = keys.Lookup(LookupDomain.IdentityKey, contactKey.Bytes);
+        byte[] idLookup = keys.Lookup(LookupDomain.MessageId, id.Bytes);
+        return gate.WriteAsync(
+            async (connection, transaction, token) =>
+            {
+                int changed = await Sql.ExecuteAsync(
+                    connection,
+                    transaction,
+                    MarkDeliveryReceived,
+                    token,
+                    ("$message_id_mac", idLookup),
+                    ("$identity_key_mac", contactLookup)).ConfigureAwait(false);
+                return changed == 1;
+            },
+            cancellationToken);
+    }
+
+    private static StoredDeliveryState DeliveryOf(StoredMessageDirection direction, long? state, long deliveries)
+    {
+        if (direction == StoredMessageDirection.Incoming)
+        {
+            return deliveries == 0
+                ? StoredDeliveryState.None
+                : throw StoredValues.Inconsistent("a received message has a delivery state");
+        }
+
+        return (deliveries, state) switch
+        {
+            (1, (long)StoredDeliveryState.Waiting) => StoredDeliveryState.Waiting,
+            (1, (long)StoredDeliveryState.Received) => StoredDeliveryState.Received,
+            _ => throw StoredValues.Inconsistent("a sent message does not have exactly one delivery state for its contact"),
+        };
     }
 
     private async Task<IReadOnlyList<StoredMessage>> LoadAllAsync(SqliteConnection connection, CancellationToken cancellationToken)
@@ -91,6 +156,9 @@ public sealed class MessageRepository
                 throw StoredValues.Inconsistent("a one-to-one message has an author who is neither the user nor the contact");
             }
 
+            long? state = reader.IsDBNull(11) ? null : reader.GetInt64(11);
+            StoredDeliveryState delivery = DeliveryOf(direction, state, reader.GetInt64(12));
+
             RecordLocation idLocation = Locations.MessageId(rowId);
             byte[] idBytes = StoredValues.Open(keys, idLocation, reader.GetFieldValue<byte[]>(3));
             if (!MessageId.TryCreate(idBytes, out MessageId? id) || !keys.MatchesLookup(LookupDomain.MessageId, idBytes, reader.GetFieldValue<byte[]>(2)))
@@ -107,7 +175,7 @@ public sealed class MessageRepository
             RecordLocation recordedLocation = Locations.MessageRecordedAt(rowId);
             DateTimeOffset recordedAt = StoredValues.Time(recordedLocation, StoredValues.Open(keys, recordedLocation, reader.GetFieldValue<byte[]>(7)));
 
-            messages.Add(new StoredMessage(contactKey, direction, id, reader.GetInt64(4), writtenAt, text, recordedAt));
+            messages.Add(new StoredMessage(contactKey, direction, id, reader.GetInt64(4), writtenAt, text, recordedAt) { Delivery = delivery });
         }
 
         return messages;
@@ -127,7 +195,9 @@ public sealed class MessageRepository
             ?? throw new InvalidOperationException("The conversation could not be stored.");
 
         long rowId = await Sql.LongAsync(connection, transaction, NextMessageId, cancellationToken).ConfigureAwait(false) ?? 1;
-        long authorId = message.Direction == StoredMessageDirection.Outgoing ? ownPersonId : contactPersonId;
+        bool outgoing = message.Direction == StoredMessageDirection.Outgoing;
+        long authorId = outgoing ? ownPersonId : contactPersonId;
+        byte[] idLookup = keys.Lookup(LookupDomain.MessageId, message.Id.Bytes);
 
         await Sql.ExecuteAsync(
             connection,
@@ -137,13 +207,26 @@ public sealed class MessageRepository
             ("$id", rowId),
             ("$conversation_id", conversationId),
             ("$author_person_id", authorId),
-            ("$message_id_mac", keys.Lookup(LookupDomain.MessageId, message.Id.Bytes)),
+            ("$message_id_mac", idLookup),
             ("$message_id_enc", keys.Seal(Locations.MessageId(rowId), message.Id.Bytes)),
             ("$sender_sequence", message.Sequence),
             ("$text_enc", keys.Seal(Locations.MessageText(rowId), StoredValues.Utf8(message.Text))),
             ("$written_at_enc", keys.Seal(Locations.MessageWrittenAt(rowId), StoredValues.Time(message.WrittenAt))),
             ("$recorded_at_enc", keys.Seal(Locations.MessageRecordedAt(rowId), StoredValues.Time(message.RecordedAt)))).ConfigureAwait(false);
 
+        if (outgoing)
+        {
+            await Sql.ExecuteAsync(
+                connection,
+                transaction,
+                InsertDelivery,
+                cancellationToken,
+                ("$message_id", rowId),
+                ("$recipient_person_id", contactPersonId),
+                ("$state", (long)message.Delivery)).ConfigureAwait(false);
+        }
+
+        await Sql.ExecuteAsync(connection, transaction, InsertSeen, cancellationToken, ("$message_id_mac", idLookup)).ConfigureAwait(false);
         return true;
     }
 }

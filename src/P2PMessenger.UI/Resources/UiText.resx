@@ -228,9 +228,6 @@
   <data name="ConversationSend" xml:space="preserve">
     <value>Send</value>
   </data>
-  <data name="ConversationNotConnectedFormat" xml:space="preserve">
-    <value>Not sent: {0} is not connected now. Try again when they are connected.</value>
-  </data>
   <data name="ConversationNotAddedFormat" xml:space="preserve">
     <value>Not sent: {0} becomes a contact only after the first connection.</value>
   </data>
@@ -245,6 +242,18 @@
   </data>
   <data name="ConversationEmpty" xml:space="preserve">
     <value>No messages yet.</value>
+  </data>
+  <data name="DeliveryWaiting" xml:space="preserve">
+    <value>Waiting</value>
+  </data>
+  <data name="DeliveryWaitingExplanation" xml:space="preserve">
+    <value>The contact's app has not confirmed this message yet; it is sent again automatically until it does, and it may already have arrived.</value>
+  </data>
+  <data name="DeliveryReceived" xml:space="preserve">
+    <value>Received by the contact's app</value>
+  </data>
+  <data name="DeliveryReceivedExplanation" xml:space="preserve">
+    <value>The contact's app confirmed that it has stored this message; this does not show whether they have read it.</value>
   </data>
   <data name="VerifyTitle" xml:space="preserve">
     <value>Compare fingerprints</value>

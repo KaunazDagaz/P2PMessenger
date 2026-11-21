@@ -4,7 +4,7 @@ Each device keeps its data in one SQLite database of its own. There is no server
 
 This file documents the database: the design rules, the logical schema, how stored data is protected, the data dictionary, normalisation, migrations, and how to create and inspect a database. The schema is created and changed only by the numbered scripts in [`Migrations`](Migrations); nothing is created by hand.
 
-**Status:** the schema, its migrations, the encryption described in [How stored data is protected](#how-stored-data-is-protected) and the repositories exist, with their tests. The Windows and Linux app keeps its identity, contacts, messages and the IDs of seen messages here. The Android app still keeps them in memory, and says so, until it gets the Android Keystore. Groups, deliveries and the PC copy have tables but no code yet.
+**Status:** the schema, its migrations, the encryption described in [How stored data is protected](#how-stored-data-is-protected) and the repositories exist, with their tests. The Windows and Linux app keeps its identity, contacts, messages, the delivery state of its own one-to-one messages and the IDs of seen messages here. The Android app still keeps them in memory, and says so, until it gets the Android Keystore. Groups and the PC copy have tables but no code yet.
 
 ## Contents
 
@@ -151,7 +151,7 @@ A copy of the database file must not reveal keys, contacts or messages on anothe
 | MAC | Name ends in `_mac` | Keyed BLAKE2b-256 of the value (32 bytes), under a key derived from the data key | Equal values give equal MACs, so the database can find a value and enforce `UNIQUE` without storing the value; without the key, a MAC reveals nothing about it |
 | Wrapped | `data_key.wrapped_key` | The data key, encrypted by a key derived from the user's passphrase or by the platform's key store | Without the passphrase, or on another device, the data key cannot be recovered |
 
-The data key is 32 random bytes made on the device. It is never stored unwrapped, and every `_enc` and `_mac` value depends on it. Plain columns still show how many contacts, chats and messages there are and which rows refer to which; they show no content.
+The data key is 32 random bytes made on the device. It is never stored unwrapped, and every `_enc` and `_mac` value depends on it. Plain columns still show how many contacts, chats and messages there are, which rows refer to which and which of the user's messages are still waiting; they show no content. Encryption keeps content secret but does not stop changes to plain columns: someone who can write the file could, for example, mark a waiting message as received.
 
 ### Keys, values and MACs in detail
 
@@ -306,9 +306,11 @@ The delivery state of the user's own message for each recipient: one row in a on
 
 Index `ix_message_delivery_waiting (recipient_person_id) WHERE state = 1`: the waiting messages for a contact who has just become reachable.
 
+In a one-to-one chat, every message the user writes gets exactly one row, for the contact, in the same transaction that stores the message, in state 1. The state becomes 2 only when that contact's app acknowledges the message's ID in an encrypted session with this device, and it never goes back. A received message has no row. When the app reads its data, a message of the user without exactly this row, or a received message with a row, counts as damaged, like a value that does not decrypt.
+
 ### `seen_message`
 
-The IDs of messages already received or sent, so that a repeated, replayed or reflected message is dropped. Kept when a chat is deleted. `WITHOUT ROWID`.
+The IDs of messages already received or sent, so that a repeated, replayed or reflected message is dropped. An ID is added in the same transaction that stores its message, so a message is never stored without its ID being seen. Kept when a chat is deleted. `WITHOUT ROWID`.
 
 | Column | Type | Null | Key | Class | Description |
 | --- | --- | --- | --- | --- | --- |
@@ -374,6 +376,7 @@ Two kinds of derived values are kept on purpose:
   | --- | --- |
   | `0001_initial.sql` | Creates the 13 tables, the 4 indexes and the `outbox` view |
   | `0002_message_id.sql` | Adds `message.message_id_enc` and `message.recorded_at_enc`. It is refused, and rolled back, in a database that already holds messages, because those would have no value for the new columns; no released version of the app stored messages before it |
+  | `0003_outgoing_delivery.sql` | Changes no table. Gives every one-to-one message the user sent before deliveries were kept a `message_delivery` row in state 1 (waiting): the app had not been told that those messages arrived, so it sends them again under the same IDs, and the contact's app, which drops a copy it already has, confirms them |
 
 - `MigrationRunner.MigrateAsync` reads the schema version from `PRAGMA user_version`, applies every newer script in order, and records the new version. Each script runs in one transaction together with the version update, so a failing script leaves the database at the previous version.
 - A database whose version is newer than the newest script is refused, not changed.
@@ -392,7 +395,7 @@ A database can be built from the scripts in two ways: with the SQLite command-li
 ### Create a database
 
 ```
-sqlite3 review.db ".read src/P2PMessenger.Storage/Migrations/0001_initial.sql" ".read src/P2PMessenger.Storage/Migrations/0002_message_id.sql"
+sqlite3 review.db ".read src/P2PMessenger.Storage/Migrations/0001_initial.sql" ".read src/P2PMessenger.Storage/Migrations/0002_message_id.sql" ".read src/P2PMessenger.Storage/Migrations/0003_outgoing_delivery.sql"
 ```
 
 Read the scripts in number order. The shell leaves `user_version` at 0, because the migration runner, not the script, records the version.
@@ -470,6 +473,9 @@ The tests build temporary databases with `MigrationRunner` and `SqliteDatabase`,
 - a message in a missing conversation, a MAC of the wrong length and a conversation with both a contact and a group are refused;
 - deleting a chat deletes its messages and removes them from the outbox;
 - a message without its ID or its recorded time is refused, and `0002_message_id.sql` is rolled back over a database that already holds a message;
+- `0003_outgoing_delivery.sql` gives the user's earlier messages, and only those, a waiting delivery;
+- a message is stored together with its ID among the seen IDs and, if the user wrote it, its waiting delivery; the delivery becomes received only for the contact the message was sent to, and only once;
+- a message of the user without its delivery, a delivery for another person, and a received message with a delivery are refused as damaged;
 - the key derivation and XChaCha20-Poly1305 give the published test vectors (RFC 5869, draft-irtf-cfrg-xchacha), and the associated data, two encrypted values and the MACs match an independent Python implementation;
 - every flipped bit of every stored encrypted value and MAC, and a value moved to another row or column, is refused;
 - a stored identity, contacts, messages and seen IDs come back unchanged after the database is closed and opened again;

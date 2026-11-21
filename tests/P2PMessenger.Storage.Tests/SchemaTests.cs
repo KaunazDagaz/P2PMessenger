@@ -164,6 +164,31 @@ public sealed class SchemaTests
         Assert.Equal(1, await Sql.ScalarAsync(connection, "SELECT count(*) FROM message;", cancellationToken));
     }
 
+    [Fact]
+    [Trait("Story", "US-15")]
+    [Trait("Story", "US-16")]
+    [Trait("NFR", "NFR-07")]
+    public async Task Migrate_SentAndReceivedMessagesOfVersion2_OnlySentOnesGetAWaitingDelivery()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        using var database = new TemporaryDatabase();
+        await using var connection = await database.OpenAsync(cancellationToken);
+        var catalog = MigrationCatalog.Load();
+        await MigrationRunner.MigrateAsync(connection, [catalog[0], catalog[1]], cancellationToken);
+        await AddUserAndContactAsync(connection, cancellationToken);
+        await Sql.ExecuteAsync(connection, "INSERT INTO conversation (id, contact_person_id) VALUES (1, 2);", [], cancellationToken);
+        await AddMessageAsync(connection, 1, cancellationToken);
+        await Sql.ExecuteAsync(connection, "INSERT INTO message (id, conversation_id, author_person_id, message_id_mac, message_id_enc, sender_sequence, text_enc, written_at_enc, recorded_at_enc) VALUES (2, 1, 2, $mac, $sealed, 1, $sealed, $sealed, $sealed);", [("$mac", Mac(6)), ("$sealed", Sealed)], cancellationToken);
+        Assert.Equal(0, await Sql.ScalarAsync(connection, "SELECT count(*) FROM outbox;", cancellationToken));
+
+        await MigrationRunner.MigrateAsync(connection, cancellationToken);
+
+        Assert.Equal(catalog.Count, await MigrationRunner.ReadVersionAsync(connection, cancellationToken));
+        Assert.Equal("1 2 1", Assert.Single(await Sql.StringsAsync(connection, "SELECT message_id || ' ' || recipient_person_id || ' ' || state FROM message_delivery;", cancellationToken)));
+        Assert.Equal(1, await Sql.ScalarAsync(connection, "SELECT count(*) FROM outbox WHERE message_id = 1;", cancellationToken));
+        Assert.Empty(await Sql.StringsAsync(connection, "PRAGMA foreign_key_check;", cancellationToken));
+    }
+
     private static async Task AddUserAndContactAsync(SqliteConnection connection, CancellationToken cancellationToken)
     {
         await Sql.ExecuteAsync(connection, "INSERT INTO person (id, identity_key_mac, identity_key_enc, display_name_enc) VALUES (1, $mac, $sealed, $sealed);", [("$mac", Mac(1)), ("$sealed", Sealed)], cancellationToken);

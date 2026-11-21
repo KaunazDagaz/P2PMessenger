@@ -19,13 +19,17 @@ public sealed class InMemorySeenMessageIds : ISeenMessageIds
 
     public ValueTask AddAsync(MessageId id, CancellationToken cancellationToken)
     {
+        Add(id);
+        return ValueTask.CompletedTask;
+    }
+
+    internal void Add(MessageId id)
+    {
         ArgumentNullException.ThrowIfNull(id);
 
         lock (gate)
         {
             seen.Add(id);
         }
-
-        return ValueTask.CompletedTask;
     }
 }

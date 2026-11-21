@@ -149,7 +149,104 @@ public sealed class RepositoryTests
             [StoredMessageDirection.Outgoing, StoredMessageDirection.Incoming, StoredMessageDirection.Incoming, StoredMessageDirection.Outgoing],
             loaded.Select(static message => message.Direction));
         Assert.Equal([bob.IdentityKey, bob.IdentityKey, carol.IdentityKey, bob.IdentityKey], loaded.Select(static message => message.ContactKey));
+        Assert.Equal(
+            [StoredDeliveryState.Waiting, StoredDeliveryState.None, StoredDeliveryState.None, StoredDeliveryState.Waiting],
+            loaded.Select(static message => message.Delivery));
         Assert.Equal(added, loaded[3]);
+    }
+
+    [Fact]
+    [Trait("Story", "US-05")]
+    [Trait("Story", "US-15")]
+    public async Task Messages_Added_AreStoredWithTheirIdsAsSeenAndSentOnesAsWaiting()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var store = await StorageFixture.OpenAsync(cancellationToken);
+        var (user, bob, carol) = await store.FillAsync(cancellationToken);
+        using var userKeys = user;
+        using var bobKeys = bob;
+        using var carolKeys = carol;
+
+        var loaded = await store.Data.Messages.LoadAllAsync(cancellationToken);
+
+        foreach (var message in loaded)
+        {
+            Assert.True(await store.Data.SeenMessages.ContainsAsync(message.Id, cancellationToken));
+        }
+
+        await using var raw = await store.RawAsync(cancellationToken);
+        Assert.Equal(3, await Sql.ScalarAsync(raw, "SELECT count(*) FROM seen_message;", cancellationToken));
+        Assert.Equal(1, await Sql.ScalarAsync(raw, "SELECT count(*) FROM outbox;", cancellationToken));
+        Assert.Equal(1, await Sql.ScalarAsync(raw, "SELECT count(*) FROM message_delivery WHERE message_id = 1 AND recipient_person_id = 2 AND state = 1;", cancellationToken));
+    }
+
+    [Fact]
+    [Trait("Story", "US-16")]
+    [Trait("NFR", "NFR-07")]
+    public async Task Messages_MarkReceivedByTheContact_ChangesOnceAndSurvivesAReopen()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var store = await StorageFixture.OpenAsync(cancellationToken);
+        var (user, bob, carol) = await store.FillAsync(cancellationToken);
+        using var userKeys = user;
+        using var bobKeys = bob;
+        using var carolKeys = carol;
+        var sent = (await store.Data.Messages.LoadAllAsync(cancellationToken))[0];
+
+        Assert.True(await store.Data.Messages.MarkReceivedAsync(bob.IdentityKey, sent.Id, cancellationToken));
+        Assert.False(await store.Data.Messages.MarkReceivedAsync(bob.IdentityKey, sent.Id, cancellationToken));
+        await store.ReopenAsync(Samples.DataKey(), cancellationToken);
+        var loaded = await store.Data.Messages.LoadAllAsync(cancellationToken);
+
+        Assert.Equal(StoredDeliveryState.Received, loaded[0].Delivery);
+        Assert.Equal(sent with { Delivery = StoredDeliveryState.Received }, loaded[0]);
+        await using var raw = await store.RawAsync(cancellationToken);
+        Assert.Equal(0, await Sql.ScalarAsync(raw, "SELECT count(*) FROM outbox;", cancellationToken));
+    }
+
+    [Fact]
+    [Trait("Story", "US-16")]
+    [Trait("NFR", "NFR-07")]
+    public async Task Messages_MarkReceivedByAnotherContactOrForAnUnknownOrReceivedMessage_ChangesNothing()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var store = await StorageFixture.OpenAsync(cancellationToken);
+        var (user, bob, carol) = await store.FillAsync(cancellationToken);
+        using var userKeys = user;
+        using var bobKeys = bob;
+        using var carolKeys = carol;
+        using var stranger = KeySet.Create();
+        var loaded = await store.Data.Messages.LoadAllAsync(cancellationToken);
+        var sentToBob = loaded[0];
+        var receivedFromBob = loaded[1];
+
+        Assert.False(await store.Data.Messages.MarkReceivedAsync(carol.IdentityKey, sentToBob.Id, cancellationToken));
+        Assert.False(await store.Data.Messages.MarkReceivedAsync(stranger.IdentityKey, sentToBob.Id, cancellationToken));
+        Assert.False(await store.Data.Messages.MarkReceivedAsync(user.IdentityKey, sentToBob.Id, cancellationToken));
+        Assert.False(await store.Data.Messages.MarkReceivedAsync(bob.IdentityKey, MessageId.Create(), cancellationToken));
+        Assert.False(await store.Data.Messages.MarkReceivedAsync(bob.IdentityKey, receivedFromBob.Id, cancellationToken));
+
+        Assert.Equal(loaded, await store.Data.Messages.LoadAllAsync(cancellationToken));
+    }
+
+    [Theory]
+    [Trait("Story", "US-15")]
+    [InlineData(StoredMessageDirection.Outgoing, StoredDeliveryState.None)]
+    [InlineData(StoredMessageDirection.Incoming, StoredDeliveryState.Waiting)]
+    [InlineData(StoredMessageDirection.Incoming, StoredDeliveryState.Received)]
+    public async Task Message_WithADeliveryThatDoesNotFitItsDirection_IsRefused(StoredMessageDirection direction, StoredDeliveryState delivery)
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var store = await StorageFixture.OpenAsync(cancellationToken);
+        var (user, bob, carol) = await store.FillAsync(cancellationToken);
+        using var userKeys = user;
+        using var bobKeys = bob;
+        using var carolKeys = carol;
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => store.Data.Messages.AddAsync(Samples.Message(bob.IdentityKey, direction, 5, "Odd", 9) with { Delivery = delivery }, cancellationToken));
+
+        Assert.Equal(3, (await store.Data.Messages.LoadAllAsync(cancellationToken)).Count);
     }
 
     [Fact]

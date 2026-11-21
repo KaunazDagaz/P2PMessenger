@@ -229,8 +229,8 @@ public sealed class ConnectionService : IAsyncDisposable
         }
     }
 
-    internal Task<bool> SendAsync(Ed25519PublicKey contactKey, SessionMessage message, CancellationToken cancellationToken) =>
-        manager.SendAsync(contactKey, message, cancellationToken);
+    internal bool TryGetConnection(Ed25519PublicKey contactKey, [NotNullWhen(true)] out ContactConnection? connection) =>
+        manager.TryGetConnection(contactKey, out connection);
 
     private static TimeSpan Jittered(TimeSpan delay) => delay * (0.8 + (RandomNumberGenerator.GetInt32(0, 401) / 1000.0));
 
@@ -442,9 +442,16 @@ public sealed class ConnectionService : IAsyncDisposable
 
         public async ValueTask MessageReceivedAsync(ContactConnection connection, SessionMessage message, CancellationToken cancellationToken)
         {
-            if (message is TextMessage text)
+            Ed25519PublicKey contactKey = connection.Contact.IdentityKey;
+            switch (message)
             {
-                await service.chats.ReceiveAsync(connection.Contact.IdentityKey, text, cancellationToken).ConfigureAwait(false);
+                case TextMessage text:
+                    await service.chats.ReceiveAsync(contactKey, text, cancellationToken).ConfigureAwait(false);
+                    _ = connection.SendAsync(Acknowledgement.Create(text.Id), CancellationToken.None);
+                    break;
+                case Acknowledgement acknowledgement:
+                    await service.chats.MarkReceivedAsync(contactKey, acknowledgement.Id, cancellationToken).ConfigureAwait(false);
+                    break;
             }
         }
 

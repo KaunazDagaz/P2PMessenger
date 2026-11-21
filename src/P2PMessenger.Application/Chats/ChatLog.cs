@@ -36,6 +36,24 @@ public sealed class ChatLog : IDisposable
         }
     }
 
+    public IReadOnlyList<ChatMessage> WaitingFor(Ed25519PublicKey contactKey)
+    {
+        ArgumentNullException.ThrowIfNull(contactKey);
+
+        lock (gate)
+        {
+            return conversations.TryGetValue(contactKey, out Conversation? conversation) ? conversation.Waiting() : [];
+        }
+    }
+
+    public IReadOnlyList<Ed25519PublicKey> ContactsWithWaitingMessages()
+    {
+        lock (gate)
+        {
+            return [.. conversations.Where(static pair => pair.Value.HasWaiting()).Select(static pair => pair.Key)];
+        }
+    }
+
     public int UnreadCount(Ed25519PublicKey contactKey)
     {
         ArgumentNullException.ThrowIfNull(contactKey);
@@ -79,7 +97,6 @@ public sealed class ChatLog : IDisposable
 
             message = ChatMessage.From(contactKey, MessageDirection.Incoming, text, timeProvider.GetUtcNow());
             await store.AddAsync(message, cancellationToken).ConfigureAwait(false);
-            await seen.AddAsync(text.Id, cancellationToken).ConfigureAwait(false);
             lock (gate)
             {
                 Conversation conversation = ConversationWith(contactKey);
@@ -93,6 +110,41 @@ public sealed class ChatLog : IDisposable
         }
 
         Changed?.Invoke(this, new ChatChangedEventArgs(contactKey, message));
+        return true;
+    }
+
+    public async Task<bool> MarkReceivedAsync(Ed25519PublicKey contactKey, MessageId id, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(contactKey);
+        ArgumentNullException.ThrowIfNull(id);
+
+        ChatMessage received;
+        await writing.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ChatMessage? waiting;
+            lock (gate)
+            {
+                waiting = conversations.TryGetValue(contactKey, out Conversation? conversation) ? conversation.FindWaiting(id) : null;
+            }
+
+            if (waiting is null || !await store.MarkReceivedAsync(contactKey, id, cancellationToken).ConfigureAwait(false))
+            {
+                return false;
+            }
+
+            received = waiting.WithDelivery(DeliveryState.Received);
+            lock (gate)
+            {
+                ConversationWith(contactKey).Replace(waiting, received);
+            }
+        }
+        finally
+        {
+            writing.Release();
+        }
+
+        Changed?.Invoke(this, new ChatChangedEventArgs(contactKey, null, received));
         return true;
     }
 
@@ -117,7 +169,6 @@ public sealed class ChatLog : IDisposable
         try
         {
             await store.AddAsync(message, cancellationToken).ConfigureAwait(false);
-            await seen.AddAsync(text.Id, cancellationToken).ConfigureAwait(false);
             lock (gate)
             {
                 ConversationWith(contactKey).Insert(message);
@@ -151,6 +202,8 @@ public sealed class ChatLog : IDisposable
 
         public int Unread { get; set; }
 
+        public int WaitingCount { get; private set; }
+
         public void Insert(ChatMessage message)
         {
             int index = Messages.Count;
@@ -160,10 +213,34 @@ public sealed class ChatLog : IDisposable
             }
 
             Messages.Insert(index, message);
+            if (message.IsWaiting)
+            {
+                WaitingCount++;
+            }
+
             if (message.Direction == MessageDirection.Outgoing && message.Sequence > LastSentSequence)
             {
                 LastSentSequence = message.Sequence;
             }
+        }
+
+        public ChatMessage? FindWaiting(MessageId id) => Messages.Find(message => message.IsWaiting && message.Id.Equals(id));
+
+        public bool HasWaiting() => WaitingCount > 0;
+
+        public IReadOnlyList<ChatMessage> Waiting() =>
+            [.. Messages.Where(static message => message.IsWaiting).OrderBy(static message => message.Sequence)];
+
+        public void Replace(ChatMessage old, ChatMessage replacement)
+        {
+            int index = Messages.IndexOf(old);
+            if (index < 0)
+            {
+                return;
+            }
+
+            Messages[index] = replacement;
+            WaitingCount += (replacement.IsWaiting ? 1 : 0) - (old.IsWaiting ? 1 : 0);
         }
 
         private static bool ComesAfter(ChatMessage earlier, ChatMessage message) =>

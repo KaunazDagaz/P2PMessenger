@@ -66,6 +66,35 @@ public sealed class TamperTests
         await store.LoadEverythingAsync(cancellationToken);
     }
 
+    public static TheoryData<string> DeliveryChanges { get; } =
+    [
+        "DELETE FROM message_delivery WHERE message_id = 1;",
+        "INSERT INTO message_delivery (message_id, recipient_person_id, state) VALUES (2, 2, 1);",
+        "INSERT INTO message_delivery (message_id, recipient_person_id, state) VALUES (1, 3, 1);",
+        "UPDATE message_delivery SET recipient_person_id = 3 WHERE message_id = 1;",
+    ];
+
+    [Theory]
+    [Trait("Story", "US-15")]
+    [Trait("Story", "US-16")]
+    [Trait("NFR", "NFR-07")]
+    [MemberData(nameof(DeliveryChanges))]
+    public async Task Load_DeliveryMissingOrOnAMessageItDoesNotBelongTo_IsRefusedAsDamaged(string change)
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var store = await StorageFixture.OpenAsync(cancellationToken);
+        var (user, bob, carol) = await store.FillAsync(cancellationToken);
+        using var userKeys = user;
+        using var bobKeys = bob;
+        using var carolKeys = carol;
+        await store.LoadEverythingAsync(cancellationToken);
+        await using var raw = await store.RawAsync(cancellationToken);
+
+        await Sql.ExecuteAsync(raw, change, [], cancellationToken);
+
+        await Assert.ThrowsAsync<StoredDataException>(() => store.LoadEverythingAsync(cancellationToken));
+    }
+
     [Theory]
     [Trait("Story", "US-20")]
     [Trait("NFR", "NFR-09")]

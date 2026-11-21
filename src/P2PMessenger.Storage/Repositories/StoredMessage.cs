@@ -10,4 +10,7 @@ public sealed record StoredMessage(
     long Sequence,
     DateTimeOffset WrittenAt,
     string Text,
-    DateTimeOffset RecordedAt);
+    DateTimeOffset RecordedAt)
+{
+    public StoredDeliveryState Delivery { get; init; } = Direction == StoredMessageDirection.Outgoing ? StoredDeliveryState.Waiting : StoredDeliveryState.None;
+}

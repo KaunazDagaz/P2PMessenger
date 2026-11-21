@@ -38,12 +38,12 @@ public sealed class AppSliceTests
         for (int index = 1; index <= 5; index++)
         {
             var sent = await alice.Messenger.SendAsync(bobKey, $"alice {index}", cancellationToken);
-            Assert.Equal(SendOutcome.Sent, sent.Outcome);
+            Assert.Equal(SendOutcome.Queued, sent.Outcome);
             Assert.Equal(index, sent.Message?.Sequence);
         }
 
-        Assert.Equal(SendOutcome.Sent, (await bob.Messenger.SendAsync(aliceKey, "bob 1", cancellationToken)).Outcome);
-        Assert.Equal(SendOutcome.Sent, (await bob.Messenger.SendAsync(aliceKey, "bob 2", cancellationToken)).Outcome);
+        Assert.Equal(SendOutcome.Queued, (await bob.Messenger.SendAsync(aliceKey, "bob 1", cancellationToken)).Outcome);
+        Assert.Equal(SendOutcome.Queued, (await bob.Messenger.SendAsync(aliceKey, "bob 2", cancellationToken)).Outcome);
 
         await Eventually.HoldsAsync(() => bob.Messenger.Chats.MessagesWith(aliceKey).Count == 7, cancellationToken);
         await Eventually.HoldsAsync(() => alice.Messenger.Chats.MessagesWith(bobKey).Count == 7, cancellationToken);
@@ -172,13 +172,15 @@ public sealed class AppSliceTests
         Assert.Equal(AddContactOutcome.KeysReplaced, result.Outcome);
         Assert.Equal(ContactState.WaitingForFirstConnection, result.Contact?.State);
         await Eventually.HoldsAsync(() => alice.ContactFor(renewed).IsAdded && alice.Messenger.Connections.IsConnected(renewed.IdentityKey), cancellationToken);
-        Assert.Equal(SendOutcome.Sent, (await alice.Messenger.SendAsync(renewed.IdentityKey, "still you?", cancellationToken)).Outcome);
+        Assert.Equal(SendOutcome.Queued, (await alice.Messenger.SendAsync(renewed.IdentityKey, "still you?", cancellationToken)).Outcome);
         await Eventually.HoldsAsync(() => renewedBob.Messenger.Chats.MessagesWith(alice.Identity.Keys.IdentityKey).Count == 1, cancellationToken);
     }
 
     [Fact(Timeout = 60_000)]
-    [Trait("Story", "US-11")]
-    public async Task ContactGoesAway_SendingIsRefusedAndNothingIsShown()
+    [Trait("Story", "US-15")]
+    [Trait("Story", "US-16")]
+    [Trait("NFR", "NFR-07")]
+    public async Task ContactGoesAway_MessageIsShownAndKeptAsWaiting()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         await using var alice = await AppPeer.StartAsync("Alice", cancellationToken);
@@ -193,8 +195,11 @@ public sealed class AppSliceTests
 
         await Eventually.HoldsAsync(() => !alice.Messenger.Connections.IsConnected(bobKey), cancellationToken);
         var result = await alice.Messenger.SendAsync(bobKey, "are you there?", cancellationToken);
-        Assert.Equal(SendOutcome.NotConnected, result.Outcome);
-        Assert.Empty(alice.Messenger.Chats.MessagesWith(bobKey));
+        Assert.Equal(SendOutcome.Queued, result.Outcome);
+        await Task.Delay(300, cancellationToken);
+        var shown = Assert.Single(alice.Messenger.Chats.MessagesWith(bobKey));
+        Assert.Equal("are you there?", shown.Text);
+        Assert.Equal(DeliveryState.Waiting, shown.Delivery);
         Assert.True(alice.ContactFor(bobKey).IsAdded);
     }
 }

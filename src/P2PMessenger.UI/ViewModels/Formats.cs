@@ -14,7 +14,6 @@ internal static class Formats
     public static readonly CompositeFormat LooksLike = CompositeFormat.Parse(UiText.AddContactLooksLikeFormat);
     public static readonly CompositeFormat Waiting = CompositeFormat.Parse(UiText.ConversationWaitingFormat);
     public static readonly CompositeFormat KeyNotCompared = CompositeFormat.Parse(UiText.ConversationKeyNotComparedFormat);
-    public static readonly CompositeFormat NotConnected = CompositeFormat.Parse(UiText.ConversationNotConnectedFormat);
     public static readonly CompositeFormat NotAdded = CompositeFormat.Parse(UiText.ConversationNotAddedFormat);
     public static readonly CompositeFormat VerifyIntro = CompositeFormat.Parse(UiText.VerifyIntroFormat);
     public static readonly CompositeFormat Theirs = CompositeFormat.Parse(UiText.VerifyTheirsFormat);

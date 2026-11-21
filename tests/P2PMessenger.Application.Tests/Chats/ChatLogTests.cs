@@ -8,14 +8,15 @@ public sealed class ChatLogTests : IDisposable
 {
     private readonly KeySet bob = KeySet.Create();
     private readonly KeySet carol = KeySet.Create();
-    private readonly InMemoryChatStore store = new();
     private readonly InMemorySeenMessageIds seen = new();
+    private readonly InMemoryChatStore store;
     private readonly ManualTime time = new(DateTimeOffset.Parse("2026-11-16T12:00:00Z", System.Globalization.CultureInfo.InvariantCulture));
     private readonly ChatLog log;
     private readonly List<ChatChangedEventArgs> changes = [];
 
     public ChatLogTests()
     {
+        store = new InMemoryChatStore(seen);
         log = new ChatLog(store, seen, time, []);
         log.Changed += (_, change) => changes.Add(change);
     }
@@ -149,6 +150,114 @@ public sealed class ChatLogTests : IDisposable
         Assert.Equal(0, log.UnreadCount(bob.IdentityKey));
         var change = Assert.Single(changes);
         Assert.Null(change.Added);
+    }
+
+    [Fact]
+    [Trait("Story", "US-15")]
+    [Trait("Story", "US-16")]
+    public async Task RecordOutgoingAsync_NewText_IsWaitingAndItsIdIsSeen()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var text = Text(log.NextSequence(bob.IdentityKey), "hello");
+
+        var recorded = await log.RecordOutgoingAsync(bob.IdentityKey, text, time.GetUtcNow(), cancellationToken);
+
+        Assert.Equal(DeliveryState.Waiting, recorded.Delivery);
+        Assert.Same(recorded, Assert.Single(log.WaitingFor(bob.IdentityKey)));
+        Assert.Equal([bob.IdentityKey], log.ContactsWithWaitingMessages());
+        Assert.True(await seen.ContainsAsync(text.Id, cancellationToken));
+        Assert.Equal(DeliveryState.Waiting, Assert.Single(await store.LoadAllAsync(cancellationToken)).Delivery);
+    }
+
+    [Fact]
+    [Trait("Story", "US-16")]
+    [Trait("NFR", "NFR-07")]
+    public async Task MarkReceivedAsync_AcknowledgedByTheContact_IsReceivedOnceAndStored()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var text = Text(log.NextSequence(bob.IdentityKey), "hello");
+        await log.RecordOutgoingAsync(bob.IdentityKey, text, time.GetUtcNow(), cancellationToken);
+        changes.Clear();
+
+        var first = await log.MarkReceivedAsync(bob.IdentityKey, text.Id, cancellationToken);
+        var second = await log.MarkReceivedAsync(bob.IdentityKey, text.Id, cancellationToken);
+
+        Assert.True(first);
+        Assert.False(second);
+        var message = Assert.Single(log.MessagesWith(bob.IdentityKey));
+        Assert.Equal(DeliveryState.Received, message.Delivery);
+        Assert.Equal(text.Id, message.Id);
+        Assert.Empty(log.WaitingFor(bob.IdentityKey));
+        Assert.Empty(log.ContactsWithWaitingMessages());
+        Assert.Equal(DeliveryState.Received, Assert.Single(await store.LoadAllAsync(cancellationToken)).Delivery);
+        var change = Assert.Single(changes);
+        Assert.Null(change.Added);
+        Assert.Same(message, change.Updated);
+    }
+
+    [Fact]
+    [Trait("Story", "US-16")]
+    [Trait("NFR", "NFR-07")]
+    public async Task MarkReceivedAsync_FromAnotherContactOrForAnUnknownOrReceivedId_ChangesNothing()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var toBob = Text(log.NextSequence(bob.IdentityKey), "for Bob");
+        await log.RecordOutgoingAsync(bob.IdentityKey, toBob, time.GetUtcNow(), cancellationToken);
+        var fromBob = Text(1, "from Bob");
+        await log.ReceiveAsync(bob.IdentityKey, fromBob, cancellationToken);
+        changes.Clear();
+
+        Assert.False(await log.MarkReceivedAsync(carol.IdentityKey, toBob.Id, cancellationToken));
+        Assert.False(await log.MarkReceivedAsync(bob.IdentityKey, MessageId.Create(), cancellationToken));
+        Assert.False(await log.MarkReceivedAsync(bob.IdentityKey, fromBob.Id, cancellationToken));
+
+        Assert.Equal(DeliveryState.Waiting, Assert.Single(log.WaitingFor(bob.IdentityKey)).Delivery);
+        Assert.Equal(
+            [DeliveryState.Waiting, DeliveryState.None],
+            log.MessagesWith(bob.IdentityKey).Select(static message => message.Delivery));
+        Assert.Empty(changes);
+    }
+
+    [Fact]
+    [Trait("Story", "US-15")]
+    public async Task WaitingFor_SeveralWaitingTexts_AreInTheOrderWritten()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var first = Text(log.NextSequence(bob.IdentityKey), "first");
+        var second = Text(log.NextSequence(bob.IdentityKey), "second");
+        var third = Text(log.NextSequence(bob.IdentityKey), "third");
+        await log.RecordOutgoingAsync(bob.IdentityKey, third, time.GetUtcNow(), cancellationToken);
+        await log.RecordOutgoingAsync(bob.IdentityKey, first, time.GetUtcNow(), cancellationToken);
+        await log.RecordOutgoingAsync(bob.IdentityKey, second, time.GetUtcNow(), cancellationToken);
+        Assert.True(await log.MarkReceivedAsync(bob.IdentityKey, second.Id, cancellationToken));
+
+        var waiting = log.WaitingFor(bob.IdentityKey);
+
+        Assert.Equal(["first", "third"], waiting.Select(static message => message.Text));
+        Assert.Empty(log.WaitingFor(carol.IdentityKey));
+    }
+
+    [Fact]
+    [Trait("Story", "US-15")]
+    public void Constructor_LoadedWaitingAndReceivedTexts_KeepTheirStates()
+    {
+        var waiting = ChatMessage.From(bob.IdentityKey, MessageDirection.Outgoing, Text(1, "waiting"), time.GetUtcNow());
+        var received = new ChatMessage(bob.IdentityKey, MessageDirection.Outgoing, MessageId.Create(), 2, time.GetUtcNow(), "received", time.GetUtcNow(), DeliveryState.Received);
+
+        using var loaded = new ChatLog(store, seen, time, [waiting, received]);
+
+        Assert.Same(waiting, Assert.Single(loaded.WaitingFor(bob.IdentityKey)));
+        Assert.Equal([bob.IdentityKey], loaded.ContactsWithWaitingMessages());
+    }
+
+    [Theory]
+    [InlineData(MessageDirection.Outgoing, DeliveryState.None)]
+    [InlineData(MessageDirection.Incoming, DeliveryState.Waiting)]
+    [InlineData(MessageDirection.Incoming, DeliveryState.Received)]
+    public void ChatMessage_DeliveryThatDoesNotFitTheDirection_IsRefused(MessageDirection direction, DeliveryState delivery)
+    {
+        Assert.Throws<ArgumentException>(
+            () => new ChatMessage(bob.IdentityKey, direction, MessageId.Create(), 1, time.GetUtcNow(), "text", time.GetUtcNow(), delivery));
     }
 
     public void Dispose()

@@ -96,6 +96,22 @@
                                         <Run Text="{Binding WrittenAt}" />
                                     </TextBlock>
                                     <SelectableTextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                                    <StackPanel Spacing="2" IsVisible="{Binding IsOwn}">
+                                        <Button HorizontalAlignment="Right"
+                                                Padding="0"
+                                                FontSize="12"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                Content="{Binding StateText}"
+                                                Command="{Binding ToggleExplanationCommand}"
+                                                AutomationProperties.HelpText="{Binding StateExplanation}" />
+                                        <TextBlock Text="{Binding StateExplanation}"
+                                                   IsVisible="{Binding IsExplanationShown}"
+                                                   FontSize="12"
+                                                   MaxWidth="400"
+                                                   HorizontalAlignment="Right"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
                         </DataTemplate>
