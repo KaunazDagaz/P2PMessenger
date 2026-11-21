@@ -1,3 +1,4 @@
+using P2PMessenger.Application.Chats;
 using P2PMessenger.Application.Connections;
 using P2PMessenger.Application.Contacts;
 using P2PMessenger.Core.Identity;
@@ -35,7 +36,7 @@ public sealed class MessengerTests
         var result = await messenger.SendAsync(bob.IdentityKey, text, cancellationToken);
 
         Assert.Equal(SendOutcome.Empty, result.Outcome);
-        Assert.False(result.IsSent);
+        Assert.False(result.IsQueued);
         messenger.Identity.Dispose();
     }
 
@@ -98,8 +99,9 @@ public sealed class MessengerTests
     }
 
     [Fact]
-    [Trait("Story", "US-11")]
-    public async Task SendAsync_AddedContactNotConnected_IsNotSentAndNotShown()
+    [Trait("Story", "US-15")]
+    [Trait("Story", "US-16")]
+    public async Task SendAsync_AddedContactNotConnected_IsKeptAsWaiting()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         await using var messenger = await TestMessengers.StartAsync("Alice", cancellationToken);
@@ -109,8 +111,13 @@ public sealed class MessengerTests
 
         var result = await messenger.SendAsync(bob.IdentityKey, "hello", cancellationToken);
 
-        Assert.Equal(SendOutcome.NotConnected, result.Outcome);
-        Assert.Empty(messenger.Chats.MessagesWith(bob.IdentityKey));
+        Assert.Equal(SendOutcome.Queued, result.Outcome);
+        Assert.True(result.IsQueued);
+        Assert.Equal(DeliveryState.Waiting, result.Message.Delivery);
+        Assert.Equal(1, result.Message.Sequence);
+        var shown = Assert.Single(messenger.Chats.MessagesWith(bob.IdentityKey));
+        Assert.Same(result.Message, shown);
+        Assert.Same(shown, Assert.Single(messenger.Chats.WaitingFor(bob.IdentityKey)));
         Assert.False(messenger.Connections.IsConnected(bob.IdentityKey));
         messenger.Identity.Dispose();
     }

@@ -1,7 +1,9 @@
 using System.Text;
+using Microsoft.Extensions.Logging;
 using P2PMessenger.Application.Chats;
 using P2PMessenger.Application.Connections;
 using P2PMessenger.Application.Contacts;
+using P2PMessenger.Application.Delivery;
 using P2PMessenger.Application.Identity;
 using P2PMessenger.Core.Crypto;
 using P2PMessenger.Core.Messages;
@@ -11,14 +13,16 @@ namespace P2PMessenger.Application;
 public sealed class Messenger : IAsyncDisposable
 {
     private readonly TimeProvider timeProvider;
+    private readonly Outbox outbox;
     private int disposed;
 
-    private Messenger(OwnIdentity identity, ContactBook contacts, ChatLog chats, ConnectionService connections, TimeProvider timeProvider)
+    private Messenger(OwnIdentity identity, ContactBook contacts, ChatLog chats, ConnectionService connections, Outbox outbox, TimeProvider timeProvider)
     {
         Identity = identity;
         Contacts = contacts;
         Chats = chats;
         Connections = connections;
+        this.outbox = outbox;
         this.timeProvider = timeProvider;
     }
 
@@ -34,6 +38,11 @@ public sealed class Messenger : IAsyncDisposable
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(setup);
+        string? problem = setup.Delivery.FindProblem();
+        if (problem is not null)
+        {
+            throw new ArgumentException(problem, nameof(setup));
+        }
 
         IReadOnlyList<Contact> contacts = await setup.ContactStore.LoadAllAsync(cancellationToken).ConfigureAwait(false);
         IReadOnlyList<ChatMessage> messages = await setup.ChatStore.LoadAllAsync(cancellationToken).ConfigureAwait(false);
@@ -41,7 +50,9 @@ public sealed class Messenger : IAsyncDisposable
         ContactBook contactBook = new(identity, setup.ContactStore, contacts);
         ChatLog chatLog = new(setup.ChatStore, setup.SeenMessageIds, setup.TimeProvider, messages);
         ConnectionService connections = new(identity, contactBook, chatLog, setup.Connection, setup.TimeProvider, setup.Loggers);
-        Messenger messenger = new(identity, contactBook, chatLog, connections, setup.TimeProvider);
+        IWakeUpScheduler scheduler = setup.WakeUps ?? new TimerWakeUpScheduler(setup.TimeProvider);
+        Outbox outbox = new(chatLog, connections, scheduler, setup.Delivery, setup.TimeProvider, setup.Loggers.CreateLogger<Outbox>());
+        Messenger messenger = new(identity, contactBook, chatLog, connections, outbox, setup.TimeProvider);
         try
         {
             await connections.ListenAsync(setup.ListenAddress, setup.ListenPort, cancellationToken).ConfigureAwait(false);
@@ -80,11 +91,6 @@ public sealed class Messenger : IAsyncDisposable
             return new SendResult(SendOutcome.WaitingForFirstConnection, null);
         }
 
-        if (!Connections.IsConnected(contactKey))
-        {
-            return new SendResult(SendOutcome.NotConnected, null);
-        }
-
         DateTimeOffset now = timeProvider.GetUtcNow();
         long sequence = Chats.NextSequence(contactKey);
         if (!TextMessage.TryCreate(MessageId.Create(), sequence, now, text, out TextMessage? message))
@@ -92,13 +98,9 @@ public sealed class Messenger : IAsyncDisposable
             return new SendResult(SendOutcome.NotSendable, null);
         }
 
-        if (!await Connections.SendAsync(contactKey, message, cancellationToken).ConfigureAwait(false))
-        {
-            return new SendResult(SendOutcome.NotConnected, null);
-        }
-
         ChatMessage recorded = await Chats.RecordOutgoingAsync(contactKey, message, now, cancellationToken).ConfigureAwait(false);
-        return new SendResult(SendOutcome.Sent, recorded);
+        outbox.Request(contactKey);
+        return new SendResult(SendOutcome.Queued, recorded);
     }
 
     public async ValueTask DisposeAsync()
@@ -108,6 +110,7 @@ public sealed class Messenger : IAsyncDisposable
             return;
         }
 
+        await outbox.DisposeAsync().ConfigureAwait(false);
         await Connections.DisposeAsync().ConfigureAwait(false);
         Chats.Dispose();
         Contacts.Dispose();

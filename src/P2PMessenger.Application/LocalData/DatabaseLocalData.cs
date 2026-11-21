@@ -98,13 +98,16 @@ public sealed class DatabaseLocalData : ILocalData
         _ => throw new ArgumentOutOfRangeException(nameof(outcome), outcome, "The outcome is not a failure."),
     };
 
-    private static LocalDataResult InMemoryWithoutKeyStore() =>
-        LocalDataResult.Opened(new LocalDataStores(
+    private static LocalDataResult InMemoryWithoutKeyStore()
+    {
+        InMemorySeenMessageIds seen = new();
+        return LocalDataResult.Opened(new LocalDataStores(
             new InMemoryIdentityStore(),
             new InMemoryContactStore(),
-            new InMemoryChatStore(),
-            new InMemorySeenMessageIds(),
+            new InMemoryChatStore(seen),
+            seen,
             LocalDataMode.MemoryOnlyNoKeyStore));
+    }
 
     private async Task<LocalDataResult> OpenOnceAsync(CancellationToken cancellationToken)
     {

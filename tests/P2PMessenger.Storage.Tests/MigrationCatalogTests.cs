@@ -26,9 +26,20 @@ public sealed class MigrationCatalogTests
     {
         var migrations = MigrationCatalog.Load();
 
-        Assert.Equal(2, migrations.Count);
         Assert.Equal("0002_message_id", migrations[1].Name);
         Assert.Contains("ADD COLUMN message_id_enc", migrations[1].Script, StringComparison.Ordinal);
         Assert.Contains("ADD COLUMN recorded_at_enc", migrations[1].Script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("Story", "US-15")]
+    [Trait("Story", "US-16")]
+    public void Load_ThirdScript_GivesEarlierSentMessagesAWaitingDelivery()
+    {
+        var migrations = MigrationCatalog.Load();
+
+        Assert.Equal(3, migrations.Count);
+        Assert.Equal("0003_outgoing_delivery", migrations[2].Name);
+        Assert.Contains("INSERT INTO message_delivery", migrations[2].Script, StringComparison.Ordinal);
     }
 }

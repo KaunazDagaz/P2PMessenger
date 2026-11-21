@@ -46,9 +46,12 @@ internal sealed class AppPeer : IAsyncDisposable
     }
 
     public static Task<AppPeer> StartAsync(string name, CancellationToken cancellationToken) =>
-        StartAsync(KeySet.Create(), name, cancellationToken);
+        StartAsync(KeySet.Create(), name, static setup => setup, cancellationToken);
 
-    public static async Task<AppPeer> StartAsync(KeySet keys, string name, CancellationToken cancellationToken)
+    public static Task<AppPeer> StartAsync(KeySet keys, string name, CancellationToken cancellationToken) =>
+        StartAsync(keys, name, static setup => setup, cancellationToken);
+
+    public static async Task<AppPeer> StartAsync(KeySet keys, string name, Func<MessengerSetup, MessengerSetup> adjust, CancellationToken cancellationToken)
     {
         Assert.True(DisplayName.TryCreate(name, out var displayName));
         var setup = MessengerSetup.InMemory() with
@@ -57,7 +60,7 @@ internal sealed class AppPeer : IAsyncDisposable
             ListenPort = 0,
             Connection = TestOptions.Fast,
         };
-        return new AppPeer(await Messenger.StartAsync(new OwnIdentity(keys, displayName), setup, cancellationToken));
+        return new AppPeer(await Messenger.StartAsync(new OwnIdentity(keys, displayName), adjust(setup), cancellationToken));
     }
 
     public static async Task<AppPeer> StartSavedAsync(string databasePath, IKeyProtector protector, string name, CancellationToken cancellationToken)

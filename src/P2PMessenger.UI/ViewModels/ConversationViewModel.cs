@@ -128,16 +128,15 @@ public sealed partial class ConversationViewModel : PageViewModel
             SendResult result = await messenger.SendAsync(contactKey, Draft.TrimEnd(), cancellationToken);
             ErrorMessage = result.Outcome switch
             {
-                SendOutcome.Sent => null,
+                SendOutcome.Queued => null,
                 SendOutcome.Empty => null,
                 SendOutcome.TooLong => UiText.ConversationTooLong,
                 SendOutcome.NotSendable => UiText.ConversationNotSendable,
                 SendOutcome.NotAContact => UiText.ConversationNotAContact,
-                SendOutcome.WaitingForFirstConnection => Formats.With(Formats.NotAdded, ContactName),
-                _ => Formats.With(Formats.NotConnected, ContactName),
+                _ => Formats.With(Formats.NotAdded, ContactName),
             };
 
-            if (result.IsSent)
+            if (result.IsQueued)
             {
                 Draft = string.Empty;
                 RefreshMessages();
@@ -170,17 +169,20 @@ public sealed partial class ConversationViewModel : PageViewModel
 
     private void OnChatChanged(object? sender, ChatChangedEventArgs e)
     {
-        if (e.ContactKey.Equals(contactKey) && e.Added is not null)
+        if (!e.ContactKey.Equals(contactKey) || (e.Added is null && e.Updated is null))
         {
-            uiThread.Post(() =>
-            {
-                RefreshMessages();
-                if (shown)
-                {
-                    messenger.Chats.MarkRead(contactKey);
-                }
-            });
+            return;
         }
+
+        bool added = e.Added is not null;
+        uiThread.Post(() =>
+        {
+            RefreshMessages();
+            if (added && shown)
+            {
+                messenger.Chats.MarkRead(contactKey);
+            }
+        });
     }
 
     private void OnConnectionChanged(object? sender, ConnectionChangedEventArgs e)
@@ -217,6 +219,7 @@ public sealed partial class ConversationViewModel : PageViewModel
             ChatMessage message = all[index];
             if (index < Messages.Count && Messages[index].Id.Equals(message.Id))
             {
+                Messages[index].Update(message);
                 continue;
             }
 

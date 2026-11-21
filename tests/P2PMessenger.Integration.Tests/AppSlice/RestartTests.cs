@@ -38,11 +38,11 @@ public sealed class RestartTests
                 await Eventually.HoldsAsync(() => alice.ContactFor(bob).IsAdded && alice.Messenger.Connections.IsConnected(bobKey), cancellationToken);
                 Assert.True(await alice.Messenger.Contacts.SetKeyComparisonAsync(bobKey, KeyComparison.CheckedByYou, cancellationToken));
 
-                Assert.Equal(SendOutcome.Sent, (await alice.Messenger.SendAsync(bobKey, "alice 1", cancellationToken)).Outcome);
+                Assert.Equal(SendOutcome.Queued, (await alice.Messenger.SendAsync(bobKey, "alice 1", cancellationToken)).Outcome);
                 await Eventually.HoldsAsync(() => bob.Messenger.Chats.MessagesWith(aliceKey).Count == 1, cancellationToken);
-                Assert.Equal(SendOutcome.Sent, (await bob.Messenger.SendAsync(aliceKey, "bob 1", cancellationToken)).Outcome);
+                Assert.Equal(SendOutcome.Queued, (await bob.Messenger.SendAsync(aliceKey, "bob 1", cancellationToken)).Outcome);
                 await Eventually.HoldsAsync(() => alice.Messenger.Chats.MessagesWith(bobKey).Count == 2, cancellationToken);
-                Assert.Equal(SendOutcome.Sent, (await alice.Messenger.SendAsync(bobKey, "alice 2", cancellationToken)).Outcome);
+                Assert.Equal(SendOutcome.Queued, (await alice.Messenger.SendAsync(bobKey, "alice 2", cancellationToken)).Outcome);
                 await Eventually.HoldsAsync(() => alice.Messenger.Chats.MessagesWith(bobKey).Count == 3, cancellationToken);
                 before = alice.Messenger.Chats.MessagesWith(bobKey);
             }
@@ -66,10 +66,10 @@ public sealed class RestartTests
             restarted.Messenger.Connections.SetAddress(bobKey, bob.Endpoint);
             await Eventually.HoldsAsync(() => restarted.Messenger.Connections.IsConnected(bobKey) && bob.Messenger.Connections.IsConnected(aliceKey), cancellationToken);
             var sent = await restarted.Messenger.SendAsync(bobKey, "alice 3", cancellationToken);
-            Assert.Equal(SendOutcome.Sent, sent.Outcome);
+            Assert.Equal(SendOutcome.Queued, sent.Outcome);
             Assert.Equal(3, sent.Message?.Sequence);
             await Eventually.HoldsAsync(() => bob.Messenger.Chats.MessagesWith(aliceKey).Count == 4, cancellationToken);
-            Assert.Equal(SendOutcome.Sent, (await bob.Messenger.SendAsync(aliceKey, "bob 2", cancellationToken)).Outcome);
+            Assert.Equal(SendOutcome.Queued, (await bob.Messenger.SendAsync(aliceKey, "bob 2", cancellationToken)).Outcome);
             await Eventually.HoldsAsync(() => restarted.Messenger.Chats.MessagesWith(bobKey).Count == 5, cancellationToken);
             Assert.Equal(
                 ["alice 1", "bob 1", "alice 2", "alice 3", "bob 2"],

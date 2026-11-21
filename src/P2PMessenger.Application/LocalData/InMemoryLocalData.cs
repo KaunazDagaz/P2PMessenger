@@ -15,7 +15,8 @@ public sealed class InMemoryLocalData : ILocalData
             throw new ArgumentOutOfRangeException(nameof(mode), mode, "Data in memory is never saved.");
         }
 
-        stores = new LocalDataStores(new InMemoryIdentityStore(), new InMemoryContactStore(), new InMemoryChatStore(), new InMemorySeenMessageIds(), mode);
+        InMemorySeenMessageIds seen = new();
+        stores = new LocalDataStores(new InMemoryIdentityStore(), new InMemoryContactStore(), new InMemoryChatStore(seen), seen, mode);
     }
 
     public Task<LocalDataResult> OpenAsync(CancellationToken cancellationToken) => Task.FromResult(LocalDataResult.Opened(stores));

@@ -35,9 +35,9 @@ internal static class Sql
         return value is null or DBNull ? null : Convert.ToInt64(value, CultureInfo.InvariantCulture);
     }
 
-    public static async Task ExecuteAsync(SqliteConnection connection, SqliteTransaction? transaction, string text, CancellationToken cancellationToken, params (string Name, object Value)[] parameters)
+    public static async Task<int> ExecuteAsync(SqliteConnection connection, SqliteTransaction? transaction, string text, CancellationToken cancellationToken, params (string Name, object Value)[] parameters)
     {
         using SqliteCommand command = Command(connection, transaction, text, parameters);
-        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 }

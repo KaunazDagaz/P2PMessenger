@@ -517,15 +517,6 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Not sent: {0} is not connected now. Try again when they are connected..
-        /// </summary>
-        public static string ConversationNotConnectedFormat {
-            get {
-                return ResourceManager.GetString("ConversationNotConnectedFormat", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Not sent: the message contains characters that cannot be sent..
         /// </summary>
         public static string ConversationNotSendable {
@@ -639,6 +630,42 @@ namespace P2PMessenger.UI.Resources {
         public static string CreateIdentityTitle {
             get {
                 return ResourceManager.GetString("CreateIdentityTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Received by the contact&apos;s app.
+        /// </summary>
+        public static string DeliveryReceived {
+            get {
+                return ResourceManager.GetString("DeliveryReceived", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The contact&apos;s app confirmed that it has stored this message; this does not show whether they have read it..
+        /// </summary>
+        public static string DeliveryReceivedExplanation {
+            get {
+                return ResourceManager.GetString("DeliveryReceivedExplanation", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Waiting.
+        /// </summary>
+        public static string DeliveryWaiting {
+            get {
+                return ResourceManager.GetString("DeliveryWaiting", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The contact&apos;s app has not confirmed this message yet; it is sent again automatically until it does, and it may already have arrived..
+        /// </summary>
+        public static string DeliveryWaitingExplanation {
+            get {
+                return ResourceManager.GetString("DeliveryWaitingExplanation", resourceCulture);
             }
         }
         

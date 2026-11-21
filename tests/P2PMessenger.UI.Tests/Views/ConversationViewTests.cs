@@ -85,14 +85,16 @@ public sealed class ConversationViewTests
         await page.SendCommand.ExecuteAsync(null);
         var aliceKey = harness.Messenger.Identity.Keys.IdentityKey;
         var reply = await bob.SendAsync(aliceKey, "Hi Alice", CancellationToken.None);
-        Assert.Equal(SendOutcome.Sent, reply.Outcome);
+        Assert.Equal(SendOutcome.Queued, reply.Outcome);
         await UiHarness.WaitUntilAsync(() => page.Messages.Count == 2);
+        await UiHarness.WaitUntilAsync(() => page.Messages[0].StateText == UiText.DeliveryReceived);
 
         Assert.Equal(string.Empty, page.Draft);
         Assert.False(UiHarness.Find<TextBlock>(view, "ErrorText").IsVisible);
         Assert.Equal(["Hi Bob", "Hi Alice"], page.Messages.Select(static message => message.Text));
         Assert.Equal(["Alice", "Bob"], page.Messages.Select(static message => message.Sender));
         Assert.Equal([true, false], page.Messages.Select(static message => message.IsOwn));
+        Assert.Null(page.Messages[1].StateText);
         var received = harness.Messenger.Chats.MessagesWith(contact.IdentityKey)[1];
         Assert.Equal(received.WrittenAt.UtcDateTime.ToString("g", CultureInfo.CurrentCulture), page.Messages[1].WrittenAt);
         var texts = UiHarness.Texts(view);
@@ -104,8 +106,9 @@ public sealed class ConversationViewTests
     }
 
     [AvaloniaFact]
-    [Trait("Story", "US-11")]
-    public async Task Conversation_ContactNotConnected_RefusesToSendAndKeepsTheDraft()
+    [Trait("Story", "US-15")]
+    [Trait("Story", "US-16")]
+    public async Task Conversation_ContactNotConnected_ShowsTheMessageAsWaiting()
     {
         await using var harness = await UiHarness.StartAsync("Alice");
         var bob = await harness.ConnectPeerAsync("Bob");
@@ -122,9 +125,55 @@ public sealed class ConversationViewTests
         UiHarness.Flush();
 
         Assert.Equal(UiText.ContactNotConnected, UiHarness.Find<TextBlock>(view, "StatusText").Text);
-        Assert.Equal("Not sent: Bob is not connected now. Try again when they are connected.", UiHarness.Find<TextBlock>(view, "ErrorText").Text);
-        Assert.Equal("are you there?", page.Draft);
-        Assert.Empty(page.Messages);
+        Assert.False(UiHarness.Find<TextBlock>(view, "ErrorText").IsVisible);
+        Assert.Equal(string.Empty, page.Draft);
+        var message = Assert.Single(page.Messages);
+        Assert.Equal("are you there?", message.Text);
+        Assert.Equal(UiText.DeliveryWaiting, message.StateText);
+        Assert.Contains(UiText.DeliveryWaiting, UiHarness.Texts(view));
+        harness.Messenger.Identity.Dispose();
+    }
+
+    [AvaloniaFact]
+    [Trait("Story", "US-16")]
+    [Trait("NFR", "NFR-17")]
+    public async Task Conversation_TappingAState_ExplainsInOneLineWhatItConfirms()
+    {
+        await using var harness = await UiHarness.StartAsync("Alice");
+        var bob = await harness.ConnectPeerAsync("Bob");
+        var contact = harness.ContactOf(bob);
+        await UiHarness.StopPeerAsync(bob);
+        await UiHarness.WaitUntilAsync(() => !harness.Messenger.Connections.IsConnected(contact.IdentityKey));
+        var page = harness.Shell.Pages.Conversation(contact);
+        var view = new ConversationView { DataContext = page };
+        harness.Shell.Push(page);
+        harness.Show(view);
+        page.Draft = "hello";
+        await page.SendCommand.ExecuteAsync(null);
+        UiHarness.Flush();
+        var message = Assert.Single(page.Messages);
+        Assert.False(message.IsExplanationShown);
+        Assert.DoesNotContain(UiText.DeliveryWaitingExplanation, UiHarness.Texts(view));
+
+        message.ToggleExplanationCommand.Execute(null);
+        UiHarness.Flush();
+
+        Assert.True(message.IsExplanationShown);
+        Assert.Contains(UiText.DeliveryWaitingExplanation, UiHarness.Texts(view));
+        Assert.DoesNotContain("\n", UiText.DeliveryWaitingExplanation, StringComparison.Ordinal);
+
+        var sent = harness.Messenger.Chats.MessagesWith(contact.IdentityKey).Single();
+        Assert.True(await harness.Messenger.Chats.MarkReceivedAsync(contact.IdentityKey, sent.Id, CancellationToken.None));
+        await UiHarness.WaitUntilAsync(() => message.StateText == UiText.DeliveryReceived);
+
+        Assert.Same(message, Assert.Single(page.Messages));
+        Assert.Equal(UiText.DeliveryReceivedExplanation, message.StateExplanation);
+        Assert.Contains(UiText.DeliveryReceivedExplanation, UiHarness.Texts(view));
+        Assert.Contains("does not show whether they have read it", UiText.DeliveryReceivedExplanation, StringComparison.Ordinal);
+        message.ToggleExplanationCommand.Execute(null);
+        UiHarness.Flush();
+        Assert.False(message.IsExplanationShown);
+        Assert.DoesNotContain(UiText.DeliveryReceivedExplanation, UiHarness.Texts(view));
         harness.Messenger.Identity.Dispose();
     }
 
