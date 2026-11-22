@@ -12,6 +12,20 @@
                      Text="{Binding Name}"
                      PlaceholderText="{x:Static res:UiText.CreateIdentityNamePlaceholder}"
                      AutomationProperties.Name="{x:Static res:UiText.CreateIdentityNameLabel}" />
+            <StackPanel x:Name="PassphrasePanel" Spacing="8" IsVisible="{Binding OffersPassphrase}">
+                <TextBlock Text="{x:Static res:UiText.CreateIdentityPassphraseLabel}" FontWeight="SemiBold" />
+                <TextBox x:Name="PassphraseBox"
+                         Text="{Binding Passphrase}"
+                         PasswordChar="•"
+                         AutomationProperties.Name="{x:Static res:UiText.CreateIdentityPassphraseLabel}" />
+                <TextBlock Text="{x:Static res:UiText.PassphraseRepeatLabel}" FontWeight="SemiBold" />
+                <TextBox x:Name="RepeatBox"
+                         Text="{Binding RepeatedPassphrase}"
+                         PasswordChar="•"
+                         AutomationProperties.Name="{x:Static res:UiText.PassphraseRepeatLabel}" />
+                <TextBlock x:Name="HintText" Text="{x:Static vm:CreateIdentityViewModel.Hint}" TextWrapping="Wrap" />
+                <TextBlock x:Name="SkipWarningText" Text="{Binding SkipWarning}" TextWrapping="Wrap" IsVisible="{Binding IsSkippingPassphrase}" />
+            </StackPanel>
             <Button x:Name="CreateButton"
                     Content="{x:Static res:UiText.CreateIdentityCreate}"
                     Command="{Binding CreateCommand}"

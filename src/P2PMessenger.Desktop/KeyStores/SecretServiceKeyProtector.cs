@@ -127,6 +127,25 @@ public sealed class SecretServiceKeyProtector : IKeyProtector
         }
     }
 
+    public async Task ForgetAsync(ReadOnlyMemory<byte> protectedKey, CancellationToken cancellationToken)
+    {
+        if (protectedKey.Length != ProtectedKeyLength || protectedKey.Span[0] != FormatVersion || string.IsNullOrEmpty(busAddress))
+        {
+            return;
+        }
+
+        byte[] keyId = protectedKey.Span.Slice(1, KeyIdLength).ToArray();
+        try
+        {
+            using SecretServiceSession session = await SecretServiceSession.OpenAsync(busAddress, promptTimeout, cancellationToken).ConfigureAwait(false);
+            await session.DeleteAsync(Attributes(keyId), cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (IsKeyStoreFailure(exception))
+        {
+            return;
+        }
+    }
+
     private static Dictionary<string, string> Attributes(byte[] keyId) => new(StringComparer.Ordinal)
     {
         [SchemaAttribute] = SchemaName,

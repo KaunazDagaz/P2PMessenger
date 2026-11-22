@@ -55,4 +55,21 @@ public sealed class DpapiKeyProtectorTests
 
         Assert.Equal(KeyStoreOutcome.KeyNotFound, outcome);
     }
+
+    [Fact]
+    [Trait("Story", "US-20")]
+    public async Task Forget_ProtectedKey_LeavesItReadable()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "DPAPI exists only on Windows.");
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var protector = new DpapiKeyProtector();
+        var dataKey = RandomNumberGenerator.GetBytes(32);
+        var protectedKey = (await protector.ProtectAsync(dataKey, cancellationToken)).ProtectedKey;
+
+        await protector.ForgetAsync(protectedKey, cancellationToken);
+        var unprotected = new byte[32];
+
+        Assert.Equal(KeyStoreOutcome.Succeeded, await protector.UnprotectAsync(protectedKey, unprotected, cancellationToken));
+        Assert.Equal(dataKey, unprotected);
+    }
 }

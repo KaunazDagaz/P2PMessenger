@@ -1,6 +1,8 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using P2PMessenger.Application.Identity;
+using P2PMessenger.Application.LocalData;
+using P2PMessenger.Core.Identity;
 using P2PMessenger.UI.Resources;
 using P2PMessenger.UI.Services;
 
@@ -11,10 +13,18 @@ public sealed partial class CreateIdentityViewModel : PageViewModel
     private readonly AppServices services;
     private readonly INavigationService navigation;
     private readonly Pages pages;
+    private readonly Func<LocalDataProblem, PageViewModel> problemPage;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CreateCommand))]
     private string name = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSkippingPassphrase))]
+    private string passphrase = string.Empty;
+
+    [ObservableProperty]
+    private string repeatedPassphrase = string.Empty;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CreateCommand))]
@@ -23,28 +33,57 @@ public sealed partial class CreateIdentityViewModel : PageViewModel
     [ObservableProperty]
     private string? errorMessage;
 
-    public CreateIdentityViewModel(AppServices services, INavigationService navigation, Pages pages)
+    public CreateIdentityViewModel(AppServices services, INavigationService navigation, Pages pages, Func<LocalDataProblem, PageViewModel> problemPage)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(navigation);
         ArgumentNullException.ThrowIfNull(pages);
+        ArgumentNullException.ThrowIfNull(problemPage);
 
         this.services = services;
         this.navigation = navigation;
         this.pages = pages;
+        this.problemPage = problemPage;
+        OffersPassphrase = services.SupportsPassphrase && services.Protection != LocalDataProtection.Passphrase && services.Mode is null or LocalDataMode.Saved;
     }
 
     public override string Title => UiText.CreateIdentityTitle;
+
+    public bool OffersPassphrase { get; }
+
+    public bool IsSkippingPassphrase => OffersPassphrase && string.IsNullOrEmpty(Passphrase);
+
+    public string SkipWarning => services.HasKeyStore ? UiText.CreateIdentityNoPassphraseWarning : UiText.CreateIdentityNoPassphraseNoKeyStore;
+
+    public static string Hint => PassphraseTexts.Hint;
 
     private bool CanCreate => !IsBusy && !string.IsNullOrWhiteSpace(Name);
 
     [RelayCommand(CanExecute = nameof(CanCreate))]
     private async Task CreateAsync(CancellationToken cancellationToken)
     {
-        IsBusy = true;
         ErrorMessage = null;
+        if (!DisplayName.TryCreate(Name, out _))
+        {
+            ErrorMessage = UiText.CreateIdentityInvalidName;
+            return;
+        }
+
+        string? chosen = OffersPassphrase && !string.IsNullOrEmpty(Passphrase) ? Passphrase : null;
+        if (chosen is not null && PassphraseTexts.ProblemWith(chosen, RepeatedPassphrase) is { } problem)
+        {
+            ErrorMessage = problem;
+            return;
+        }
+
+        IsBusy = true;
         try
         {
+            if (!await PrepareLocalDataAsync(chosen, cancellationToken))
+            {
+                return;
+            }
+
             CreateIdentityResult result = await services.Identities.CreateAsync(Name, cancellationToken);
             if (!result.IsCreated)
             {
@@ -64,6 +103,42 @@ public sealed partial class CreateIdentityViewModel : PageViewModel
         finally
         {
             IsBusy = false;
+        }
+    }
+
+    private async Task<bool> PrepareLocalDataAsync(string? chosen, CancellationToken cancellationToken)
+    {
+        if (services.HasStores)
+        {
+            if (chosen is null || services.Protection != LocalDataProtection.KeyStore)
+            {
+                return true;
+            }
+
+            PassphraseChangeResult changed = await services.SetPassphraseAsync(chosen, cancellationToken);
+            if (changed.IsChanged)
+            {
+                return true;
+            }
+
+            ErrorMessage = changed.Outcome == PassphraseChangeOutcome.KeyStoreFailed ? UiText.PassphraseKeyStoreFailed : UiText.CreateIdentityFailed;
+            return false;
+        }
+
+        LocalDataResult created = await services.CreateLocalDataAsync(chosen, cancellationToken);
+        switch (created.Status)
+        {
+            case LocalDataStatus.Opened:
+                return true;
+            case LocalDataStatus.PassphraseRequired:
+                ErrorMessage = UiText.CreateIdentityPassphraseRequired;
+                return false;
+            case LocalDataStatus.Failed:
+                navigation.ResetTo(problemPage(created.Problem));
+                return false;
+            default:
+                ErrorMessage = UiText.CreateIdentityFailed;
+                return false;
         }
     }
 }

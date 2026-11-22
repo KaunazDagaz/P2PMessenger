@@ -9,8 +9,17 @@ public sealed class MessengerDatabase : IAsyncDisposable
     private const int NotADatabaseError = 26;
     private const int CorruptError = 11;
 
-    private const string SelectDataKey = "SELECT protection, wrapped_key FROM data_key WHERE id = 1;";
-    private const string InsertDataKey = "INSERT INTO data_key (id, protection, wrapped_key) VALUES (1, $protection, $wrapped_key);";
+    private const string SelectDataKey = "SELECT protection, wrapped_key, kdf_salt, kdf_memory_kib, kdf_passes FROM data_key WHERE id = 1;";
+
+    private const string InsertDataKey =
+        "INSERT INTO data_key (id, protection, wrapped_key, kdf_salt, kdf_memory_kib, kdf_passes) "
+        + "VALUES (1, $protection, $wrapped_key, $kdf_salt, $kdf_memory_kib, $kdf_passes);";
+
+    private const string UpdateDataKey =
+        "UPDATE data_key SET protection = $protection, wrapped_key = $wrapped_key, kdf_salt = $kdf_salt, "
+        + "kdf_memory_kib = $kdf_memory_kib, kdf_passes = $kdf_passes WHERE id = 1;";
+
+    private const string TruncateJournal = "PRAGMA wal_checkpoint(TRUNCATE);";
 
     private const string SelectAnyData =
         "SELECT EXISTS (SELECT 1 FROM person) OR EXISTS (SELECT 1 FROM seen_message) "
@@ -69,21 +78,7 @@ public sealed class MessengerDatabase : IAsyncDisposable
             {
                 using SqliteCommand command = Sql.Command(connection, null, SelectDataKey);
                 using SqliteDataReader reader = await command.ExecuteReaderAsync(token).ConfigureAwait(false);
-                if (!await reader.ReadAsync(token).ConfigureAwait(false))
-                {
-                    return null;
-                }
-
-                DataKeyProtection protection = reader.GetInt64(0) switch
-                {
-                    1 => DataKeyProtection.Passphrase,
-                    2 => DataKeyProtection.WindowsDpapi,
-                    3 => DataKeyProtection.AndroidKeystore,
-                    4 => DataKeyProtection.LinuxSecretService,
-                    _ => throw new StoredDataException("The data key row names an unknown protection."),
-                };
-
-                return new WrappedDataKey(protection, reader.GetFieldValue<byte[]>(1));
+                return await reader.ReadAsync(token).ConfigureAwait(false) ? DataKeyOf(reader) : null;
             },
             cancellationToken);
 
@@ -93,27 +88,82 @@ public sealed class MessengerDatabase : IAsyncDisposable
     public Task SaveDataKeyAsync(WrappedDataKey dataKey, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(dataKey);
-        if (dataKey.Protection == DataKeyProtection.Passphrase)
-        {
-            throw new ArgumentException("A data key wrapped by a passphrase needs its key-derivation parameters, which this method does not store.", nameof(dataKey));
-        }
 
         return gate.WriteAsync(
             async (connection, transaction, token) =>
             {
-                await Sql.ExecuteAsync(
-                    connection,
-                    transaction,
-                    InsertDataKey,
-                    token,
-                    ("$protection", (long)dataKey.Protection),
-                    ("$wrapped_key", dataKey.WrappedKey.ToArray())).ConfigureAwait(false);
+                await Sql.ExecuteAsync(connection, transaction, InsertDataKey, token, DataKeyParameters(dataKey)).ConfigureAwait(false);
                 return true;
             },
             cancellationToken);
     }
 
+    public async Task ReplaceDataKeyAsync(WrappedDataKey dataKey, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(dataKey);
+
+        await gate.WriteAsync(
+            async (connection, transaction, token) =>
+            {
+                if (await Sql.ExecuteAsync(connection, transaction, UpdateDataKey, token, DataKeyParameters(dataKey)).ConfigureAwait(false) != 1)
+                {
+                    throw new StoredDataException("The data key row is missing.");
+                }
+
+                return true;
+            },
+            cancellationToken).ConfigureAwait(false);
+
+        await gate.ReadAsync(
+            async (connection, token) =>
+            {
+                await Sql.ExecuteAsync(connection, null, TruncateJournal, token).ConfigureAwait(false);
+                return true;
+            },
+            cancellationToken).ConfigureAwait(false);
+    }
+
     public StoredData Unlock(ReadOnlySpan<byte> dataKey) => new(gate, RecordKeys.Derive(dataKey));
 
     public ValueTask DisposeAsync() => gate.DisposeAsync();
+
+    private static WrappedDataKey DataKeyOf(SqliteDataReader reader)
+    {
+        DataKeyProtection protection = reader.GetInt64(0) switch
+        {
+            1 => DataKeyProtection.Passphrase,
+            2 => DataKeyProtection.WindowsDpapi,
+            3 => DataKeyProtection.AndroidKeystore,
+            4 => DataKeyProtection.LinuxSecretService,
+            _ => throw new StoredDataException("The data key row names an unknown protection."),
+        };
+
+        byte[] wrappedKey = reader.GetFieldValue<byte[]>(1);
+        if (protection != DataKeyProtection.Passphrase)
+        {
+            return new WrappedDataKey(protection, wrappedKey);
+        }
+
+        byte[] salt = reader.GetFieldValue<byte[]>(2);
+        PassphraseKdf kdf = new(reader.GetInt64(3), reader.GetInt64(4));
+        if (salt.Length != PassphraseDerivation.SaltLength || !kdf.IsAcceptable || !PassphraseKeyWrap.IsWellFormed(wrappedKey))
+        {
+            throw new StoredDataException("The passphrase settings of the data key are outside the accepted range.");
+        }
+
+        return new WrappedDataKey(protection, wrappedKey, new PassphraseDerivation(salt, kdf));
+    }
+
+    private static (string Name, object Value)[] DataKeyParameters(WrappedDataKey dataKey)
+    {
+        PassphraseDerivation? derivation = dataKey.Derivation;
+        return
+        [
+            ("$protection", (long)dataKey.Protection),
+            ("$wrapped_key", dataKey.WrappedKey.ToArray()),
+            ("$kdf_salt", derivation is null ? DBNull.Value : derivation.Salt.ToArray()),
+            ("$kdf_memory_kib", derivation is null ? DBNull.Value : derivation.Kdf.MemoryKib),
+            ("$kdf_passes", derivation is null ? DBNull.Value : derivation.Kdf.Passes),
+        ];
+    }
 }

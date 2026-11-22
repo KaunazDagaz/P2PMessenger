@@ -63,12 +63,23 @@ internal sealed class AppPeer : IAsyncDisposable
         return new AppPeer(await Messenger.StartAsync(new OwnIdentity(keys, displayName), adjust(setup), cancellationToken));
     }
 
-    public static async Task<AppPeer> StartSavedAsync(string databasePath, IKeyProtector protector, string name, CancellationToken cancellationToken)
+    public static Task<AppPeer> StartSavedAsync(string databasePath, IKeyProtector protector, string name, CancellationToken cancellationToken) =>
+        StartSavedAsync(new DatabaseLocalData(databasePath, protector), name, null, cancellationToken);
+
+    public static async Task<AppPeer> StartSavedAsync(DatabaseLocalData localData, string name, string? passphrase, CancellationToken cancellationToken)
     {
-        var localData = new DatabaseLocalData(databasePath, protector);
         try
         {
             var opened = await localData.OpenAsync(cancellationToken);
+            if (opened.Status == LocalDataStatus.NotCreated)
+            {
+                opened = await localData.CreateAsync(passphrase, cancellationToken);
+            }
+            else if (opened.Status == LocalDataStatus.PassphraseNeeded)
+            {
+                opened = await localData.UnlockAsync(passphrase ?? string.Empty, cancellationToken);
+            }
+
             Assert.True(opened.IsOpen);
             Assert.Equal(LocalDataMode.Saved, opened.Stores.Mode);
 

@@ -30,6 +30,12 @@
         <DataTemplate DataType="vm:NetworkViewModel">
             <v:NetworkView />
         </DataTemplate>
+        <DataTemplate DataType="vm:UnlockViewModel">
+            <v:UnlockView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:PassphraseViewModel">
+            <v:PassphraseView />
+        </DataTemplate>
     </UserControl.DataTemplates>
 
     <DockPanel>
@@ -43,7 +49,13 @@
                         Margin="0,0,12,0"
                         Content="{x:Static res:UiText.CommonBack}"
                         Command="{Binding GoBackCommand}"
-                        IsVisible="{Binding CanGoBack}" />
+                        IsVisible="{Binding IsBackVisible}" />
+                <Button x:Name="LockButton"
+                        DockPanel.Dock="Right"
+                        Margin="12,0,0,0"
+                        Content="{x:Static res:UiText.LockNow}"
+                        Command="{Binding LockCommand}"
+                        IsVisible="{Binding CanLock}" />
                 <TextBlock x:Name="TitleText"
                            Text="{Binding Title}"
                            FontSize="20"
@@ -82,7 +94,8 @@
                        Margin="16"
                        HorizontalAlignment="Center"
                        VerticalAlignment="Center" />
-            <ContentControl x:Name="PageHost" Content="{Binding CurrentPage}" />
+            <ContentControl x:Name="PageHost" Content="{Binding CurrentPage}" IsVisible="{Binding IsPageVisible}" />
+            <ContentControl x:Name="LockHost" Content="{Binding LockPage}" IsVisible="{Binding IsLocked}" />
         </Grid>
     </DockPanel>
 </UserControl>

@@ -418,6 +418,15 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Passphrase.
+        /// </summary>
+        public static string ContactListPassphrase {
+            get {
+                return ResourceManager.GetString("ContactListPassphrase", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Contacts.
         /// </summary>
         public static string ContactListTitle {
@@ -625,6 +634,42 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Without a passphrase, nothing is saved on this device: your identity, contacts and messages are lost when the app closes..
+        /// </summary>
+        public static string CreateIdentityNoPassphraseNoKeyStore {
+            get {
+                return ResourceManager.GetString("CreateIdentityNoPassphraseNoKeyStore", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Without a passphrase, anyone who can unlock this device can open the app and read your chats..
+        /// </summary>
+        public static string CreateIdentityNoPassphraseWarning {
+            get {
+                return ResourceManager.GetString("CreateIdentityNoPassphraseWarning", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Passphrase (optional).
+        /// </summary>
+        public static string CreateIdentityPassphraseLabel {
+            get {
+                return ResourceManager.GetString("CreateIdentityPassphraseLabel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to No key store answered on this computer, so the app can save your data only under a passphrase. Enter one above, or start the key store (on Linux, a Secret Service such as GNOME Keyring) and try again..
+        /// </summary>
+        public static string CreateIdentityPassphraseRequired {
+            get {
+                return ResourceManager.GetString("CreateIdentityPassphraseRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Create your identity.
         /// </summary>
         public static string CreateIdentityTitle {
@@ -722,6 +767,15 @@ namespace P2PMessenger.UI.Resources {
         public static string DialUnreachable {
             get {
                 return ResourceManager.GetString("DialUnreachable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Lock.
+        /// </summary>
+        public static string LockNow {
+            get {
+                return ResourceManager.GetString("LockNow", resourceCulture);
             }
         }
         
@@ -848,6 +902,213 @@ namespace P2PMessenger.UI.Resources {
         public static string NetworkTitle {
             get {
                 return ResourceManager.GetString("NetworkTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Change passphrase.
+        /// </summary>
+        public static string PassphraseChange {
+            get {
+                return ResourceManager.GetString("PassphraseChange", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The passphrase is changed..
+        /// </summary>
+        public static string PassphraseChanged {
+            get {
+                return ResourceManager.GetString("PassphraseChanged", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Changing the passphrase does not change the key that encrypts your data: anyone who could open an earlier copy of the app&apos;s files with the old passphrase can open later copies too..
+        /// </summary>
+        public static string PassphraseChangeNote {
+            get {
+                return ResourceManager.GetString("PassphraseChangeNote", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Current passphrase.
+        /// </summary>
+        public static string PassphraseCurrentLabel {
+            get {
+                return ResourceManager.GetString("PassphraseCurrentLabel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The passphrase could not be changed. Try again..
+        /// </summary>
+        public static string PassphraseFailed {
+            get {
+                return ResourceManager.GetString("PassphraseFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A forgotten passphrase cannot be recovered or reset, and neither can the data it protects..
+        /// </summary>
+        public static string PassphraseForgotten {
+            get {
+                return ResourceManager.GetString("PassphraseForgotten", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to At least {0} characters. A few words are easier to remember than a short password..
+        /// </summary>
+        public static string PassphraseHintFormat {
+            get {
+                return ResourceManager.GetString("PassphraseHintFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This device&apos;s key store did not answer or refused, so nothing was changed. Start or unlock the key store when it asks, then try again..
+        /// </summary>
+        public static string PassphraseKeyStoreFailed {
+            get {
+                return ResourceManager.GetString("PassphraseKeyStoreFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The two passphrases are not the same..
+        /// </summary>
+        public static string PassphraseMismatch {
+            get {
+                return ResourceManager.GetString("PassphraseMismatch", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to New passphrase.
+        /// </summary>
+        public static string PassphraseNewLabel {
+            get {
+                return ResourceManager.GetString("PassphraseNewLabel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The passphrase contains characters that cannot be used..
+        /// </summary>
+        public static string PassphraseNotText {
+            get {
+                return ResourceManager.GetString("PassphraseNotText", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remove passphrase.
+        /// </summary>
+        public static string PassphraseRemove {
+            get {
+                return ResourceManager.GetString("PassphraseRemove", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The passphrase is removed..
+        /// </summary>
+        public static string PassphraseRemoved {
+            get {
+                return ResourceManager.GetString("PassphraseRemoved", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to After the passphrase is removed, this device&apos;s key store protects the data, and anyone who can unlock this device can open the app..
+        /// </summary>
+        public static string PassphraseRemoveWarning {
+            get {
+                return ResourceManager.GetString("PassphraseRemoveWarning", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Repeat the passphrase.
+        /// </summary>
+        public static string PassphraseRepeatLabel {
+            get {
+                return ResourceManager.GetString("PassphraseRepeatLabel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Saving the passphrase….
+        /// </summary>
+        public static string PassphraseSaving {
+            get {
+                return ResourceManager.GetString("PassphraseSaving", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Set passphrase.
+        /// </summary>
+        public static string PassphraseSet {
+            get {
+                return ResourceManager.GetString("PassphraseSet", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The passphrase is set..
+        /// </summary>
+        public static string PassphraseSetDone {
+            get {
+                return ResourceManager.GetString("PassphraseSetDone", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Your stored data is protected by this device&apos;s key store, not by a passphrase. Anyone who can unlock this device can open the app..
+        /// </summary>
+        public static string PassphraseStateNotSet {
+            get {
+                return ResourceManager.GetString("PassphraseStateNotSet", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Your stored data is protected by a passphrase. The app asks for it at start and after {0} minutes in the background..
+        /// </summary>
+        public static string PassphraseStateSetFormat {
+            get {
+                return ResourceManager.GetString("PassphraseStateSetFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Passphrase.
+        /// </summary>
+        public static string PassphraseTitle {
+            get {
+                return ResourceManager.GetString("PassphraseTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The passphrase needs at least {0} characters..
+        /// </summary>
+        public static string PassphraseTooShortFormat {
+            get {
+                return ResourceManager.GetString("PassphraseTooShortFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The current passphrase is wrong..
+        /// </summary>
+        public static string PassphraseWrongCurrent {
+            get {
+                return ResourceManager.GetString("PassphraseWrongCurrent", resourceCulture);
             }
         }
         
@@ -1005,7 +1266,7 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Nothing is saved on this device, because the app has no key store here to protect stored data. Your identity, contacts and messages stay in memory and are lost when the app closes..
+        ///   Looks up a localized string similar to Nothing is saved on this device, because no passphrase was set and the app has no key store here to protect stored data. Your identity, contacts and messages stay in memory and are lost when the app closes..
         /// </summary>
         public static string StorageMemoryOnly {
             get {
@@ -1046,6 +1307,78 @@ namespace P2PMessenger.UI.Resources {
         public static string StorageTryAgain {
             get {
                 return ResourceManager.GetString("StorageTryAgain", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Checking the passphrase….
+        /// </summary>
+        public static string UnlockChecking {
+            get {
+                return ResourceManager.GetString("UnlockChecking", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The passphrase could not be checked. Try again..
+        /// </summary>
+        public static string UnlockFailed {
+            get {
+                return ResourceManager.GetString("UnlockFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The app is locked. Messages still arrive and are saved while it is locked..
+        /// </summary>
+        public static string UnlockLockedIntro {
+            get {
+                return ResourceManager.GetString("UnlockLockedIntro", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Passphrase.
+        /// </summary>
+        public static string UnlockPassphraseLabel {
+            get {
+                return ResourceManager.GetString("UnlockPassphraseLabel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Your stored data is protected by a passphrase. Until you enter it, the app neither sends nor receives messages..
+        /// </summary>
+        public static string UnlockStartIntro {
+            get {
+                return ResourceManager.GetString("UnlockStartIntro", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Enter your passphrase.
+        /// </summary>
+        public static string UnlockTitle {
+            get {
+                return ResourceManager.GetString("UnlockTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Unlock.
+        /// </summary>
+        public static string UnlockUnlock {
+            get {
+                return ResourceManager.GetString("UnlockUnlock", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Wrong passphrase..
+        /// </summary>
+        public static string UnlockWrong {
+            get {
+                return ResourceManager.GetString("UnlockWrong", resourceCulture);
             }
         }
         

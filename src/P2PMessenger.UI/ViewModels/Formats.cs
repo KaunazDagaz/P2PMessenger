@@ -21,6 +21,9 @@ internal static class Formats
     public static readonly CompositeFormat NotCompared = CompositeFormat.Parse(UiText.VerifyNotComparedFormat);
     public static readonly CompositeFormat Listening = CompositeFormat.Parse(UiText.NetworkListeningFormat);
     public static readonly CompositeFormat PortInUse = CompositeFormat.Parse(UiText.NetworkPortInUseFormat);
+    public static readonly CompositeFormat PassphraseHint = CompositeFormat.Parse(UiText.PassphraseHintFormat);
+    public static readonly CompositeFormat PassphraseTooShort = CompositeFormat.Parse(UiText.PassphraseTooShortFormat);
+    public static readonly CompositeFormat PassphraseStateSet = CompositeFormat.Parse(UiText.PassphraseStateSetFormat);
 
     public static string With(CompositeFormat format, object? argument) => string.Format(CultureInfo.CurrentCulture, format, argument);
 }

@@ -12,6 +12,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="P2PMessenger.Storage.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <EmbeddedResource Include="Migrations\*.sql" LogicalName="P2PMessenger.Storage.Migrations.%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>
