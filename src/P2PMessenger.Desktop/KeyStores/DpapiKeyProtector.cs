@@ -28,6 +28,8 @@ public sealed class DpapiKeyProtector : IKeyProtector
         }
     }
 
+    public Task ForgetAsync(ReadOnlyMemory<byte> protectedKey, CancellationToken cancellationToken) => Task.CompletedTask;
+
     public Task<KeyStoreOutcome> UnprotectAsync(ReadOnlyMemory<byte> protectedKey, Memory<byte> dataKey, CancellationToken cancellationToken)
     {
         byte[] plain;

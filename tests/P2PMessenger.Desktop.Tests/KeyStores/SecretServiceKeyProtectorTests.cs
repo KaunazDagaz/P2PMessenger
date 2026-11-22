@@ -106,6 +106,38 @@ public sealed class SecretServiceKeyProtectorTests
         Assert.Equal(KeyStoreOutcome.KeyNotFound, await protector.UnprotectAsync(protectedKey, new byte[32], cancellationToken));
     }
 
+    [Fact]
+    [Trait("Story", "US-20")]
+    public async Task Forget_ProtectedKey_RemovesItsWrappingKeyFromTheKeyStore()
+    {
+        var protector = await RunningSecretServiceAsync();
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var dataKey = RandomNumberGenerator.GetBytes(32);
+        var kept = (await protector.ProtectAsync(dataKey, cancellationToken)).ProtectedKey;
+        var forgotten = (await protector.ProtectAsync(dataKey, cancellationToken)).ProtectedKey;
+
+        await protector.ForgetAsync(forgotten, cancellationToken);
+
+        Assert.Equal(KeyStoreOutcome.KeyNotFound, await protector.UnprotectAsync(forgotten, new byte[32], cancellationToken));
+        Assert.Equal(KeyStoreOutcome.Succeeded, await protector.UnprotectAsync(kept, new byte[32], cancellationToken));
+        await protector.ForgetAsync(forgotten, cancellationToken);
+    }
+
+    [Fact]
+    [Trait("Story", "US-20")]
+    public async Task Forget_NoSessionBusOrAnotherFormat_DoesNothing()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux(), "The Secret Service is used on Linux only.");
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var wellFormed = new byte[SecretServiceKeyProtector.ProtectedKeyLength];
+        wellFormed[0] = 1;
+        var missing = Path.Combine(Path.GetTempPath(), $"no-such-bus-{Guid.NewGuid():N}");
+
+        await new SecretServiceKeyProtector(null, PromptTimeout).ForgetAsync(wellFormed, cancellationToken);
+        await new SecretServiceKeyProtector($"unix:path={missing}", PromptTimeout).ForgetAsync(wellFormed, cancellationToken);
+        await new SecretServiceKeyProtector($"unix:path={missing}", PromptTimeout).ForgetAsync(new byte[10], cancellationToken);
+    }
+
     private static async Task<SecretServiceKeyProtector> RunningSecretServiceAsync()
     {
         Assert.SkipUnless(OperatingSystem.IsLinux(), "The Secret Service is used on Linux only.");

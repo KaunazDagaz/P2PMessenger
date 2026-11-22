@@ -19,6 +19,7 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(GoBackCommand))]
+    [NotifyPropertyChangedFor(nameof(IsBackVisible))]
     private bool canGoBack;
 
     [ObservableProperty]
@@ -31,19 +32,40 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
     [NotifyPropertyChangedFor(nameof(HasNotice))]
     private string? notice;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsLocked), nameof(Title), nameof(HasNotice), nameof(IsBackVisible), nameof(CanLock), nameof(IsPageVisible))]
+    [NotifyCanExecuteChangedFor(nameof(LockCommand))]
+    private UnlockViewModel? lockPage;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanLock))]
+    [NotifyCanExecuteChangedFor(nameof(LockCommand))]
+    private bool isMessengerRunning;
+
     public MainViewModel(AppServices services)
     {
         ArgumentNullException.ThrowIfNull(services);
         this.services = services;
-        Pages = new Pages(services, this);
+        Pages = new Pages(services, this, StartAsync);
         services.MessengerStarted += OnMessengerStarted;
+        services.StoresOpened += OnStoresOpened;
+        services.ProtectionChanged += OnProtectionChanged;
+        services.Lock.Changed += OnLockChanged;
     }
 
     public Pages Pages { get; }
 
-    public string Title => CurrentPage?.Title ?? UiText.AppTitle;
+    public string Title => IsLocked ? UiText.UnlockTitle : CurrentPage?.Title ?? UiText.AppTitle;
 
-    public bool HasNotice => Notice is not null;
+    public bool IsLocked => LockPage is not null;
+
+    public bool IsPageVisible => !IsLocked;
+
+    public bool HasNotice => Notice is not null && !IsLocked;
+
+    public bool IsBackVisible => CanGoBack && !IsLocked;
+
+    public bool CanLock => IsMessengerRunning && !IsLocked && services.Lock.IsEnabled;
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -51,27 +73,7 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
         ErrorMessage = null;
         try
         {
-            LocalDataResult localData = await services.OpenLocalDataAsync(cancellationToken);
-            if (!localData.IsOpen)
-            {
-                ResetTo(new StorageProblemViewModel(localData.Problem, StartAsync));
-                return;
-            }
-
-            if (localData.Stores.Mode == LocalDataMode.MemoryOnlyNoKeyStore && Notice?.Contains(UiText.StorageMemoryOnly, StringComparison.Ordinal) != true)
-            {
-                Notice = Notice is null ? UiText.StorageMemoryOnly : UiText.StorageMemoryOnly + Environment.NewLine + Notice;
-            }
-
-            OwnIdentity? identity = await services.Identities.LoadAsync(cancellationToken);
-            if (identity is null)
-            {
-                ResetTo(Pages.CreateIdentity());
-                return;
-            }
-
-            await services.StartMessengerAsync(identity, cancellationToken);
-            ResetTo(Pages.ContactList());
+            await ShowAsync(await services.OpenLocalDataAsync(cancellationToken), cancellationToken);
         }
         catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
         {
@@ -82,6 +84,10 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
             IsStarting = false;
         }
     }
+
+    public void EnterBackground() => services.Lock.EnterBackground();
+
+    public void EnterForeground() => services.Lock.EnterForeground();
 
     public void Push(PageViewModel page)
     {
@@ -130,13 +136,99 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
     [RelayCommand]
     private void DismissNotice() => Notice = null;
 
+    [RelayCommand(CanExecute = nameof(CanLock))]
+    private void Lock() => services.Lock.LockNow();
+
+    private async Task ShowAsync(LocalDataResult localData, CancellationToken cancellationToken)
+    {
+        switch (localData.Status)
+        {
+            case LocalDataStatus.Opened:
+                OwnIdentity? identity = await services.Identities.LoadAsync(cancellationToken);
+                if (identity is null)
+                {
+                    ResetTo(Pages.CreateIdentity());
+                    return;
+                }
+
+                await services.StartMessengerAsync(identity, cancellationToken);
+                ResetTo(Pages.ContactList());
+                break;
+            case LocalDataStatus.NotCreated:
+                ResetTo(Pages.CreateIdentity());
+                break;
+            case LocalDataStatus.PassphraseNeeded:
+                ResetTo(new UnlockViewModel(true, UnlockAtStartAsync));
+                break;
+            default:
+                ResetTo(Pages.StorageProblem(localData.Problem == LocalDataProblem.None ? LocalDataProblem.Damaged : localData.Problem));
+                break;
+        }
+    }
+
+    private async Task<bool> UnlockAtStartAsync(string passphrase, CancellationToken cancellationToken)
+    {
+        LocalDataResult result = await services.UnlockLocalDataAsync(passphrase, cancellationToken);
+        if (result.Status == LocalDataStatus.WrongPassphrase)
+        {
+            return false;
+        }
+
+        await ShowAsync(result, cancellationToken);
+        return true;
+    }
+
     private void OnMessengerStarted(object? sender, EventArgs e)
     {
         if (services.Messenger is { } messenger)
         {
             messenger.Contacts.Changed += OnContactChanged;
         }
+
+        services.UiThread.Post(() => IsMessengerRunning = true);
     }
+
+    private void OnStoresOpened(object? sender, LocalDataStores stores)
+    {
+        if (stores.Mode != LocalDataMode.MemoryOnlyNoKeyStore)
+        {
+            return;
+        }
+
+        services.UiThread.Post(() =>
+        {
+            if (Notice?.Contains(UiText.StorageMemoryOnly, StringComparison.Ordinal) != true)
+            {
+                Notice = Notice is null ? UiText.StorageMemoryOnly : UiText.StorageMemoryOnly + Environment.NewLine + Notice;
+            }
+        });
+    }
+
+    private void OnProtectionChanged(object? sender, EventArgs e) => services.UiThread.Post(() =>
+    {
+        OnPropertyChanged(nameof(CanLock));
+        LockCommand.NotifyCanExecuteChanged();
+    });
+
+    private void OnLockChanged(object? sender, EventArgs e) => services.UiThread.Post(() =>
+    {
+        bool locked = services.Lock.IsLocked;
+        if (locked == IsLocked)
+        {
+            return;
+        }
+
+        if (locked)
+        {
+            CurrentPage?.OnHidden();
+            LockPage = new UnlockViewModel(false, services.Lock.UnlockAsync);
+        }
+        else
+        {
+            LockPage = null;
+            CurrentPage?.OnShown();
+        }
+    });
 
     private void OnContactChanged(object? sender, ContactChangedEventArgs e)
     {
@@ -153,6 +245,9 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
     {
         CurrentPage = page;
         CanGoBack = pages.Count > 1;
-        page.OnShown();
+        if (!IsLocked)
+        {
+            page.OnShown();
+        }
     }
 }

@@ -378,6 +378,117 @@
     <value>Opening the stored data…</value>
   </data>
   <data name="StorageMemoryOnly" xml:space="preserve">
-    <value>Nothing is saved on this device, because the app has no key store here to protect stored data. Your identity, contacts and messages stay in memory and are lost when the app closes.</value>
+    <value>Nothing is saved on this device, because no passphrase was set and the app has no key store here to protect stored data. Your identity, contacts and messages stay in memory and are lost when the app closes.</value>
+  </data>
+  <data name="CreateIdentityPassphraseLabel" xml:space="preserve">
+    <value>Passphrase (optional)</value>
+  </data>
+  <data name="CreateIdentityNoPassphraseWarning" xml:space="preserve">
+    <value>Without a passphrase, anyone who can unlock this device can open the app and read your chats.</value>
+  </data>
+  <data name="CreateIdentityNoPassphraseNoKeyStore" xml:space="preserve">
+    <value>Without a passphrase, nothing is saved on this device: your identity, contacts and messages are lost when the app closes.</value>
+  </data>
+  <data name="CreateIdentityPassphraseRequired" xml:space="preserve">
+    <value>No key store answered on this computer, so the app can save your data only under a passphrase. Enter one above, or start the key store (on Linux, a Secret Service such as GNOME Keyring) and try again.</value>
+  </data>
+  <data name="ContactListPassphrase" xml:space="preserve">
+    <value>Passphrase</value>
+  </data>
+  <data name="LockNow" xml:space="preserve">
+    <value>Lock</value>
+  </data>
+  <data name="UnlockTitle" xml:space="preserve">
+    <value>Enter your passphrase</value>
+  </data>
+  <data name="UnlockStartIntro" xml:space="preserve">
+    <value>Your stored data is protected by a passphrase. Until you enter it, the app neither sends nor receives messages.</value>
+  </data>
+  <data name="UnlockLockedIntro" xml:space="preserve">
+    <value>The app is locked. Messages still arrive and are saved while it is locked.</value>
+  </data>
+  <data name="UnlockPassphraseLabel" xml:space="preserve">
+    <value>Passphrase</value>
+  </data>
+  <data name="UnlockUnlock" xml:space="preserve">
+    <value>Unlock</value>
+  </data>
+  <data name="UnlockChecking" xml:space="preserve">
+    <value>Checking the passphrase…</value>
+  </data>
+  <data name="UnlockWrong" xml:space="preserve">
+    <value>Wrong passphrase.</value>
+  </data>
+  <data name="UnlockFailed" xml:space="preserve">
+    <value>The passphrase could not be checked. Try again.</value>
+  </data>
+  <data name="PassphraseTitle" xml:space="preserve">
+    <value>Passphrase</value>
+  </data>
+  <data name="PassphraseStateSetFormat" xml:space="preserve">
+    <value>Your stored data is protected by a passphrase. The app asks for it at start and after {0} minutes in the background.</value>
+  </data>
+  <data name="PassphraseStateNotSet" xml:space="preserve">
+    <value>Your stored data is protected by this device's key store, not by a passphrase. Anyone who can unlock this device can open the app.</value>
+  </data>
+  <data name="PassphraseCurrentLabel" xml:space="preserve">
+    <value>Current passphrase</value>
+  </data>
+  <data name="PassphraseNewLabel" xml:space="preserve">
+    <value>New passphrase</value>
+  </data>
+  <data name="PassphraseRepeatLabel" xml:space="preserve">
+    <value>Repeat the passphrase</value>
+  </data>
+  <data name="PassphraseHintFormat" xml:space="preserve">
+    <value>At least {0} characters. A few words are easier to remember than a short password.</value>
+  </data>
+  <data name="PassphraseTooShortFormat" xml:space="preserve">
+    <value>The passphrase needs at least {0} characters.</value>
+  </data>
+  <data name="PassphraseNotText" xml:space="preserve">
+    <value>The passphrase contains characters that cannot be used.</value>
+  </data>
+  <data name="PassphraseMismatch" xml:space="preserve">
+    <value>The two passphrases are not the same.</value>
+  </data>
+  <data name="PassphraseSet" xml:space="preserve">
+    <value>Set passphrase</value>
+  </data>
+  <data name="PassphraseChange" xml:space="preserve">
+    <value>Change passphrase</value>
+  </data>
+  <data name="PassphraseRemove" xml:space="preserve">
+    <value>Remove passphrase</value>
+  </data>
+  <data name="PassphraseRemoveWarning" xml:space="preserve">
+    <value>After the passphrase is removed, this device's key store protects the data, and anyone who can unlock this device can open the app.</value>
+  </data>
+  <data name="PassphraseChangeNote" xml:space="preserve">
+    <value>Changing the passphrase does not change the key that encrypts your data: anyone who could open an earlier copy of the app's files with the old passphrase can open later copies too.</value>
+  </data>
+  <data name="PassphraseSaving" xml:space="preserve">
+    <value>Saving the passphrase…</value>
+  </data>
+  <data name="PassphraseSetDone" xml:space="preserve">
+    <value>The passphrase is set.</value>
+  </data>
+  <data name="PassphraseChanged" xml:space="preserve">
+    <value>The passphrase is changed.</value>
+  </data>
+  <data name="PassphraseRemoved" xml:space="preserve">
+    <value>The passphrase is removed.</value>
+  </data>
+  <data name="PassphraseWrongCurrent" xml:space="preserve">
+    <value>The current passphrase is wrong.</value>
+  </data>
+  <data name="PassphraseKeyStoreFailed" xml:space="preserve">
+    <value>This device's key store did not answer or refused, so nothing was changed. Start or unlock the key store when it asks, then try again.</value>
+  </data>
+  <data name="PassphraseFailed" xml:space="preserve">
+    <value>The passphrase could not be changed. Try again.</value>
+  </data>
+  <data name="PassphraseForgotten" xml:space="preserve">
+    <value>A forgotten passphrase cannot be recovered or reset, and neither can the data it protects.</value>
   </data>
 </root>

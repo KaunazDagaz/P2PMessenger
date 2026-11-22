@@ -9,6 +9,11 @@
         <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,12">
             <Button x:Name="AddContactButton" Margin="0,0,8,8" Content="{x:Static res:UiText.ContactListAddContact}" Command="{Binding AddContactCommand}" />
             <Button x:Name="MyCodeButton" Margin="0,0,8,8" Content="{x:Static res:UiText.ContactListMyCode}" Command="{Binding MyCodeCommand}" />
+            <Button x:Name="PassphraseButton"
+                    Margin="0,0,8,8"
+                    Content="{x:Static res:UiText.ContactListPassphrase}"
+                    Command="{Binding PassphraseCommand}"
+                    IsVisible="{Binding OffersPassphrase}" />
             <Button x:Name="NetworkButton"
                     Margin="0,0,8,8"
                     Content="{x:Static res:UiText.ContactListNetwork}"

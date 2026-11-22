@@ -69,6 +69,11 @@ internal sealed class UiHarness : IAsyncDisposable
         where T : Control =>
         root.FindControl<T>(name) ?? throw new InvalidOperationException($"No {typeof(T).Name} named {name}.");
 
+    public static T Descendant<T>(Control root, string name)
+        where T : Control =>
+        root.GetVisualDescendants().OfType<T>().FirstOrDefault(control => string.Equals(control.Name, name, StringComparison.Ordinal))
+        ?? throw new InvalidOperationException($"No {typeof(T).Name} named {name} below the root.");
+
     public static IReadOnlyList<string> Texts(Control root) =>
         [.. root.GetVisualDescendants().OfType<TextBlock>().Where(static block => block.IsEffectivelyVisible).Select(static block => block.Text ?? string.Empty)];
 

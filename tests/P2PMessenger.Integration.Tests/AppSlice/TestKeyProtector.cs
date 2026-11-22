@@ -18,6 +18,8 @@ internal sealed class TestKeyProtector : IKeyProtector
 
     public int UnprotectCalls { get; private set; }
 
+    public List<byte[]> Forgotten { get; } = [];
+
     public Task<ProtectResult> ProtectAsync(ReadOnlyMemory<byte> dataKey, CancellationToken cancellationToken)
     {
         ProtectCalls++;
@@ -30,6 +32,12 @@ internal sealed class TestKeyProtector : IKeyProtector
         using var key = Key.Import(AeadAlgorithm.XChaCha20Poly1305, deviceKey, KeyBlobFormat.RawSymmetricKey);
         byte[] wrapped = [.. nonce, .. AeadAlgorithm.XChaCha20Poly1305.Encrypt(key, nonce, [], dataKey.Span)];
         return Task.FromResult(ProtectResult.Success(wrapped));
+    }
+
+    public Task ForgetAsync(ReadOnlyMemory<byte> protectedKey, CancellationToken cancellationToken)
+    {
+        Forgotten.Add(protectedKey.ToArray());
+        return Task.CompletedTask;
     }
 
     public Task<KeyStoreOutcome> UnprotectAsync(ReadOnlyMemory<byte> protectedKey, Memory<byte> dataKey, CancellationToken cancellationToken)

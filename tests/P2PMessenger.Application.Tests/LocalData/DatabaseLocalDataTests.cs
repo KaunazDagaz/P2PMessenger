@@ -18,7 +18,7 @@ public sealed class DatabaseLocalDataTests
 
     [Fact]
     [Trait("Story", "US-20")]
-    public async Task Open_NoDatabase_CreatesOneWhoseKeyTheKeyStoreWraps()
+    public async Task Open_NoDatabase_SaysItIsNotCreatedAndWritesNothing()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         using var folder = new LocalDataFolder();
@@ -27,11 +27,32 @@ public sealed class DatabaseLocalDataTests
 
         var result = await localData.OpenAsync(cancellationToken);
 
-        Assert.True(result.IsOpen);
+        Assert.Equal(LocalDataStatus.NotCreated, result.Status);
+        Assert.False(result.IsOpen);
         Assert.Equal(LocalDataProblem.None, result.Problem);
+        Assert.Equal(0, protector.ProtectCalls);
+        Assert.Empty(folder.Files());
+        Assert.Equal(LocalDataProtection.None, localData.Protection);
+    }
+
+    [Fact]
+    [Trait("Story", "US-20")]
+    public async Task Create_WithoutPassphrase_CreatesADatabaseWhoseKeyTheKeyStoreWraps()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        using var folder = new LocalDataFolder();
+        var protector = new TestKeyProtector();
+        await using var localData = new DatabaseLocalData(folder.DatabasePath, protector);
+
+        var result = await localData.CreateAsync(null, cancellationToken);
+
+        Assert.True(result.IsOpen);
+        Assert.Equal(LocalDataStatus.Opened, result.Status);
         Assert.Equal(LocalDataMode.Saved, result.Stores.Mode);
+        Assert.Equal(LocalDataProtection.KeyStore, localData.Protection);
         Assert.Equal(1, protector.ProtectCalls);
         Assert.True(File.Exists(folder.DatabasePath));
+        Assert.Equal(2L, await ScalarAsync(folder.DatabasePath, "SELECT protection FROM data_key;", cancellationToken));
         Assert.Null(await result.Stores.Identity.LoadAsync(cancellationToken));
         if (!OperatingSystem.IsWindows())
         {
@@ -48,44 +69,67 @@ public sealed class DatabaseLocalDataTests
         var protector = new TestKeyProtector();
         await using var localData = new DatabaseLocalData(folder.DatabasePath, protector);
 
+        var created = await localData.CreateAsync(null, cancellationToken);
         var first = await localData.OpenAsync(cancellationToken);
         var second = await localData.OpenAsync(cancellationToken);
+        var again = await localData.CreateAsync(null, cancellationToken);
 
+        Assert.Same(created.Stores, first.Stores);
         Assert.Same(first.Stores, second.Stores);
+        Assert.Same(first.Stores, again.Stores);
         Assert.Equal(1, protector.ProtectCalls);
     }
 
     [Fact]
     [Trait("Story", "US-20")]
-    public async Task Open_NoKeyStoreAndNoDatabase_KeepsTheDataInMemoryAndWritesNothing()
+    public async Task Create_NoPassphraseAndTheKeyStoreDoesNotAnswer_AsksForAPassphraseAndWritesNothing()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         using var folder = new LocalDataFolder();
         var protector = new TestKeyProtector { Protection = KeyProtection.LinuxSecretService, Outcome = KeyStoreOutcome.Unavailable };
         await using var localData = new DatabaseLocalData(folder.DatabasePath, protector);
 
-        var result = await localData.OpenAsync(cancellationToken);
+        var result = await localData.CreateAsync(null, cancellationToken);
+
+        Assert.Equal(LocalDataStatus.PassphraseRequired, result.Status);
+        Assert.False(result.IsOpen);
+        Assert.Empty(folder.Files());
+    }
+
+    [Fact]
+    [Trait("Story", "US-20")]
+    public async Task Create_NoPassphraseAndNoKeyStore_KeepsTheDataInMemoryAndWritesNothing()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        using var folder = new LocalDataFolder();
+        await using var localData = new DatabaseLocalData(folder.DatabasePath, null);
+
+        var result = await localData.CreateAsync(null, cancellationToken);
 
         Assert.True(result.IsOpen);
         Assert.Equal(LocalDataMode.MemoryOnlyNoKeyStore, result.Stores.Mode);
         Assert.IsType<InMemoryIdentityStore>(result.Stores.Identity);
+        Assert.Equal(LocalDataProtection.None, localData.Protection);
+        Assert.False(localData.HasKeyStore);
         Assert.Empty(folder.Files());
+        Assert.Same(result.Stores, (await localData.OpenAsync(cancellationToken)).Stores);
     }
 
     [Theory]
     [Trait("Story", "US-20")]
     [InlineData(KeyStoreOutcome.Refused, LocalDataProblem.KeyStoreRefused)]
     [InlineData(KeyStoreOutcome.KeyNotFound, LocalDataProblem.KeyNotFound)]
-    public async Task Open_KeyStoreFailsForANewDatabase_ReportsItAndWritesNothing(KeyStoreOutcome outcome, LocalDataProblem problem)
+    public async Task Create_KeyStoreFailsForANewDatabase_ReportsItAndWritesNothing(KeyStoreOutcome outcome, LocalDataProblem problem)
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         using var folder = new LocalDataFolder();
         var protector = new TestKeyProtector { Outcome = outcome };
         await using var localData = new DatabaseLocalData(folder.DatabasePath, protector);
 
-        var result = await localData.OpenAsync(cancellationToken);
+        var result = await localData.CreateAsync(null, cancellationToken);
 
         Assert.False(result.IsOpen);
+        Assert.Equal(LocalDataStatus.Failed, result.Status);
         Assert.Equal(problem, result.Problem);
         Assert.Empty(folder.Files());
     }
@@ -258,7 +302,7 @@ public sealed class DatabaseLocalDataTests
     }
 
     [Fact]
-    public async Task Open_EmptyDatabaseWithoutAKey_GetsANewKey()
+    public async Task Open_EmptyDatabaseWithoutAKey_SaysItIsNotCreatedAndCreateGivesItAKey()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         using var folder = new LocalDataFolder();
@@ -267,7 +311,8 @@ public sealed class DatabaseLocalDataTests
         var protector = new TestKeyProtector();
 
         await using var localData = new DatabaseLocalData(folder.DatabasePath, protector);
-        var result = await localData.OpenAsync(cancellationToken);
+        Assert.Equal(LocalDataStatus.NotCreated, (await localData.OpenAsync(cancellationToken)).Status);
+        var result = await localData.CreateAsync(null, cancellationToken);
 
         Assert.True(result.IsOpen);
         Assert.Equal(LocalDataMode.Saved, result.Stores.Mode);
@@ -302,7 +347,7 @@ public sealed class DatabaseLocalDataTests
     private static async Task<StoredSample> FillAsync(string databasePath, TestKeyProtector protector, CancellationToken cancellationToken)
     {
         await using var localData = new DatabaseLocalData(databasePath, protector);
-        var result = await localData.OpenAsync(cancellationToken);
+        var result = await localData.CreateAsync(null, cancellationToken);
         Assert.True(result.IsOpen);
 
         var identities = new IdentityService(result.Stores.Identity);
@@ -331,6 +376,16 @@ public sealed class DatabaseLocalDataTests
     }
 
     [SuppressMessage("Security", "CA2100:Review SQL queries for security vulnerabilities", Justification = "The tests pass constant SQL.")]
+    private static async Task<object?> ScalarAsync(string databasePath, string statement, CancellationToken cancellationToken)
+    {
+        var connectionString = new SqliteConnectionStringBuilder { DataSource = databasePath, Pooling = false };
+        await using var connection = new SqliteConnection(connectionString.ConnectionString);
+        await connection.OpenAsync(cancellationToken);
+        using var command = connection.CreateCommand();
+        command.CommandText = statement;
+        return await command.ExecuteScalarAsync(cancellationToken);
+    }
+
     private static async Task ExecuteAsync(string databasePath, string statement, CancellationToken cancellationToken)
     {
         var connectionString = new SqliteConnectionStringBuilder { DataSource = databasePath, Pooling = false };

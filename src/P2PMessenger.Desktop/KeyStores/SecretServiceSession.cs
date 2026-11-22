@@ -122,6 +122,24 @@ internal sealed class SecretServiceSession : IDisposable
         return (KeyStoreOutcome.Succeeded, secret);
     }
 
+    public async Task DeleteAsync(IReadOnlyDictionary<string, string> attributes, CancellationToken cancellationToken)
+    {
+        (string[] unlocked, string[] locked) = await connection.CallMethodAsync(
+            SearchItems(connection, attributes),
+            static (Message message, object? state) =>
+            {
+                Reader reader = message.GetBodyReader();
+                return (Paths(reader.ReadArrayOfObjectPath()), Paths(reader.ReadArrayOfObjectPath()));
+            }).WaitAsync(cancellationToken).ConfigureAwait(false);
+
+        foreach (string item in unlocked.Concat(locked))
+        {
+            await connection.CallMethodAsync(
+                DeleteItem(connection, item),
+                static (Message message, object? state) => message.GetBodyReader().ReadObjectPathAsString()).WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     public void Dispose() => connection.Dispose();
 
     private static string[] Paths(ObjectPath[] paths) => [.. paths.Select(static path => path.ToString())];
@@ -217,6 +235,13 @@ internal sealed class SecretServiceSession : IDisposable
         using MessageWriter writer = connection.GetMessageWriter();
         writer.WriteMethodCallHeader(destination: Service, path: item, @interface: ItemInterface, member: "GetSecret", signature: "o");
         writer.WriteObjectPath(session);
+        return writer.CreateMessage();
+    }
+
+    private static MessageBuffer DeleteItem(DBusConnection connection, string item)
+    {
+        using MessageWriter writer = connection.GetMessageWriter();
+        writer.WriteMethodCallHeader(destination: Service, path: item, @interface: ItemInterface, member: "Delete");
         return writer.CreateMessage();
     }
 
