@@ -4,6 +4,8 @@ namespace P2PMessenger.Storage.Repositories;
 
 internal sealed class SqliteGate : IAsyncDisposable
 {
+    private const string TruncateJournal = "PRAGMA wal_checkpoint(TRUNCATE);";
+
     private readonly SqliteConnection connection;
     private readonly SemaphoreSlim gate = new(1, 1);
 
@@ -40,6 +42,15 @@ internal sealed class SqliteGate : IAsyncDisposable
             gate.Release();
         }
     }
+
+    public Task TruncateJournalAsync(CancellationToken cancellationToken) =>
+        ReadAsync(
+            async (open, token) =>
+            {
+                await Sql.ExecuteAsync(open, null, TruncateJournal, token).ConfigureAwait(false);
+                return true;
+            },
+            cancellationToken);
 
     public async ValueTask DisposeAsync()
     {

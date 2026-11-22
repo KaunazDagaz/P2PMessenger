@@ -166,6 +166,26 @@ public sealed class AppLockTests
     }
 
     [Fact]
+    [Trait("Story", "US-21")]
+    public void Reset_WhileLockedAndInTheBackground_UnlocksOnceAndStopsTheTimer()
+    {
+        var clock = new ManualClock();
+        using var appLock = new AppLock(new LockedLocalData(), clock);
+        var changes = Count(appLock);
+        appLock.LockNow();
+        appLock.EnterBackground();
+
+        appLock.Reset();
+        appLock.Reset();
+        clock.Advance(TimeSpan.FromHours(1));
+
+        Assert.False(appLock.IsLocked);
+        Assert.False(appLock.IsInBackground);
+        Assert.Equal(2, changes());
+        Assert.Equal(0, clock.ActiveTimers());
+    }
+
+    [Fact]
     public void Construct_NonPositiveLimit_IsRefused()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new AppLock(new LockedLocalData(), new ManualClock(), TimeSpan.Zero));

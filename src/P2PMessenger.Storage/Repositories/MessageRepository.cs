@@ -48,6 +48,32 @@ public sealed class MessageRepository
         + "JOIN person ON person.id = conversation.contact_person_id "
         + "WHERE message.message_id_mac = $message_id_mac AND person.identity_key_mac = $identity_key_mac);";
 
+    private const string SelectSentSequences =
+        "SELECT conversation.id, conversation.sent_sequence_enc, conversation.contact_person_id, person.identity_key_mac, person.identity_key_enc "
+        + "FROM conversation "
+        + "JOIN person ON person.id = conversation.contact_person_id "
+        + "WHERE conversation.sent_sequence_enc IS NOT NULL "
+        + "ORDER BY conversation.id;";
+
+    private const string SelectSentSequence = "SELECT sent_sequence_enc FROM conversation WHERE id = $conversation_id;";
+
+    private const string SelectHighestOwnSequence =
+        "SELECT max(sender_sequence) FROM message WHERE conversation_id = $conversation_id AND author_person_id = $author_person_id;";
+
+    private const string UpdateSentSequence = "UPDATE conversation SET sent_sequence_enc = $sent_sequence_enc WHERE id = $conversation_id;";
+
+    private const string DeleteConversationMessages = "DELETE FROM message WHERE conversation_id = $conversation_id;";
+
+    private const string SelectWaitingOwnMessage =
+        "SELECT message.id FROM message "
+        + "JOIN message_delivery AS delivery ON delivery.message_id = message.id AND delivery.recipient_person_id = $contact_person_id "
+        + "WHERE message.message_id_mac = $message_id_mac "
+        + "AND message.conversation_id = $conversation_id "
+        + "AND message.author_person_id = $author_person_id "
+        + "AND delivery.state = 1;";
+
+    private const string DeleteMessage = "DELETE FROM message WHERE id = $id;";
+
     private readonly SqliteGate gate;
     private readonly RecordKeys keys;
 
@@ -103,6 +129,77 @@ public sealed class MessageRepository
                 return changed == 1;
             },
             cancellationToken);
+    }
+
+    public Task<IReadOnlyDictionary<Ed25519PublicKey, long>> LoadSentSequencesAsync(CancellationToken cancellationToken) =>
+        gate.ReadAsync(LoadSentSequencesAsync, cancellationToken);
+
+    public async Task<int> DeleteConversationAsync(Ed25519PublicKey contactKey, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(contactKey);
+
+        byte[] contactLookup = keys.Lookup(LookupDomain.IdentityKey, contactKey.Bytes);
+        int deleted = await gate.WriteAsync(
+            async (connection, transaction, token) =>
+            {
+                if (await FindChatAsync(connection, transaction, contactLookup, token).ConfigureAwait(false) is not { } chat)
+                {
+                    return 0;
+                }
+
+                await KeepSentSequenceAsync(connection, transaction, chat, token).ConfigureAwait(false);
+                return await Sql.ExecuteAsync(connection, transaction, DeleteConversationMessages, token, ("$conversation_id", chat.ConversationId)).ConfigureAwait(false);
+            },
+            cancellationToken).ConfigureAwait(false);
+
+        if (deleted > 0)
+        {
+            await gate.TruncateJournalAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        return deleted;
+    }
+
+    public async Task<bool> DeleteWaitingAsync(Ed25519PublicKey contactKey, MessageId id, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(contactKey);
+        ArgumentNullException.ThrowIfNull(id);
+
+        byte[] contactLookup = keys.Lookup(LookupDomain.IdentityKey, contactKey.Bytes);
+        byte[] idLookup = keys.Lookup(LookupDomain.MessageId, id.Bytes);
+        bool deleted = await gate.WriteAsync(
+            async (connection, transaction, token) =>
+            {
+                if (await FindChatAsync(connection, transaction, contactLookup, token).ConfigureAwait(false) is not { } chat)
+                {
+                    return false;
+                }
+
+                long? rowId = await Sql.LongAsync(
+                    connection,
+                    transaction,
+                    SelectWaitingOwnMessage,
+                    token,
+                    ("$contact_person_id", chat.ContactPersonId),
+                    ("$message_id_mac", idLookup),
+                    ("$conversation_id", chat.ConversationId),
+                    ("$author_person_id", chat.OwnPersonId)).ConfigureAwait(false);
+                if (rowId is not { } row)
+                {
+                    return false;
+                }
+
+                await KeepSentSequenceAsync(connection, transaction, chat, token).ConfigureAwait(false);
+                return await Sql.ExecuteAsync(connection, transaction, DeleteMessage, token, ("$id", row)).ConfigureAwait(false) == 1;
+            },
+            cancellationToken).ConfigureAwait(false);
+
+        if (deleted)
+        {
+            await gate.TruncateJournalAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        return deleted;
     }
 
     private static StoredDeliveryState DeliveryOf(StoredMessageDirection direction, long? state, long deliveries)
@@ -181,6 +278,73 @@ public sealed class MessageRepository
         return messages;
     }
 
+    private static async Task<ChatRows?> FindChatAsync(SqliteConnection connection, SqliteTransaction transaction, byte[] contactLookup, CancellationToken cancellationToken)
+    {
+        long? contactPersonId = await Sql.LongAsync(connection, transaction, SelectContactPerson, cancellationToken, ("$identity_key_mac", contactLookup)).ConfigureAwait(false);
+        long? ownPersonId = await Sql.LongAsync(connection, transaction, SelectOwnPerson, cancellationToken).ConfigureAwait(false);
+        if (contactPersonId is not { } contact || ownPersonId is not { } own)
+        {
+            return null;
+        }
+
+        long? conversationId = await Sql.LongAsync(connection, transaction, SelectConversation, cancellationToken, ("$contact_person_id", contact)).ConfigureAwait(false);
+        return conversationId is { } conversation ? new ChatRows(contact, conversation, own) : null;
+    }
+
+    private async Task<IReadOnlyDictionary<Ed25519PublicKey, long>> LoadSentSequencesAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        Dictionary<Ed25519PublicKey, long> sequences = [];
+        using SqliteCommand command = Sql.Command(connection, null, SelectSentSequences);
+        using SqliteDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+        {
+            long conversationId = reader.GetInt64(0);
+            long contactPersonId = reader.GetInt64(2);
+            Ed25519PublicKey contactKey = StoredValues.IdentityKey(keys, contactPersonId, reader.GetFieldValue<byte[]>(3), reader.GetFieldValue<byte[]>(4));
+            RecordLocation location = Locations.ConversationSentSequence(conversationId);
+            long sequence = StoredValues.Sequence(location, StoredValues.Open(keys, location, reader.GetFieldValue<byte[]>(1)));
+            if (!sequences.TryAdd(contactKey, sequence))
+            {
+                throw StoredValues.Inconsistent("two chats belong to one contact");
+            }
+        }
+
+        return sequences;
+    }
+
+    private async Task KeepSentSequenceAsync(SqliteConnection connection, SqliteTransaction transaction, ChatRows chat, CancellationToken cancellationToken)
+    {
+        long? highest = await Sql.LongAsync(
+            connection,
+            transaction,
+            SelectHighestOwnSequence,
+            cancellationToken,
+            ("$conversation_id", chat.ConversationId),
+            ("$author_person_id", chat.OwnPersonId)).ConfigureAwait(false);
+        if (highest is not { } sent)
+        {
+            return;
+        }
+
+        RecordLocation location = Locations.ConversationSentSequence(chat.ConversationId);
+        using (SqliteCommand read = Sql.Command(connection, transaction, SelectSentSequence, ("$conversation_id", chat.ConversationId)))
+        {
+            if (await read.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false) is byte[] sealedSequence
+                && StoredValues.Sequence(location, StoredValues.Open(keys, location, sealedSequence)) >= sent)
+            {
+                return;
+            }
+        }
+
+        await Sql.ExecuteAsync(
+            connection,
+            transaction,
+            UpdateSentSequence,
+            cancellationToken,
+            ("$sent_sequence_enc", keys.Seal(location, StoredValues.Sequence(sent))),
+            ("$conversation_id", chat.ConversationId)).ConfigureAwait(false);
+    }
+
     private async Task<bool> AddAsync(SqliteConnection connection, SqliteTransaction transaction, StoredMessage message, CancellationToken cancellationToken)
     {
         byte[] contactLookup = keys.Lookup(LookupDomain.IdentityKey, message.ContactKey.Bytes);
@@ -229,4 +393,6 @@ public sealed class MessageRepository
         await Sql.ExecuteAsync(connection, transaction, InsertSeen, cancellationToken, ("$message_id_mac", idLookup)).ConfigureAwait(false);
         return true;
     }
+
+    private readonly record struct ChatRows(long ContactPersonId, long ConversationId, long OwnPersonId);
 }

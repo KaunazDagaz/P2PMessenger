@@ -27,8 +27,17 @@ internal sealed class DatabaseChatStore : IChatStore
         await repository.AddAsync(ToStored(message), cancellationToken).ConfigureAwait(false);
     }
 
+    public async ValueTask<IReadOnlyDictionary<Ed25519PublicKey, long>> LoadSentSequencesAsync(CancellationToken cancellationToken) =>
+        await repository.LoadSentSequencesAsync(cancellationToken).ConfigureAwait(false);
+
     public async ValueTask<bool> MarkReceivedAsync(Ed25519PublicKey contactKey, MessageId id, CancellationToken cancellationToken) =>
         await repository.MarkReceivedAsync(contactKey, id, cancellationToken).ConfigureAwait(false);
+
+    public async ValueTask<int> DeleteChatAsync(Ed25519PublicKey contactKey, CancellationToken cancellationToken) =>
+        await repository.DeleteConversationAsync(contactKey, cancellationToken).ConfigureAwait(false);
+
+    public async ValueTask<bool> DeleteWaitingAsync(Ed25519PublicKey contactKey, MessageId id, CancellationToken cancellationToken) =>
+        await repository.DeleteWaitingAsync(contactKey, id, cancellationToken).ConfigureAwait(false);
 
     private static DeliveryState ToDelivery(StoredDeliveryState stored) => stored switch
     {

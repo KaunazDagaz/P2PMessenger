@@ -36,6 +36,9 @@
         <DataTemplate DataType="vm:PassphraseViewModel">
             <v:PassphraseView />
         </DataTemplate>
+        <DataTemplate DataType="vm:DeleteAllDataPageViewModel">
+            <v:DeleteAllDataPageView />
+        </DataTemplate>
     </UserControl.DataTemplates>
 
     <DockPanel>

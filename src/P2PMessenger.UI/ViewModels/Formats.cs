@@ -24,6 +24,9 @@ internal static class Formats
     public static readonly CompositeFormat PassphraseHint = CompositeFormat.Parse(UiText.PassphraseHintFormat);
     public static readonly CompositeFormat PassphraseTooShort = CompositeFormat.Parse(UiText.PassphraseTooShortFormat);
     public static readonly CompositeFormat PassphraseStateSet = CompositeFormat.Parse(UiText.PassphraseStateSetFormat);
+    public static readonly CompositeFormat DeleteChatQuestion = CompositeFormat.Parse(UiText.ConversationDeleteChatQuestionFormat);
+    public static readonly CompositeFormat ChatDeleted = CompositeFormat.Parse(UiText.ConversationChatDeletedFormat);
+    public static readonly CompositeFormat MessageDeleted = CompositeFormat.Parse(UiText.ConversationMessageDeletedFormat);
 
     public static string With(CompositeFormat format, object? argument) => string.Format(CultureInfo.CurrentCulture, format, argument);
 }

@@ -25,4 +25,6 @@ internal static class Locations
     public static RecordLocation MessageWrittenAt(long messageId) => new("message", "written_at_enc", messageId);
 
     public static RecordLocation MessageRecordedAt(long messageId) => new("message", "recorded_at_enc", messageId);
+
+    public static RecordLocation ConversationSentSequence(long conversationId) => new("conversation", "sent_sequence_enc", conversationId);
 }

@@ -260,6 +260,127 @@ public sealed class ChatLogTests : IDisposable
             () => new ChatMessage(bob.IdentityKey, direction, MessageId.Create(), 1, time.GetUtcNow(), "text", time.GetUtcNow(), delivery));
     }
 
+    [Fact]
+    [Trait("Story", "US-21")]
+    [Trait("Story", "US-15")]
+    public async Task DeleteChatAsync_RemovesTheMessagesWaitingAndUnreadAndKeepsTheSequence()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await log.RecordOutgoingAsync(bob.IdentityKey, Text(log.NextSequence(bob.IdentityKey), "one"), time.GetUtcNow(), cancellationToken);
+        await log.RecordOutgoingAsync(bob.IdentityKey, Text(log.NextSequence(bob.IdentityKey), "two"), time.GetUtcNow(), cancellationToken);
+        await log.ReceiveAsync(bob.IdentityKey, Text(1, "from Bob"), cancellationToken);
+        await log.ReceiveAsync(carol.IdentityKey, Text(1, "from Carol"), cancellationToken);
+        changes.Clear();
+
+        var deleted = await log.DeleteChatAsync(bob.IdentityKey, cancellationToken);
+
+        Assert.Equal(3, deleted);
+        Assert.Empty(log.MessagesWith(bob.IdentityKey));
+        Assert.Empty(log.WaitingFor(bob.IdentityKey));
+        Assert.Empty(log.ContactsWithWaitingMessages());
+        Assert.Equal(0, log.UnreadCount(bob.IdentityKey));
+        Assert.Single(log.MessagesWith(carol.IdentityKey));
+        Assert.Equal(3, log.NextSequence(bob.IdentityKey));
+        var change = Assert.Single(changes);
+        Assert.True(change.IsCleared);
+        Assert.Equal(bob.IdentityKey, change.ContactKey);
+        Assert.Equal("from Carol", Assert.Single(await store.LoadAllAsync(cancellationToken)).Text);
+    }
+
+    [Fact]
+    [Trait("Story", "US-21")]
+    [Trait("Story", "US-11")]
+    public async Task DeleteChatAsync_ThenStartedAgainFromTheStore_ContinuesTheSequence()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        for (var i = 0; i < 4; i++)
+        {
+            await log.RecordOutgoingAsync(bob.IdentityKey, Text(log.NextSequence(bob.IdentityKey), "text"), time.GetUtcNow(), cancellationToken);
+        }
+
+        await log.DeleteChatAsync(bob.IdentityKey, cancellationToken);
+        using var restarted = new ChatLog(store, seen, time, await store.LoadAllAsync(cancellationToken), await store.LoadSentSequencesAsync(cancellationToken));
+
+        Assert.Equal(5, restarted.NextSequence(bob.IdentityKey));
+        Assert.Equal(1, restarted.NextSequence(carol.IdentityKey));
+    }
+
+    [Fact]
+    [Trait("Story", "US-11")]
+    public void Constructor_SentSequenceAboveTheLoadedMessages_ContinuesAfterIt()
+    {
+        var sent = ChatMessage.From(bob.IdentityKey, MessageDirection.Outgoing, Text(2, "old"), time.GetUtcNow());
+
+        using var loaded = new ChatLog(store, seen, time, [sent], new Dictionary<P2PMessenger.Core.Crypto.Ed25519PublicKey, long> { [bob.IdentityKey] = 9, [carol.IdentityKey] = 1 });
+
+        Assert.Equal(10, loaded.NextSequence(bob.IdentityKey));
+        Assert.Equal(2, loaded.NextSequence(carol.IdentityKey));
+        Assert.Empty(loaded.MessagesWith(carol.IdentityKey));
+        Assert.DoesNotContain(carol.IdentityKey, loaded.ContactsWithWaitingMessages());
+    }
+
+    [Fact]
+    [Trait("Story", "US-15")]
+    [Trait("Story", "US-21")]
+    public async Task DeleteWaitingAsync_OwnWaitingText_IsRemovedOnceAndItsNumberIsNotReused()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var first = await log.RecordOutgoingAsync(bob.IdentityKey, Text(log.NextSequence(bob.IdentityKey), "one"), time.GetUtcNow(), cancellationToken);
+        var second = await log.RecordOutgoingAsync(bob.IdentityKey, Text(log.NextSequence(bob.IdentityKey), "two"), time.GetUtcNow(), cancellationToken);
+        changes.Clear();
+
+        Assert.True(await log.DeleteWaitingAsync(bob.IdentityKey, second.Id, cancellationToken));
+        Assert.False(await log.DeleteWaitingAsync(bob.IdentityKey, second.Id, cancellationToken));
+
+        Assert.Same(first, Assert.Single(log.MessagesWith(bob.IdentityKey)));
+        Assert.Same(first, Assert.Single(log.WaitingFor(bob.IdentityKey)));
+        Assert.False(log.IsWaiting(bob.IdentityKey, second.Id));
+        Assert.True(log.IsWaiting(bob.IdentityKey, first.Id));
+        Assert.Equal(3, log.NextSequence(bob.IdentityKey));
+        Assert.Same(second, Assert.Single(changes).Removed);
+        using var restarted = new ChatLog(store, seen, time, await store.LoadAllAsync(cancellationToken), await store.LoadSentSequencesAsync(cancellationToken));
+        Assert.Equal(3, restarted.NextSequence(bob.IdentityKey));
+    }
+
+    [Fact]
+    [Trait("Story", "US-15")]
+    [Trait("NFR", "NFR-07")]
+    public async Task DeleteWaitingAsync_ReceivedIncomingOrAnotherContactsText_IsNotDeleted()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var sent = await log.RecordOutgoingAsync(bob.IdentityKey, Text(log.NextSequence(bob.IdentityKey), "one"), time.GetUtcNow(), cancellationToken);
+        var incoming = Text(1, "from Bob");
+        await log.ReceiveAsync(bob.IdentityKey, incoming, cancellationToken);
+
+        Assert.False(await log.DeleteWaitingAsync(carol.IdentityKey, sent.Id, cancellationToken));
+        Assert.False(await log.DeleteWaitingAsync(bob.IdentityKey, incoming.Id, cancellationToken));
+        Assert.True(await log.MarkReceivedAsync(bob.IdentityKey, sent.Id, cancellationToken));
+        Assert.False(await log.DeleteWaitingAsync(bob.IdentityKey, sent.Id, cancellationToken));
+
+        Assert.Equal(2, log.MessagesWith(bob.IdentityKey).Count);
+        Assert.Equal(2, (await store.LoadAllAsync(cancellationToken)).Count);
+    }
+
+    [Fact]
+    [Trait("Story", "US-15")]
+    public async Task EnterDeliveryAsync_WhileADeletionWaits_KeepsTheDeletionUntilTheTurnEnds()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var sent = await log.RecordOutgoingAsync(bob.IdentityKey, Text(log.NextSequence(bob.IdentityKey), "one"), time.GetUtcNow(), cancellationToken);
+
+        var turn = await log.EnterDeliveryAsync(bob.IdentityKey, cancellationToken);
+        var deleting = log.DeleteWaitingAsync(bob.IdentityKey, sent.Id, cancellationToken);
+        await Task.Delay(100, cancellationToken);
+
+        Assert.False(deleting.IsCompleted);
+        Assert.True(log.IsWaiting(bob.IdentityKey, sent.Id));
+        turn.Dispose();
+        turn.Dispose();
+        Assert.True(await deleting);
+        Assert.False(log.IsWaiting(bob.IdentityKey, sent.Id));
+        using var again = await log.EnterDeliveryAsync(bob.IdentityKey, cancellationToken);
+    }
+
     public void Dispose()
     {
         log.Dispose();

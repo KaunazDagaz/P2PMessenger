@@ -147,6 +147,24 @@ public sealed class AppLock : IDisposable
         return true;
     }
 
+    public void Reset()
+    {
+        bool wasLocked;
+        lock (sync)
+        {
+            timer?.Dispose();
+            timer = null;
+            backgroundSince = null;
+            wasLocked = locked;
+            locked = false;
+        }
+
+        if (wasLocked)
+        {
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
     public void Dispose()
     {
         lock (sync)

@@ -222,9 +222,17 @@ internal sealed class Outbox : IAsyncDisposable
                     continue;
                 }
 
-                if (!await connection.SendAsync(text, stop).ConfigureAwait(false))
+                using (await outbox.chats.EnterDeliveryAsync(contactKey, stop).ConfigureAwait(false))
                 {
-                    return;
+                    if (!outbox.chats.IsWaiting(contactKey, message.Id))
+                    {
+                        continue;
+                    }
+
+                    if (!await connection.SendAsync(text, stop).ConfigureAwait(false))
+                    {
+                        return;
+                    }
                 }
 
                 attempts[message.Id] = new Attempt(connection, outbox.timeProvider.GetTimestamp());

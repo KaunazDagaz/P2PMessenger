@@ -11,8 +11,19 @@ public sealed class ChatLog : IDisposable
     private readonly SemaphoreSlim writing = new(1, 1);
     private readonly Lock gate = new();
     private readonly Dictionary<Ed25519PublicKey, Conversation> conversations = [];
+    private readonly Dictionary<Ed25519PublicKey, SemaphoreSlim> deliveries = [];
 
     internal ChatLog(IChatStore store, ISeenMessageIds seen, TimeProvider timeProvider, IEnumerable<ChatMessage> loaded)
+        : this(store, seen, timeProvider, loaded, new Dictionary<Ed25519PublicKey, long>())
+    {
+    }
+
+    internal ChatLog(
+        IChatStore store,
+        ISeenMessageIds seen,
+        TimeProvider timeProvider,
+        IEnumerable<ChatMessage> loaded,
+        IReadOnlyDictionary<Ed25519PublicKey, long> sentSequences)
     {
         this.store = store;
         this.seen = seen;
@@ -21,6 +32,11 @@ public sealed class ChatLog : IDisposable
         foreach (ChatMessage message in loaded.OrderBy(static message => message.RecordedAt))
         {
             ConversationWith(message.ContactKey).Insert(message);
+        }
+
+        foreach ((Ed25519PublicKey contactKey, long sequence) in sentSequences)
+        {
+            ConversationWith(contactKey).KeepSentSequence(sequence);
         }
     }
 
@@ -148,7 +164,115 @@ public sealed class ChatLog : IDisposable
         return true;
     }
 
-    public void Dispose() => writing.Dispose();
+    public async Task<int> DeleteChatAsync(Ed25519PublicKey contactKey, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(contactKey);
+
+        int removed;
+        using (await EnterDeliveryAsync(contactKey, cancellationToken).ConfigureAwait(false))
+        {
+            await writing.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                removed = await store.DeleteChatAsync(contactKey, cancellationToken).ConfigureAwait(false);
+                lock (gate)
+                {
+                    if (conversations.TryGetValue(contactKey, out Conversation? conversation))
+                    {
+                        conversation.Clear();
+                    }
+                }
+            }
+            finally
+            {
+                writing.Release();
+            }
+        }
+
+        Changed?.Invoke(this, ChatChangedEventArgs.ForCleared(contactKey));
+        return removed;
+    }
+
+    public async Task<bool> DeleteWaitingAsync(Ed25519PublicKey contactKey, MessageId id, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(contactKey);
+        ArgumentNullException.ThrowIfNull(id);
+
+        ChatMessage deleted;
+        using (await EnterDeliveryAsync(contactKey, cancellationToken).ConfigureAwait(false))
+        {
+            await writing.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                ChatMessage? waiting;
+                lock (gate)
+                {
+                    waiting = conversations.TryGetValue(contactKey, out Conversation? conversation) ? conversation.FindWaiting(id) : null;
+                }
+
+                if (waiting is null
+                    || waiting.Direction != MessageDirection.Outgoing
+                    || !await store.DeleteWaitingAsync(contactKey, id, cancellationToken).ConfigureAwait(false))
+                {
+                    return false;
+                }
+
+                lock (gate)
+                {
+                    ConversationWith(contactKey).Remove(waiting);
+                }
+
+                deleted = waiting;
+            }
+            finally
+            {
+                writing.Release();
+            }
+        }
+
+        Changed?.Invoke(this, ChatChangedEventArgs.ForRemoved(deleted));
+        return true;
+    }
+
+    public void Dispose()
+    {
+        writing.Dispose();
+        lock (gate)
+        {
+            foreach (SemaphoreSlim delivery in deliveries.Values)
+            {
+                delivery.Dispose();
+            }
+
+            deliveries.Clear();
+        }
+    }
+
+    internal async Task<IDisposable> EnterDeliveryAsync(Ed25519PublicKey contactKey, CancellationToken cancellationToken)
+    {
+        SemaphoreSlim delivery;
+        lock (gate)
+        {
+            if (!deliveries.TryGetValue(contactKey, out SemaphoreSlim? existing))
+            {
+                existing = new SemaphoreSlim(1, 1);
+                deliveries.Add(contactKey, existing);
+            }
+
+            delivery = existing;
+        }
+
+        await delivery.WaitAsync(cancellationToken).ConfigureAwait(false);
+        return new DeliveryTurn(delivery);
+    }
+
+    internal bool IsWaiting(Ed25519PublicKey contactKey, MessageId id)
+    {
+        lock (gate)
+        {
+            return conversations.TryGetValue(contactKey, out Conversation? conversation) && conversation.FindWaiting(id) is not null;
+        }
+    }
 
     internal long NextSequence(Ed25519PublicKey contactKey)
     {
@@ -231,6 +355,29 @@ public sealed class ChatLog : IDisposable
         public IReadOnlyList<ChatMessage> Waiting() =>
             [.. Messages.Where(static message => message.IsWaiting).OrderBy(static message => message.Sequence)];
 
+        public void KeepSentSequence(long sequence)
+        {
+            if (sequence > LastSentSequence)
+            {
+                LastSentSequence = sequence;
+            }
+        }
+
+        public void Clear()
+        {
+            Messages.Clear();
+            Unread = 0;
+            WaitingCount = 0;
+        }
+
+        public void Remove(ChatMessage message)
+        {
+            if (Messages.Remove(message) && message.IsWaiting)
+            {
+                WaitingCount--;
+            }
+        }
+
         public void Replace(ChatMessage old, ChatMessage replacement)
         {
             int index = Messages.IndexOf(old);
@@ -247,5 +394,17 @@ public sealed class ChatLog : IDisposable
             earlier.Direction == message.Direction
                 ? earlier.Sequence > message.Sequence
                 : earlier.RecordedAt > message.RecordedAt;
+    }
+
+    private sealed class DeliveryTurn : IDisposable
+    {
+        private SemaphoreSlim? delivery;
+
+        public DeliveryTurn(SemaphoreSlim delivery)
+        {
+            this.delivery = delivery;
+        }
+
+        public void Dispose() => Interlocked.Exchange(ref delivery, null)?.Release();
     }
 }

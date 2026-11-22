@@ -337,6 +337,24 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Cancel.
+        /// </summary>
+        public static string CommonCancel {
+            get {
+                return ResourceManager.GetString("CommonCancel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Delete.
+        /// </summary>
+        public static string CommonDelete {
+            get {
+                return ResourceManager.GetString("CommonDelete", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Dismiss.
         /// </summary>
         public static string CommonDismiss {
@@ -387,6 +405,15 @@ namespace P2PMessenger.UI.Resources {
         public static string ContactListAddContact {
             get {
                 return ResourceManager.GetString("ContactListAddContact", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Delete all data.
+        /// </summary>
+        public static string ContactListDeleteAllData {
+            get {
+                return ResourceManager.GetString("ContactListDeleteAllData", resourceCulture);
             }
         }
         
@@ -463,11 +490,47 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The chat was deleted on this device only. {0}&apos;s app still has its copy..
+        /// </summary>
+        public static string ConversationChatDeletedFormat {
+            get {
+                return ResourceManager.GetString("ConversationChatDeletedFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Compare fingerprints.
         /// </summary>
         public static string ConversationCompare {
             get {
                 return ResourceManager.GetString("ConversationCompare", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Delete chat.
+        /// </summary>
+        public static string ConversationDeleteChat {
+            get {
+                return ResourceManager.GetString("ConversationDeleteChat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The chat could not be deleted. Try again..
+        /// </summary>
+        public static string ConversationDeleteChatFailed {
+            get {
+                return ResourceManager.GetString("ConversationDeleteChatFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Delete the chat with {0}? Its messages are removed from this device, and messages that are still waiting will not be sent. {0}&apos;s app keeps its copy..
+        /// </summary>
+        public static string ConversationDeleteChatQuestionFormat {
+            get {
+                return ResourceManager.GetString("ConversationDeleteChatQuestionFormat", resourceCulture);
             }
         }
         
@@ -495,6 +558,33 @@ namespace P2PMessenger.UI.Resources {
         public static string ConversationKeyNotComparedFormat {
             get {
                 return ResourceManager.GetString("ConversationKeyNotComparedFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The waiting message was deleted on this device and will not be sent again. If it reached {0}&apos;s app before its confirmation came back, it stays there..
+        /// </summary>
+        public static string ConversationMessageDeletedFormat {
+            get {
+                return ResourceManager.GetString("ConversationMessageDeletedFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The message could not be deleted. Try again..
+        /// </summary>
+        public static string ConversationMessageDeleteFailed {
+            get {
+                return ResourceManager.GetString("ConversationMessageDeleteFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The message is no longer waiting, so it was not deleted..
+        /// </summary>
+        public static string ConversationMessageNotWaiting {
+            get {
+                return ResourceManager.GetString("ConversationMessageNotWaiting", resourceCulture);
             }
         }
         
@@ -679,6 +769,96 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Delete everything.
+        /// </summary>
+        public static string DeleteAllDataConfirm {
+            get {
+                return ResourceManager.GetString("DeleteAllDataConfirm", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Deleting….
+        /// </summary>
+        public static string DeleteAllDataDeleting {
+            get {
+                return ResourceManager.GetString("DeleteAllDataDeleting", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to All data was deleted from this device. Your contacts&apos; apps keep their copies of your chats..
+        /// </summary>
+        public static string DeleteAllDataDone {
+            get {
+                return ResourceManager.GetString("DeleteAllDataDone", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The data could not be deleted. Try again..
+        /// </summary>
+        public static string DeleteAllDataFailed {
+            get {
+                return ResourceManager.GetString("DeleteAllDataFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Not every file could be deleted. Close any other copy of the app and delete all data again..
+        /// </summary>
+        public static string DeleteAllDataIncomplete {
+            get {
+                return ResourceManager.GetString("DeleteAllDataIncomplete", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to If the stored data cannot be opened, you can delete it from this device and create a new identity..
+        /// </summary>
+        public static string DeleteAllDataIntroProblem {
+            get {
+                return ResourceManager.GetString("DeleteAllDataIntroProblem", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to If the passphrase is forgotten, the only way to use the app again is to delete all its data on this device and create a new identity..
+        /// </summary>
+        public static string DeleteAllDataIntroUnlock {
+            get {
+                return ResourceManager.GetString("DeleteAllDataIntroUnlock", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Delete all data.
+        /// </summary>
+        public static string DeleteAllDataOpen {
+            get {
+                return ResourceManager.GetString("DeleteAllDataOpen", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Delete all data.
+        /// </summary>
+        public static string DeleteAllDataTitle {
+            get {
+                return ResourceManager.GetString("DeleteAllDataTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This deletes your identity, your contacts and all chats from this device, and it cannot be undone. Messages that are still waiting will not be sent. Your contacts&apos; apps keep their copies of your chats..
+        /// </summary>
+        public static string DeleteAllDataWarning {
+            get {
+                return ResourceManager.GetString("DeleteAllDataWarning", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Received by the contact&apos;s app.
         /// </summary>
         public static string DeliveryReceived {
@@ -776,6 +956,24 @@ namespace P2PMessenger.UI.Resources {
         public static string LockNow {
             get {
                 return ResourceManager.GetString("LockNow", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Delete message.
+        /// </summary>
+        public static string MessageDelete {
+            get {
+                return ResourceManager.GetString("MessageDelete", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Delete this waiting message? It will not be sent again..
+        /// </summary>
+        public static string MessageDeleteQuestion {
+            get {
+                return ResourceManager.GetString("MessageDeleteQuestion", resourceCulture);
             }
         }
         

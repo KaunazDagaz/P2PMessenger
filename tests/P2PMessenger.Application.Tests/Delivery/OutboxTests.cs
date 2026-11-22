@@ -165,6 +165,81 @@ public sealed class OutboxTests
         }
     }
 
+    [Fact(Timeout = 60_000)]
+    [Trait("Story", "US-15")]
+    [Trait("Story", "US-21")]
+    public async Task DeleteWaitingAsync_BeforeTheContactIsReachable_IsNeverSentAndTheNumbersGoOn()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var pair = await Pair.ConnectAsync(cancellationToken);
+        await pair.DisconnectAsync(cancellationToken);
+        var kept = await pair.Alice.SendAsync(pair.BobKey, "keep", cancellationToken);
+        var dropped = await pair.Alice.SendAsync(pair.BobKey, "drop", cancellationToken);
+
+        Assert.True(await pair.Alice.DeleteWaitingAsync(pair.BobKey, dropped.Message!.Id, cancellationToken));
+        var after = await pair.Alice.SendAsync(pair.BobKey, "after", cancellationToken);
+        pair.Alice.Connections.SetAddress(pair.BobKey, pair.BobEndpoint);
+        await TestMessengers.WaitUntilAsync(
+            () => pair.Alice.Chats.MessagesWith(pair.BobKey).All(static message => message.Delivery == DeliveryState.Received),
+            cancellationToken);
+        await Task.Delay(300, cancellationToken);
+
+        Assert.Equal(["keep", "after"], pair.Bob.Chats.MessagesWith(pair.AliceKey).Select(static message => message.Text));
+        Assert.Equal([1L, 3L], pair.Bob.Chats.MessagesWith(pair.AliceKey).Select(static message => message.Sequence));
+        Assert.Equal([kept.Message!.Id, after.Message!.Id], pair.Alice.Chats.MessagesWith(pair.BobKey).Select(static message => message.Id));
+    }
+
+    [Fact(Timeout = 60_000)]
+    [Trait("Story", "US-21")]
+    [Trait("Story", "US-15")]
+    [Trait("Story", "US-11")]
+    public async Task DeleteChatAsync_WithAWaitingMessage_CancelsItAndTheContactKeepsItsCopyInOrder()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var pair = await Pair.ConnectAsync(cancellationToken);
+        await pair.Alice.SendAsync(pair.BobKey, "one", cancellationToken);
+        await TestMessengers.WaitUntilAsync(() => pair.Alice.Chats.MessagesWith(pair.BobKey).Single().Delivery == DeliveryState.Received, cancellationToken);
+        await pair.DisconnectAsync(cancellationToken);
+        await pair.Alice.SendAsync(pair.BobKey, "two", cancellationToken);
+
+        Assert.Equal(2, await pair.Alice.DeleteChatAsync(pair.BobKey, cancellationToken));
+        Assert.Empty(pair.Alice.Chats.MessagesWith(pair.BobKey));
+        await pair.Alice.SendAsync(pair.BobKey, "three", cancellationToken);
+        pair.Alice.Connections.SetAddress(pair.BobKey, pair.BobEndpoint);
+        await TestMessengers.WaitUntilAsync(() => pair.Alice.Chats.MessagesWith(pair.BobKey).Single().Delivery == DeliveryState.Received, cancellationToken);
+        await Task.Delay(300, cancellationToken);
+
+        Assert.Equal(["one", "three"], pair.Bob.Chats.MessagesWith(pair.AliceKey).Select(static message => message.Text));
+        Assert.Equal([1L, 3L], pair.Bob.Chats.MessagesWith(pair.AliceKey).Select(static message => message.Sequence));
+        Assert.Equal("three", Assert.Single(pair.Alice.Chats.MessagesWith(pair.BobKey)).Text);
+    }
+
+    [Fact(Timeout = 60_000)]
+    [Trait("Story", "US-15")]
+    [Trait("Story", "US-21")]
+    public async Task DeleteWaitingAsync_AfterAPassTookTheMessageButBeforeItsTurn_IsNotSent()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var pair = await Pair.ConnectAsync(cancellationToken);
+        await pair.DisconnectAsync(cancellationToken);
+        var dropped = await pair.Alice.SendAsync(pair.BobKey, "drop", cancellationToken);
+
+        var turn = await pair.Alice.Chats.EnterDeliveryAsync(pair.BobKey, cancellationToken);
+        var deleting = pair.Alice.DeleteWaitingAsync(pair.BobKey, dropped.Message!.Id, cancellationToken);
+        pair.Alice.Connections.SetAddress(pair.BobKey, pair.BobEndpoint);
+        await TestMessengers.WaitUntilAsync(() => pair.Alice.Connections.IsConnected(pair.BobKey), cancellationToken);
+        await Task.Delay(300, cancellationToken);
+        Assert.False(deleting.IsCompleted);
+        turn.Dispose();
+
+        Assert.True(await deleting);
+        await pair.Alice.SendAsync(pair.BobKey, "after", cancellationToken);
+        await TestMessengers.WaitUntilAsync(() => pair.Bob.Chats.MessagesWith(pair.AliceKey).Count > 0, cancellationToken);
+        await Task.Delay(300, cancellationToken);
+
+        Assert.Equal("after", Assert.Single(pair.Bob.Chats.MessagesWith(pair.AliceKey)).Text);
+    }
+
     private sealed class Pair : IAsyncDisposable
     {
         private Pair(Messenger alice, Messenger bob)

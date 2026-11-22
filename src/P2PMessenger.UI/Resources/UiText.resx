@@ -491,4 +491,70 @@
   <data name="PassphraseForgotten" xml:space="preserve">
     <value>A forgotten passphrase cannot be recovered or reset, and neither can the data it protects.</value>
   </data>
+  <data name="CommonCancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="CommonDelete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="ContactListDeleteAllData" xml:space="preserve">
+    <value>Delete all data</value>
+  </data>
+  <data name="DeleteAllDataTitle" xml:space="preserve">
+    <value>Delete all data</value>
+  </data>
+  <data name="DeleteAllDataOpen" xml:space="preserve">
+    <value>Delete all data</value>
+  </data>
+  <data name="DeleteAllDataIntroUnlock" xml:space="preserve">
+    <value>If the passphrase is forgotten, the only way to use the app again is to delete all its data on this device and create a new identity.</value>
+  </data>
+  <data name="DeleteAllDataIntroProblem" xml:space="preserve">
+    <value>If the stored data cannot be opened, you can delete it from this device and create a new identity.</value>
+  </data>
+  <data name="DeleteAllDataWarning" xml:space="preserve">
+    <value>This deletes your identity, your contacts and all chats from this device, and it cannot be undone. Messages that are still waiting will not be sent. Your contacts' apps keep their copies of your chats.</value>
+  </data>
+  <data name="DeleteAllDataConfirm" xml:space="preserve">
+    <value>Delete everything</value>
+  </data>
+  <data name="DeleteAllDataDeleting" xml:space="preserve">
+    <value>Deleting…</value>
+  </data>
+  <data name="DeleteAllDataFailed" xml:space="preserve">
+    <value>The data could not be deleted. Try again.</value>
+  </data>
+  <data name="DeleteAllDataDone" xml:space="preserve">
+    <value>All data was deleted from this device. Your contacts' apps keep their copies of your chats.</value>
+  </data>
+  <data name="DeleteAllDataIncomplete" xml:space="preserve">
+    <value>Not every file could be deleted. Close any other copy of the app and delete all data again.</value>
+  </data>
+  <data name="ConversationDeleteChat" xml:space="preserve">
+    <value>Delete chat</value>
+  </data>
+  <data name="ConversationDeleteChatQuestionFormat" xml:space="preserve">
+    <value>Delete the chat with {0}? Its messages are removed from this device, and messages that are still waiting will not be sent. {0}'s app keeps its copy.</value>
+  </data>
+  <data name="ConversationChatDeletedFormat" xml:space="preserve">
+    <value>The chat was deleted on this device only. {0}'s app still has its copy.</value>
+  </data>
+  <data name="ConversationDeleteChatFailed" xml:space="preserve">
+    <value>The chat could not be deleted. Try again.</value>
+  </data>
+  <data name="MessageDelete" xml:space="preserve">
+    <value>Delete message</value>
+  </data>
+  <data name="MessageDeleteQuestion" xml:space="preserve">
+    <value>Delete this waiting message? It will not be sent again.</value>
+  </data>
+  <data name="ConversationMessageDeletedFormat" xml:space="preserve">
+    <value>The waiting message was deleted on this device and will not be sent again. If it reached {0}'s app before its confirmation came back, it stays there.</value>
+  </data>
+  <data name="ConversationMessageNotWaiting" xml:space="preserve">
+    <value>The message is no longer waiting, so it was not deleted.</value>
+  </data>
+  <data name="ConversationMessageDeleteFailed" xml:space="preserve">
+    <value>The message could not be deleted. Try again.</value>
+  </data>
 </root>

@@ -19,7 +19,10 @@ public sealed class MessengerDatabase : IAsyncDisposable
         "UPDATE data_key SET protection = $protection, wrapped_key = $wrapped_key, kdf_salt = $kdf_salt, "
         + "kdf_memory_kib = $kdf_memory_kib, kdf_passes = $kdf_passes WHERE id = 1;";
 
-    private const string TruncateJournal = "PRAGMA wal_checkpoint(TRUNCATE);";
+    private const string EraseEverything =
+        "DELETE FROM copied_message; DELETE FROM copied_conversation; DELETE FROM message_delivery; DELETE FROM message; "
+        + "DELETE FROM conversation; DELETE FROM group_key; DELETE FROM group_member; DELETE FROM chat_group; DELETE FROM contact; "
+        + "DELETE FROM identity; DELETE FROM person; DELETE FROM seen_message; DELETE FROM data_key;";
 
     private const string SelectAnyData =
         "SELECT EXISTS (SELECT 1 FROM person) OR EXISTS (SELECT 1 FROM seen_message) "
@@ -114,13 +117,20 @@ public sealed class MessengerDatabase : IAsyncDisposable
             },
             cancellationToken).ConfigureAwait(false);
 
-        await gate.ReadAsync(
-            async (connection, token) =>
+        await gate.TruncateJournalAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task EraseAsync(CancellationToken cancellationToken)
+    {
+        await gate.WriteAsync(
+            async (connection, transaction, token) =>
             {
-                await Sql.ExecuteAsync(connection, null, TruncateJournal, token).ConfigureAwait(false);
+                await Sql.ExecuteAsync(connection, transaction, EraseEverything, token).ConfigureAwait(false);
                 return true;
             },
             cancellationToken).ConfigureAwait(false);
+
+        await gate.TruncateJournalAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public StoredData Unlock(ReadOnlySpan<byte> dataKey) => new(gate, RecordKeys.Derive(dataKey));

@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:P2PMessenger.UI.ViewModels"
              xmlns:res="using:P2PMessenger.UI.Resources"
+             xmlns:v="using:P2PMessenger.UI.Views"
              x:Class="P2PMessenger.UI.Views.UnlockView"
              x:DataType="vm:UnlockViewModel">
     <ScrollViewer>
@@ -23,6 +24,9 @@
                        Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
                        TextWrapping="Wrap" />
             <TextBlock x:Name="ForgottenText" Text="{x:Static res:UiText.PassphraseForgotten}" TextWrapping="Wrap" />
+            <Panel IsVisible="{Binding OffersDeleteAll}">
+                <v:DeleteAllDataPanel x:Name="DeleteAllPanel" DataContext="{Binding DeleteAll}" />
+            </Panel>
         </StackPanel>
     </ScrollViewer>
 </UserControl>
