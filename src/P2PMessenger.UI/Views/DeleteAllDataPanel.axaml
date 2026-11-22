@@ -1,0 +1,39 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:P2PMessenger.UI.ViewModels"
+             xmlns:res="using:P2PMessenger.UI.Resources"
+             x:Class="P2PMessenger.UI.Views.DeleteAllDataPanel"
+             x:DataType="vm:DeleteAllDataViewModel">
+    <StackPanel Spacing="12">
+        <TextBlock x:Name="DeleteAllIntroText" Text="{Binding Intro}" IsVisible="{Binding HasIntro}" TextWrapping="Wrap" />
+        <Button x:Name="DeleteAllOpenButton"
+                Content="{x:Static res:UiText.DeleteAllDataOpen}"
+                Command="{Binding OpenCommand}"
+                IsVisible="{Binding IsOpenVisible}" />
+        <Border x:Name="DeleteAllConfirmPanel"
+                Padding="12"
+                BorderThickness="1"
+                CornerRadius="4"
+                BorderBrush="{DynamicResource SystemControlErrorTextForegroundBrush}"
+                IsVisible="{Binding IsConfirming}">
+            <StackPanel Spacing="8">
+                <TextBlock x:Name="DeleteAllWarningText" Text="{x:Static res:UiText.DeleteAllDataWarning}" TextWrapping="Wrap" />
+                <WrapPanel>
+                    <Button x:Name="DeleteAllConfirmButton"
+                            Margin="0,0,8,0"
+                            Content="{x:Static res:UiText.DeleteAllDataConfirm}"
+                            Command="{Binding ConfirmCommand}" />
+                    <Button x:Name="DeleteAllCancelButton"
+                            Content="{x:Static res:UiText.CommonCancel}"
+                            Command="{Binding CancelCommand}" />
+                </WrapPanel>
+                <TextBlock x:Name="DeleteAllBusyText" Text="{x:Static res:UiText.DeleteAllDataDeleting}" IsVisible="{Binding IsBusy}" />
+                <TextBlock x:Name="DeleteAllErrorText"
+                           Text="{Binding ErrorMessage}"
+                           IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
+                           TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

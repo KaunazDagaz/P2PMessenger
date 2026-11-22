@@ -32,5 +32,7 @@ internal sealed class LockedLocalData : ILocalData
 
     public Task<PassphraseChangeResult> RemovePassphraseAsync(string currentPassphrase, CancellationToken cancellationToken) => throw new NotSupportedException();
 
+    public Task<bool> DeleteAllAsync(CancellationToken cancellationToken) => throw new NotSupportedException();
+
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }

@@ -43,5 +43,21 @@ internal sealed class FakeLocalData : ILocalData
 
     public Task<PassphraseChangeResult> RemovePassphraseAsync(string currentPassphrase, CancellationToken cancellationToken) => memory.RemovePassphraseAsync(currentPassphrase, cancellationToken);
 
+    public int Deleted { get; private set; }
+
+    public bool DeleteSucceeds { get; set; } = true;
+
+    public async Task<bool> DeleteAllAsync(CancellationToken cancellationToken)
+    {
+        Deleted++;
+        if (!DeleteSucceeds)
+        {
+            return false;
+        }
+
+        Problem = LocalDataProblem.None;
+        return await memory.DeleteAllAsync(cancellationToken);
+    }
+
     public ValueTask DisposeAsync() => memory.DisposeAsync();
 }

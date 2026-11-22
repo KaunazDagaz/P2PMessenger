@@ -12,6 +12,8 @@ public sealed class DatabaseLocalData : ILocalData
 {
     public const string FileName = "messenger.db";
 
+    private static readonly string[] FileSuffixes = [string.Empty, "-wal", "-shm", "-journal"];
+
     private readonly IKeyProtector? keyStore;
     private readonly PassphraseKdf kdf;
     private readonly SemaphoreSlim gate = new(1, 1);
@@ -290,6 +292,33 @@ public sealed class DatabaseLocalData : ILocalData
         }
     }
 
+    public async Task<bool> DeleteAllAsync(CancellationToken cancellationToken)
+    {
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            WrappedDataKey? held = wrapped;
+            if (database is not null)
+            {
+                held ??= await ReadKeyQuietlyAsync(database, cancellationToken).ConfigureAwait(false);
+                await EraseQuietlyAsync(database, cancellationToken).ConfigureAwait(false);
+            }
+
+            opened = null;
+            await CloseAsync().ConfigureAwait(false);
+            if (held is not null)
+            {
+                await ForgetQuietlyAsync(held).ConfigureAwait(false);
+            }
+
+            return DeleteFiles();
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         await gate.WaitAsync().ConfigureAwait(false);
@@ -330,6 +359,30 @@ public sealed class DatabaseLocalData : ILocalData
             new InMemoryChatStore(seen),
             seen,
             LocalDataMode.MemoryOnlyNoKeyStore));
+    }
+
+    private static async Task<WrappedDataKey?> ReadKeyQuietlyAsync(MessengerDatabase open, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await open.ReadDataKeyAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
+        {
+            return null;
+        }
+    }
+
+    private static async Task EraseQuietlyAsync(MessengerDatabase open, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await open.EraseAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
+        {
+            return;
+        }
     }
 
     private static void ClearShare(byte[]? value)
@@ -629,6 +682,7 @@ public sealed class DatabaseLocalData : ILocalData
             identity = await data.Identity.LoadAsync(cancellationToken).ConfigureAwait(false);
             await data.Contacts.LoadAllAsync(cancellationToken).ConfigureAwait(false);
             await data.Messages.LoadAllAsync(cancellationToken).ConfigureAwait(false);
+            await data.Messages.LoadSentSequencesAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (StoredDataException)
         {
@@ -684,6 +738,28 @@ public sealed class DatabaseLocalData : ILocalData
         {
             return;
         }
+    }
+
+    private bool DeleteFiles()
+    {
+        bool deleted = true;
+        foreach (string suffix in FileSuffixes)
+        {
+            try
+            {
+                File.Delete(DatabasePath + suffix);
+            }
+            catch (DirectoryNotFoundException)
+            {
+                return true;
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                deleted = false;
+            }
+        }
+
+        return deleted && !FileSuffixes.Any(suffix => File.Exists(DatabasePath + suffix));
     }
 
     private void CreateFolder()

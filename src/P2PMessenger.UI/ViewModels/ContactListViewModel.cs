@@ -68,6 +68,9 @@ public sealed partial class ContactListViewModel : PageViewModel
     [RelayCommand]
     private void Passphrase() => navigation.Push(pages.Passphrase());
 
+    [RelayCommand]
+    private void DeleteAllData() => navigation.Push(pages.DeleteAllData());
+
     private void Open(Contact contact) => navigation.Push(pages.Conversation(contact));
 
     private void OnContactChanged(object? sender, ContactChangedEventArgs e) => uiThread.Post(Refresh);

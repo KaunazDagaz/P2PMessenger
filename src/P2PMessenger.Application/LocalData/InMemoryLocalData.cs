@@ -6,7 +6,8 @@ namespace P2PMessenger.Application.LocalData;
 
 public sealed class InMemoryLocalData : ILocalData
 {
-    private readonly LocalDataStores stores;
+    private readonly LocalDataMode mode;
+    private LocalDataStores stores;
 
     public InMemoryLocalData(LocalDataMode mode = LocalDataMode.MemoryOnly)
     {
@@ -15,8 +16,8 @@ public sealed class InMemoryLocalData : ILocalData
             throw new ArgumentOutOfRangeException(nameof(mode), mode, "Data in memory is never saved.");
         }
 
-        InMemorySeenMessageIds seen = new();
-        stores = new LocalDataStores(new InMemoryIdentityStore(), new InMemoryContactStore(), new InMemoryChatStore(seen), seen, mode);
+        this.mode = mode;
+        stores = NewStores(mode);
     }
 
     public bool SupportsPassphrase => false;
@@ -25,7 +26,7 @@ public sealed class InMemoryLocalData : ILocalData
 
     public LocalDataProtection Protection => LocalDataProtection.None;
 
-    public Task<LocalDataResult> OpenAsync(CancellationToken cancellationToken) => Task.FromResult(LocalDataResult.Opened(stores));
+    public Task<LocalDataResult> OpenAsync(CancellationToken cancellationToken) => Task.FromResult(LocalDataResult.Opened(Volatile.Read(ref stores)));
 
     public Task<LocalDataResult> CreateAsync(string? passphrase, CancellationToken cancellationToken) => OpenAsync(cancellationToken);
 
@@ -39,7 +40,19 @@ public sealed class InMemoryLocalData : ILocalData
 
     public Task<PassphraseChangeResult> RemovePassphraseAsync(string currentPassphrase, CancellationToken cancellationToken) => NotAvailable();
 
+    public Task<bool> DeleteAllAsync(CancellationToken cancellationToken)
+    {
+        Volatile.Write(ref stores, NewStores(mode));
+        return Task.FromResult(true);
+    }
+
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+
+    private static LocalDataStores NewStores(LocalDataMode mode)
+    {
+        InMemorySeenMessageIds seen = new();
+        return new LocalDataStores(new InMemoryIdentityStore(), new InMemoryContactStore(), new InMemoryChatStore(seen), seen, mode);
+    }
 
     private static Task<PassphraseChangeResult> NotAvailable() => Task.FromResult(PassphraseChangeResult.Of(PassphraseChangeOutcome.NotAvailable));
 }

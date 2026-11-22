@@ -4,7 +4,7 @@ Each device keeps its data in one SQLite database of its own. There is no server
 
 This file documents the database: the design rules, the logical schema, how stored data is protected, the data dictionary, normalisation, migrations, and how to create and inspect a database. The schema is created and changed only by the numbered scripts in [`Migrations`](Migrations); nothing is created by hand.
 
-**Status:** the schema, its migrations, the encryption described in [How stored data is protected](#how-stored-data-is-protected) and the repositories exist, with their tests. The Windows and Linux app keeps its identity, contacts, messages, the delivery state of its own one-to-one messages and the IDs of seen messages here. The Android app still keeps them in memory, and says so, until it gets the Android Keystore. Groups and the PC copy have tables but no code yet.
+**Status:** the schema, its migrations, the encryption described in [How stored data is protected](#how-stored-data-is-protected) and the repositories exist, with their tests. The Windows and Linux app keeps its identity, contacts, messages, the delivery state of its own one-to-one messages and the IDs of seen messages here, and deletes a chat, a waiting message or all its data here. The Android app still keeps them in memory, and says so, until it gets the Android Keystore. Groups and the PC copy have tables but no code yet.
 
 ## Contents
 
@@ -94,6 +94,7 @@ erDiagram
         INTEGER id PK
         INTEGER contact_person_id FK, UK "or"
         INTEGER group_id FK, UK "or"
+        BLOB sent_sequence_enc "encrypted, optional"
     }
     message {
         INTEGER id PK
@@ -160,7 +161,7 @@ All cryptography comes from libsodium through NSec (`Protection/RecordKeys.cs`).
 - **Two keys from the data key.** HKDF-SHA-256 extracts a pseudorandom key from the data key with the salt `P2PM/storage/v1` and expands two keys from it: with the info `P2PM/storage/v1/record-key` the XChaCha20-Poly1305 key for `_enc` values, and with `P2PM/storage/v1/lookup-key` the BLAKE2b-256 key for `_mac` values. The data key itself is cleared from memory once the two keys exist.
 - **An encrypted value** is a random 24-byte nonce, then the ciphertext, then the 16-byte tag. The associated data is the ASCII text `P2PM/storage/v1`, a zero byte, the table name, a zero byte, the column name, a zero byte and the row's key as a big-endian 64-bit integer. For example, the name in row 2 of `person` is bound to the bytes of `P2PM/storage/v1`, `00`, `person`, `00`, `display_name_enc`, `00` and `00 00 00 00 00 00 00 02`. A value copied to another row, column or table does not decrypt.
 - **A MAC** is BLAKE2b-256 under the lookup key of `P2PM/lookup/v1/` and a domain name (`identity-key`, `static-key` or `message-id`), a zero byte and the value. The same message ID gives the same MAC in `message` and in `seen_message`.
-- **What is inside an encrypted value:** public keys as their 32 bytes, the user's private keys as one 97-byte block (a version byte and the three 32-byte private keys), names and texts as UTF-8, a contact code's signature as its 64 bytes, a message ID as its 16 bytes, and times as an 8-byte big-endian count of 100-nanosecond ticks since 0001-01-01 UTC.
+- **What is inside an encrypted value:** public keys as their 32 bytes, the user's private keys as one 97-byte block (a version byte and the three 32-byte private keys), names and texts as UTF-8, a contact code's signature as its 64 bytes, a message ID as its 16 bytes, times as an 8-byte big-endian count of 100-nanosecond ticks since 0001-01-01 UTC, and a sequence number as an 8-byte big-endian integer of at least 1.
 - **Reading checks everything.** Every value must decrypt with its own associated data, every MAC must match the value it was made from, and a contact code rebuilt from its parts must carry a valid signature. If anything fails, the app reads nothing and says that the stored data was changed or damaged.
 
 ### How the data key is wrapped
@@ -273,7 +274,11 @@ A chat: with one contact, or in one group.
 | `contact_person_id` | INTEGER | Yes | FK `contact.person_id`, UK | Plain | The contact of a one-to-one chat; deleting the contact deletes the chat |
 | `group_id` | INTEGER | Yes | FK `chat_group.id`, UK | Plain | The group of a group chat; deleting the group deletes the chat |
 
-Constraint: exactly one of `contact_person_id` and `group_id` is set. Both are unique, so a contact or a group has at most one chat.
+| `sent_sequence_enc` | BLOB | Yes | | Encrypted | The highest sequence number of the user's own messages that were deleted from this chat; empty until the user deletes a message of the chat. Added by `0004_sent_sequence.sql` |
+
+Constraint: exactly one of `contact_person_id` and `group_id` is set. Both are unique, so a contact or a group has at most one chat. `sent_sequence_enc` is empty or at least 40 bytes.
+
+Deleting a chat in the app deletes its messages, and with them their deliveries, but keeps the `conversation` row. Before the messages go, the highest sequence number among the user's own messages in the chat is stored in `sent_sequence_enc`, unless a higher one is there already; deleting a single waiting message stores it the same way. The next message to the contact then continues after the deleted ones, so the contact's app, which still has them and orders each sender's messages by number, shows it after them, and no number is used twice. When the app starts, a chat's next number is one more than the higher of `sent_sequence_enc` and its stored own messages.
 
 ### `message`
 
@@ -377,6 +382,7 @@ Two kinds of derived values are kept on purpose:
   | `0001_initial.sql` | Creates the 13 tables, the 4 indexes and the `outbox` view |
   | `0002_message_id.sql` | Adds `message.message_id_enc` and `message.recorded_at_enc`. It is refused, and rolled back, in a database that already holds messages, because those would have no value for the new columns; no released version of the app stored messages before it |
   | `0003_outgoing_delivery.sql` | Changes no table. Gives every one-to-one message the user sent before deliveries were kept a `message_delivery` row in state 1 (waiting): the app had not been told that those messages arrived, so it sends them again under the same IDs, and the contact's app, which drops a copy it already has, confirms them |
+  | `0004_sent_sequence.sql` | Adds `conversation.sent_sequence_enc`, empty in every existing row, so that a chat keeps its next sequence number when its messages are deleted (see [`conversation`](#conversation)) |
 
 - `MigrationRunner.MigrateAsync` reads the schema version from `PRAGMA user_version`, applies every newer script in order, and records the new version. Each script runs in one transaction together with the version update, so a failing script leaves the database at the previous version.
 - A database whose version is newer than the newest script is refused, not changed.
@@ -395,7 +401,7 @@ A database can be built from the scripts in two ways: with the SQLite command-li
 ### Create a database
 
 ```
-sqlite3 review.db ".read src/P2PMessenger.Storage/Migrations/0001_initial.sql" ".read src/P2PMessenger.Storage/Migrations/0002_message_id.sql" ".read src/P2PMessenger.Storage/Migrations/0003_outgoing_delivery.sql"
+sqlite3 review.db ".read src/P2PMessenger.Storage/Migrations/0001_initial.sql" ".read src/P2PMessenger.Storage/Migrations/0002_message_id.sql" ".read src/P2PMessenger.Storage/Migrations/0003_outgoing_delivery.sql" ".read src/P2PMessenger.Storage/Migrations/0004_sent_sequence.sql"
 ```
 
 Read the scripts in number order. The shell leaves `user_version` at 0, because the migration runner, not the script, records the version.
@@ -456,7 +462,7 @@ SELECT count(*) FROM message_delivery;
 SELECT count(*) FROM outbox;
 ```
 
-All three counts are 0. Do this part in the shell: a viewer has its own foreign key setting.
+All three counts are 0. Do this part in the shell: a viewer has its own foreign key setting. The app itself deletes a chat's messages and keeps the `conversation` row, for the sequence number it holds (see [`conversation`](#conversation)); the cascade from `message` to `message_delivery` is the same.
 
 ### Run the tests
 
@@ -472,8 +478,10 @@ The tests build temporary databases with `MigrationRunner` and `SqliteDatabase`,
 - the tables are the documented ones and all `STRICT`, and a new database passes `PRAGMA integrity_check` and `PRAGMA foreign_key_check`;
 - a message in a missing conversation, a MAC of the wrong length and a conversation with both a contact and a group are refused;
 - deleting a chat deletes its messages and removes them from the outbox;
+- the app's deletion of a chat removes only that chat's messages and deliveries, keeps the contact, the `conversation` row and the IDs of the deleted messages among the seen IDs, keeps the highest sequence number of the user's deleted messages, encrypted and bound to its chat, across a reopen, and leaves none of the deleted messages' stored text in the database files; only a message of the user that is still waiting can be deleted on its own; every flipped bit of a stored sequence number, and a sequence number moved to another chat, is refused;
+- erasing the database for "delete all data" leaves no row in any table and no data key;
 - a message without its ID or its recorded time is refused, and `0002_message_id.sql` is rolled back over a database that already holds a message;
-- `0003_outgoing_delivery.sql` gives the user's earlier messages, and only those, a waiting delivery;
+- `0003_outgoing_delivery.sql` gives the user's earlier messages, and only those, a waiting delivery, and `0004_sent_sequence.sql` adds the sequence column;
 - a message is stored together with its ID among the seen IDs and, if the user wrote it, its waiting delivery; the delivery becomes received only for the contact the message was sent to, and only once;
 - a message of the user without its delivery, a delivery for another person, and a received message with a delivery are refused as damaged;
 - the key derivation and XChaCha20-Poly1305 give the published test vectors (RFC 5869, draft-irtf-cfrg-xchacha), and the associated data, two encrypted values and the MACs match an independent Python implementation;

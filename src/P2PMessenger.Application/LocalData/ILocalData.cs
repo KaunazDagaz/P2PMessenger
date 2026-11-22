@@ -21,4 +21,6 @@ public interface ILocalData : IAsyncDisposable
     Task<PassphraseChangeResult> ChangePassphraseAsync(string currentPassphrase, string newPassphrase, CancellationToken cancellationToken);
 
     Task<PassphraseChangeResult> RemovePassphraseAsync(string currentPassphrase, CancellationToken cancellationToken);
+
+    Task<bool> DeleteAllAsync(CancellationToken cancellationToken);
 }

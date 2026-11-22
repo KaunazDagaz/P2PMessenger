@@ -38,8 +38,19 @@ public sealed class MigrationCatalogTests
     {
         var migrations = MigrationCatalog.Load();
 
-        Assert.Equal(3, migrations.Count);
         Assert.Equal("0003_outgoing_delivery", migrations[2].Name);
         Assert.Contains("INSERT INTO message_delivery", migrations[2].Script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("Story", "US-21")]
+    [Trait("Story", "US-15")]
+    public void Load_FourthScript_AddsTheSentSequenceThatOutlivesADeletedChat()
+    {
+        var migrations = MigrationCatalog.Load();
+
+        Assert.Equal(4, migrations.Count);
+        Assert.Equal("0004_sent_sequence", migrations[3].Name);
+        Assert.Contains("ADD COLUMN sent_sequence_enc", migrations[3].Script, StringComparison.Ordinal);
     }
 }

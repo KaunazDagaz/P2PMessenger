@@ -9,6 +9,7 @@ public sealed class AppServices : IAsyncDisposable
 {
     private readonly ILocalData localData;
     private readonly SemaphoreSlim starting = new(1, 1);
+    private readonly MessengerSetup initialSetup;
     private MessengerSetup setup;
     private IdentityService? identities;
     private OwnIdentity? identity;
@@ -27,6 +28,7 @@ public sealed class AppServices : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(codeFiles);
 
         this.localData = localData;
+        initialSetup = setup;
         this.setup = setup;
         UiThread = uiThread;
         Clipboard = clipboard;
@@ -108,6 +110,36 @@ public sealed class AppServices : IAsyncDisposable
 
         MessengerStarted?.Invoke(this, EventArgs.Empty);
         return started;
+    }
+
+    public async Task<bool> DeleteAllDataAsync(CancellationToken cancellationToken)
+    {
+        bool deleted;
+        await starting.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (Messenger is { } running)
+            {
+                Messenger = null;
+                await running.DisposeAsync().ConfigureAwait(false);
+            }
+
+            identity?.Dispose();
+            identity = null;
+            deleted = await localData.DeleteAllAsync(cancellationToken).ConfigureAwait(false);
+            identities = null;
+            Mode = null;
+            setup = initialSetup;
+            Lock.Reset();
+        }
+        finally
+        {
+            starting.Release();
+        }
+
+        ProtectionChanged?.Invoke(this, EventArgs.Empty);
+        PassphraseSetChanged?.Invoke(this, false);
+        return deleted;
     }
 
     public async ValueTask DisposeAsync()

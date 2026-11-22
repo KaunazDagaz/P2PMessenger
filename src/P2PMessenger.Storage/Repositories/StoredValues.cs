@@ -11,6 +11,8 @@ internal static class StoredValues
 {
     public const int TimeLength = sizeof(long);
 
+    public const int SequenceLength = sizeof(long);
+
     private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
     public static byte[] Open(RecordKeys keys, RecordLocation location, byte[] sealedValue) =>
@@ -65,6 +67,24 @@ internal static class StoredValues
         byte[] bytes = new byte[TimeLength];
         BinaryPrimitives.WriteInt64BigEndian(bytes, time.UtcTicks);
         return bytes;
+    }
+
+    public static byte[] Sequence(long sequence)
+    {
+        byte[] bytes = new byte[SequenceLength];
+        BinaryPrimitives.WriteInt64BigEndian(bytes, sequence);
+        return bytes;
+    }
+
+    public static long Sequence(RecordLocation location, byte[] bytes)
+    {
+        if (bytes.Length != SequenceLength)
+        {
+            throw Damaged(location);
+        }
+
+        long sequence = BinaryPrimitives.ReadInt64BigEndian(bytes);
+        return sequence >= 1 ? sequence : throw Damaged(location);
     }
 
     public static DateTimeOffset Time(RecordLocation location, byte[] bytes)

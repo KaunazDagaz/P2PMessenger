@@ -46,7 +46,7 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
     {
         ArgumentNullException.ThrowIfNull(services);
         this.services = services;
-        Pages = new Pages(services, this, StartAsync);
+        Pages = new Pages(services, this, StartAsync, DeleteAllDataAsync);
         services.MessengerStarted += OnMessengerStarted;
         services.StoresOpened += OnStoresOpened;
         services.ProtectionChanged += OnProtectionChanged;
@@ -83,6 +83,24 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
         {
             IsStarting = false;
         }
+    }
+
+    public async Task<bool> DeleteAllDataAsync(CancellationToken cancellationToken)
+    {
+        bool deleted = await services.DeleteAllDataAsync(cancellationToken);
+        LockPage = null;
+        IsMessengerRunning = false;
+        Notice = deleted ? UiText.DeleteAllDataDone : UiText.DeleteAllDataIncomplete;
+        if (deleted)
+        {
+            ResetTo(Pages.CreateIdentity());
+        }
+        else
+        {
+            await StartAsync(cancellationToken);
+        }
+
+        return deleted;
     }
 
     public void EnterBackground() => services.Lock.EnterBackground();
@@ -158,7 +176,7 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
                 ResetTo(Pages.CreateIdentity());
                 break;
             case LocalDataStatus.PassphraseNeeded:
-                ResetTo(new UnlockViewModel(true, UnlockAtStartAsync));
+                ResetTo(Pages.Unlock(true, UnlockAtStartAsync));
                 break;
             default:
                 ResetTo(Pages.StorageProblem(localData.Problem == LocalDataProblem.None ? LocalDataProblem.Damaged : localData.Problem));
@@ -221,7 +239,7 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
         if (locked)
         {
             CurrentPage?.OnHidden();
-            LockPage = new UnlockViewModel(false, services.Lock.UnlockAsync);
+            LockPage = Pages.Unlock(false, services.Lock.UnlockAsync);
         }
         else
         {

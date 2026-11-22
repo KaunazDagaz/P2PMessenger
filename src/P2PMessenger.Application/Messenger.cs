@@ -46,9 +46,10 @@ public sealed class Messenger : IAsyncDisposable
 
         IReadOnlyList<Contact> contacts = await setup.ContactStore.LoadAllAsync(cancellationToken).ConfigureAwait(false);
         IReadOnlyList<ChatMessage> messages = await setup.ChatStore.LoadAllAsync(cancellationToken).ConfigureAwait(false);
+        IReadOnlyDictionary<Ed25519PublicKey, long> sentSequences = await setup.ChatStore.LoadSentSequencesAsync(cancellationToken).ConfigureAwait(false);
 
         ContactBook contactBook = new(identity, setup.ContactStore, contacts);
-        ChatLog chatLog = new(setup.ChatStore, setup.SeenMessageIds, setup.TimeProvider, messages);
+        ChatLog chatLog = new(setup.ChatStore, setup.SeenMessageIds, setup.TimeProvider, messages, sentSequences);
         ConnectionService connections = new(identity, contactBook, chatLog, setup.Connection, setup.TimeProvider, setup.Loggers);
         IWakeUpScheduler scheduler = setup.WakeUps ?? new TimerWakeUpScheduler(setup.TimeProvider);
         Outbox outbox = new(chatLog, connections, scheduler, setup.Delivery, setup.TimeProvider, setup.Loggers.CreateLogger<Outbox>());
@@ -101,6 +102,21 @@ public sealed class Messenger : IAsyncDisposable
         ChatMessage recorded = await Chats.RecordOutgoingAsync(contactKey, message, now, cancellationToken).ConfigureAwait(false);
         outbox.Request(contactKey);
         return new SendResult(SendOutcome.Queued, recorded);
+    }
+
+    public Task<int> DeleteChatAsync(Ed25519PublicKey contactKey, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(contactKey);
+
+        return Chats.DeleteChatAsync(contactKey, cancellationToken);
+    }
+
+    public Task<bool> DeleteWaitingAsync(Ed25519PublicKey contactKey, MessageId id, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(contactKey);
+        ArgumentNullException.ThrowIfNull(id);
+
+        return Chats.DeleteWaitingAsync(contactKey, id, cancellationToken);
     }
 
     public async ValueTask DisposeAsync()

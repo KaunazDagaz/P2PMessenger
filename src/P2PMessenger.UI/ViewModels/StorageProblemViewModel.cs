@@ -14,6 +14,11 @@ public sealed partial class StorageProblemViewModel : PageViewModel
     private bool isBusy;
 
     public StorageProblemViewModel(LocalDataProblem problem, Func<CancellationToken, Task> tryAgain)
+        : this(problem, tryAgain, null)
+    {
+    }
+
+    public StorageProblemViewModel(LocalDataProblem problem, Func<CancellationToken, Task> tryAgain, DeleteAllDataViewModel? deleteAll)
     {
         ArgumentNullException.ThrowIfNull(tryAgain);
         if (problem == LocalDataProblem.None || !Enum.IsDefined(problem))
@@ -24,9 +29,14 @@ public sealed partial class StorageProblemViewModel : PageViewModel
         Problem = problem;
         Message = MessageOf(problem);
         this.tryAgain = tryAgain;
+        DeleteAll = deleteAll;
     }
 
     public LocalDataProblem Problem { get; }
+
+    public DeleteAllDataViewModel? DeleteAll { get; }
+
+    public bool OffersDeleteAll => DeleteAll is not null;
 
     public string Message { get; }
 

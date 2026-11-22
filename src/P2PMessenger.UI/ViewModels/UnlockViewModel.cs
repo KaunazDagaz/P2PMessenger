@@ -20,14 +20,24 @@ public sealed partial class UnlockViewModel : PageViewModel
     private string? errorMessage;
 
     public UnlockViewModel(bool atStart, Func<string, CancellationToken, Task<bool>> unlock)
+        : this(atStart, unlock, null)
+    {
+    }
+
+    public UnlockViewModel(bool atStart, Func<string, CancellationToken, Task<bool>> unlock, DeleteAllDataViewModel? deleteAll)
     {
         ArgumentNullException.ThrowIfNull(unlock);
 
         AtStart = atStart;
         this.unlock = unlock;
+        DeleteAll = deleteAll;
     }
 
     public bool AtStart { get; }
+
+    public DeleteAllDataViewModel? DeleteAll { get; }
+
+    public bool OffersDeleteAll => DeleteAll is not null;
 
     public string Intro => AtStart ? UiText.UnlockStartIntro : UiText.UnlockLockedIntro;
 
