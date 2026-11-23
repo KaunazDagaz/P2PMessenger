@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using P2PMessenger.Application;
+using P2PMessenger.UI.Qr;
 using P2PMessenger.UI.Resources;
 using P2PMessenger.UI.Services;
 
@@ -19,7 +20,7 @@ public sealed partial class ProfileViewModel : PageViewModel
     private string? errorMessage;
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(CopyCommand), nameof(SaveCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CopyCommand), nameof(SaveCommand), nameof(SaveImageCommand))]
     private bool isBusy;
 
     public ProfileViewModel(Messenger messenger, IClipboardService clipboard, ICodeFileService codeFiles)
@@ -31,6 +32,7 @@ public sealed partial class ProfileViewModel : PageViewModel
         this.messenger = messenger;
         this.clipboard = clipboard;
         this.codeFiles = codeFiles;
+        QrCode = QrMatrix.Encode(CodeText);
     }
 
     public override string Title => UiText.ProfileTitle;
@@ -40,6 +42,8 @@ public sealed partial class ProfileViewModel : PageViewModel
     public string Fingerprint => messenger.Identity.Fingerprint.ToGroupedString();
 
     public string CodeText => messenger.Identity.CodeText;
+
+    public QrMatrix QrCode { get; }
 
     private bool IsIdle => !IsBusy;
 
@@ -71,18 +75,25 @@ public sealed partial class ProfileViewModel : PageViewModel
     }
 
     [RelayCommand(CanExecute = nameof(IsIdle))]
-    private async Task SaveAsync(CancellationToken cancellationToken)
+    private Task SaveAsync(CancellationToken cancellationToken) =>
+        SavingAsync(() => codeFiles.SaveAsync(Formats.With(Formats.FileName, Name), CodeText, cancellationToken), UiText.ProfileSaved);
+
+    [RelayCommand(CanExecute = nameof(IsIdle))]
+    private Task SaveImageAsync(CancellationToken cancellationToken) =>
+        SavingAsync(() => codeFiles.SaveImageAsync(Formats.With(Formats.ImageFileName, Name), QrPng.Render(QrCode), cancellationToken), UiText.ProfileImageSaved);
+
+    private async Task SavingAsync(Func<Task<CodeFileResult>> save, string saved)
     {
         IsBusy = true;
         StatusMessage = null;
         ErrorMessage = null;
         try
         {
-            CodeFileResult result = await codeFiles.SaveAsync(Formats.With(Formats.FileName, Name), CodeText, cancellationToken);
+            CodeFileResult result = await save();
             switch (result.Status)
             {
                 case CodeFileStatus.Done:
-                    StatusMessage = UiText.ProfileSaved;
+                    StatusMessage = saved;
                     break;
                 case CodeFileStatus.Cancelled:
                     break;

@@ -2,6 +2,8 @@ using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using P2PMessenger.Application;
+using P2PMessenger.Application.Contacts;
+using P2PMessenger.Core.Contacts;
 using P2PMessenger.Core.Identity;
 using P2PMessenger.Core.Messages;
 using P2PMessenger.UI.Resources;
@@ -64,6 +66,29 @@ public sealed class ConversationViewTests
 
         Assert.Same(page, harness.Shell.CurrentPage);
         Assert.False(UiHarness.Find<Border>(view, "KeyNotComparedPanel").IsVisible);
+        harness.Messenger.Identity.Dispose();
+    }
+
+    [AvaloniaFact]
+    [Trait("Story", "US-04")]
+    public async Task Conversation_InPersonContactMarkedNotCompared_DoesNotClaimTheCodeCameAsText()
+    {
+        await using var harness = await UiHarness.StartAsync("Alice");
+        using var bob = KeySet.Create();
+        Assert.True(DisplayName.TryCreate("Bob", out var name));
+        var scanned = harness.Messenger.Contacts.Check(ContactCode.Create(bob, name));
+        var added = await harness.Messenger.Contacts.AddAsync(scanned, CodeExchange.InPerson, CancellationToken.None);
+        Assert.True(added.IsSaved);
+        var page = harness.Shell.Pages.Conversation(added.Contact);
+        var view = new ConversationView { DataContext = page };
+        harness.Shell.Push(page);
+        harness.Show(view);
+        Assert.False(UiHarness.Find<Border>(view, "KeyNotComparedPanel").IsVisible);
+
+        Assert.True(await harness.Messenger.Contacts.SetKeyComparisonAsync(bob.IdentityKey, KeyComparison.NotCompared, CancellationToken.None));
+        await UiHarness.WaitUntilAsync(() => page.IsKeyNotCompared);
+
+        Assert.Equal("The key of Bob is marked as not compared. Compare fingerprints with Bob before you trust this contact.", UiHarness.Find<TextBlock>(view, "KeyNotComparedText").Text);
         harness.Messenger.Identity.Dispose();
     }
 

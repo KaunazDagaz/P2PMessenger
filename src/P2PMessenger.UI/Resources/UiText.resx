@@ -58,7 +58,7 @@
     <value>Contacts</value>
   </data>
   <data name="ContactListEmpty" xml:space="preserve">
-    <value>No contacts yet. Add a contact with the code they sent you, and send them yours.</value>
+    <value>No contacts yet. Meet them and add each other in person, or add the code they sent you and send them yours.</value>
   </data>
   <data name="ContactListNoNetwork" xml:space="preserve">
     <value>This device has no Wi-Fi and no internet. Nearby contacts can be reached if one person shares a hotspot from a phone and the others join it.</value>
@@ -136,7 +136,7 @@
     <value>Add contact</value>
   </data>
   <data name="AddContactIntro" xml:space="preserve">
-    <value>Paste the code your contact sent you, or open their code file. They must add your code too.</value>
+    <value>Paste the code your contact sent you, or open their code file or QR image. They must add your code too.</value>
   </data>
   <data name="AddContactCodeLabel" xml:space="preserve">
     <value>Contact code</value>
@@ -145,7 +145,7 @@
     <value>P2PM1-…</value>
   </data>
   <data name="AddContactOpenFile" xml:space="preserve">
-    <value>Open a code file</value>
+    <value>Open a file or image</value>
   </data>
   <data name="AddContactFileTitle" xml:space="preserve">
     <value>Open a contact code</value>
@@ -184,7 +184,7 @@
     <value>Their key fingerprint</value>
   </data>
   <data name="AddContactNewHint" xml:space="preserve">
-    <value>The app will ask you both to compare fingerprints, because a code sent as text or a file can be swapped on the way.</value>
+    <value>The app will ask you both to compare fingerprints, because a code sent as text, a file or an image can be swapped on the way.</value>
   </data>
   <data name="AddContactNewKeysFormat" xml:space="preserve">
     <value>{0} is already a contact, and this code has new connection keys for them. It is signed with the same identity key, so the fingerprint is the same. Accept the new keys only if {0} expects it.</value>
@@ -208,7 +208,7 @@
     <value>Waiting for the first connection with {0}. They become a contact when their app proves that it holds the key in their code. They must add your code too, and both devices must be on the same network.</value>
   </data>
   <data name="ConversationKeyNotComparedFormat" xml:space="preserve">
-    <value>You have not compared keys with {0}. Their code came as text or a file, which can be swapped on the way.</value>
+    <value>You have not compared keys with {0}. Their code came as text, a file or an image, which can be swapped on the way.</value>
   </data>
   <data name="ConversationCompare" xml:space="preserve">
     <value>Compare fingerprints</value>
@@ -542,5 +542,89 @@
   </data>
   <data name="ConversationMessageDeleteFailed" xml:space="preserve">
     <value>The message could not be deleted. Try again.</value>
+  </data>
+  <data name="ContactListAddInPerson" xml:space="preserve">
+    <value>Add in person</value>
+  </data>
+  <data name="ProfileQrLabel" xml:space="preserve">
+    <value>Your QR code</value>
+  </data>
+  <data name="ProfileQrHelp" xml:space="preserve">
+    <value>To add each other in person, both of you open "Add in person" and scan the code on the other's screen. To send your code through another messenger, send the text below or save the QR code as an image.</value>
+  </data>
+  <data name="ProfileSaveImage" xml:space="preserve">
+    <value>Save QR image</value>
+  </data>
+  <data name="ProfileImageSaved" xml:space="preserve">
+    <value>The QR image is saved.</value>
+  </data>
+  <data name="ProfileImageFileTitle" xml:space="preserve">
+    <value>Save your QR code</value>
+  </data>
+  <data name="ProfileImageFileNameFormat" xml:space="preserve">
+    <value>{0} contact code.png</value>
+  </data>
+  <data name="AddContactNoCodeInImage" xml:space="preserve">
+    <value>No contact code was found in this image. Open a sharper picture of the whole QR code, or ask for the code as text.</value>
+  </data>
+  <data name="InPersonTitle" xml:space="preserve">
+    <value>Add in person</value>
+  </data>
+  <data name="InPersonIntro" xml:space="preserve">
+    <value>Do this only while you are together. Each of you opens this page and scans the code on the other's screen. A code that someone sent you goes to "Add contact" instead, because it may have been swapped on the way.</value>
+  </data>
+  <data name="InPersonQrLabel" xml:space="preserve">
+    <value>Your QR code</value>
+  </data>
+  <data name="InPersonScan" xml:space="preserve">
+    <value>Scan their code</value>
+  </data>
+  <data name="InPersonAddedFormat" xml:space="preserve">
+    <value>{0} is added, with the key checked by you. Now let {0} scan your code. Your apps connect when both of you have scanned and you are on the same network.</value>
+  </data>
+  <data name="InPersonKeysAcceptedFormat" xml:space="preserve">
+    <value>The new connection keys of {0} are accepted, with the key checked by you. Now let {0} scan your code. Your apps connect when both of you have scanned and you are on the same network.</value>
+  </data>
+  <data name="InPersonAlreadyCheckedFormat" xml:space="preserve">
+    <value>{0} is already a contact, and the key you scanned matches the one you have. It is now marked as checked by you.</value>
+  </data>
+  <data name="InPersonConnectedFormat" xml:space="preserve">
+    <value>{0} scanned your code too, and your apps are connected. The app checked their key, not who they are.</value>
+  </data>
+  <data name="InPersonNotACode" xml:space="preserve">
+    <value>This QR code is not a P2PMessenger contact code.</value>
+  </data>
+  <data name="InPersonNoCamera" xml:space="preserve">
+    <value>No camera was found on this device. Exchange codes as text, a file or a QR image instead.</value>
+  </data>
+  <data name="InPersonCameraRefused" xml:space="preserve">
+    <value>The app may not use the camera. Allow it in the system settings, or exchange codes as text, a file or a QR image instead.</value>
+  </data>
+  <data name="InPersonCameraFailed" xml:space="preserve">
+    <value>The camera could not be started. Close other apps that use it and try again, or exchange codes as text, a file or a QR image instead.</value>
+  </data>
+  <data name="InPersonAddByCode" xml:space="preserve">
+    <value>Add a code they sent</value>
+  </data>
+  <data name="InPersonOpenChat" xml:space="preserve">
+    <value>Open chat</value>
+  </data>
+  <data name="ScanTitle" xml:space="preserve">
+    <value>Scan their code</value>
+  </data>
+  <data name="ScanHint" xml:space="preserve">
+    <value>Point the camera at the QR code on their screen.</value>
+  </data>
+  <data name="ScanCancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="ScanStarting" xml:space="preserve">
+    <value>Starting the camera…</value>
+  </data>
+  <data name="ConversationKeyNotComparedInPersonFormat" xml:space="preserve">
+    <value>The key of {0} is marked as not compared. Compare fingerprints with {0} before you trust this contact.</value>
+  </data>
+  <data name="AddContactFileType" xml:space="preserve">
+    <value>Contact code (text or image)</value>
   </data>
 </root>

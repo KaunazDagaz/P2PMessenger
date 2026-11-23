@@ -52,7 +52,10 @@ public sealed class ContactBook : IDisposable
         return Classify(code, Volatile.Read(ref contacts));
     }
 
-    public async Task<AddContactResult> AddAsync(CodeCheck check, CancellationToken cancellationToken)
+    public Task<AddContactResult> AddAsync(CodeCheck check, CancellationToken cancellationToken) =>
+        AddAsync(check, CodeExchange.OtherChannel, cancellationToken);
+
+    public async Task<AddContactResult> AddAsync(CodeCheck check, CodeExchange exchange, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(check);
 
@@ -74,14 +77,18 @@ public sealed class ContactBook : IDisposable
 
             if (now.Outcome == CodeCheckOutcome.NewConnectionKeys && now.Existing is { } existing)
             {
-                Contact replaced = existing.WithNewConnectionKeys(check.Code);
+                Contact replaced = exchange == CodeExchange.InPerson
+                    ? Contact.ScannedInPerson(check.Code)
+                    : existing.WithNewConnectionKeys(check.Code);
                 await store.SaveAsync(replaced, cancellationToken).ConfigureAwait(false);
                 Replace(current, existing, replaced);
                 change = new ContactChangedEventArgs(replaced, ContactChange.KeysReplaced, existing);
             }
             else
             {
-                Contact added = new(check.Code, ContactState.WaitingForFirstConnection, KeyComparison.NotCompared);
+                Contact added = exchange == CodeExchange.InPerson
+                    ? Contact.ScannedInPerson(check.Code)
+                    : new(check.Code, ContactState.WaitingForFirstConnection, KeyComparison.NotCompared, CodeExchange.OtherChannel);
                 await store.SaveAsync(added, cancellationToken).ConfigureAwait(false);
                 Volatile.Write(ref contacts, Ordered([.. current, added]));
                 change = new ContactChangedEventArgs(added, ContactChange.Added, null);
@@ -105,6 +112,45 @@ public sealed class ContactBook : IDisposable
             contact => contact.KeyComparison == keyComparison ? null : contact.WithKeyComparison(keyComparison),
             ContactChange.KeyComparisonChanged,
             cancellationToken);
+    }
+
+    public async Task<bool> MarkScannedInPersonAsync(CodeCheck check, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(check);
+
+        if (check.Outcome != CodeCheckOutcome.AlreadyContact || check.Code is not { } code || check.Existing is not { } existing)
+        {
+            return false;
+        }
+
+        ContactChangedEventArgs change;
+        await writing.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            Contact[] current = contacts;
+            CodeCheck now = Classify(code, current);
+            if (now.Outcome != CodeCheckOutcome.AlreadyContact || now.Existing is not { } known || !SameContact(known, existing))
+            {
+                return false;
+            }
+
+            if (known.KeyComparison == KeyComparison.CheckedByYou)
+            {
+                return true;
+            }
+
+            Contact updated = known.WithKeyComparison(KeyComparison.CheckedByYou);
+            await store.SaveAsync(updated, cancellationToken).ConfigureAwait(false);
+            Replace(current, known, updated);
+            change = new ContactChangedEventArgs(updated, ContactChange.KeyComparisonChanged, known);
+        }
+        finally
+        {
+            writing.Release();
+        }
+
+        Changed?.Invoke(this, change);
+        return true;
     }
 
     public void Dispose() => writing.Dispose();

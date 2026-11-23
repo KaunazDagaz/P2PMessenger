@@ -45,6 +45,8 @@ public sealed class Pages
 
     public AddContactViewModel AddContact() => new(Messenger, services.CodeFiles, navigation, this);
 
+    public AddInPersonViewModel AddInPerson() => new(Messenger, services.QrScanner, services.UiThread, navigation, this);
+
     public ConversationViewModel Conversation(Contact contact) => new(Messenger, contact.IdentityKey, services.UiThread, navigation, this);
 
     public VerifyContactViewModel VerifyContact(Contact contact) => new(Messenger, contact.IdentityKey, services.UiThread);

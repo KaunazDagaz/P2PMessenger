@@ -9,11 +9,17 @@ internal static class Formats
     public static readonly CompositeFormat Unread = CompositeFormat.Parse(UiText.ContactUnreadFormat);
     public static readonly CompositeFormat ContactAdded = CompositeFormat.Parse(UiText.ContactAddedNoticeFormat);
     public static readonly CompositeFormat FileName = CompositeFormat.Parse(UiText.ProfileFileNameFormat);
+    public static readonly CompositeFormat ImageFileName = CompositeFormat.Parse(UiText.ProfileImageFileNameFormat);
     public static readonly CompositeFormat AlreadyContact = CompositeFormat.Parse(UiText.AddContactAlreadyContactFormat);
     public static readonly CompositeFormat NewKeys = CompositeFormat.Parse(UiText.AddContactNewKeysFormat);
     public static readonly CompositeFormat LooksLike = CompositeFormat.Parse(UiText.AddContactLooksLikeFormat);
     public static readonly CompositeFormat Waiting = CompositeFormat.Parse(UiText.ConversationWaitingFormat);
     public static readonly CompositeFormat KeyNotCompared = CompositeFormat.Parse(UiText.ConversationKeyNotComparedFormat);
+    public static readonly CompositeFormat KeyNotComparedInPerson = CompositeFormat.Parse(UiText.ConversationKeyNotComparedInPersonFormat);
+    public static readonly CompositeFormat InPersonAdded = CompositeFormat.Parse(UiText.InPersonAddedFormat);
+    public static readonly CompositeFormat InPersonKeysAccepted = CompositeFormat.Parse(UiText.InPersonKeysAcceptedFormat);
+    public static readonly CompositeFormat InPersonAlreadyChecked = CompositeFormat.Parse(UiText.InPersonAlreadyCheckedFormat);
+    public static readonly CompositeFormat InPersonConnected = CompositeFormat.Parse(UiText.InPersonConnectedFormat);
     public static readonly CompositeFormat NotAdded = CompositeFormat.Parse(UiText.ConversationNotAddedFormat);
     public static readonly CompositeFormat VerifyIntro = CompositeFormat.Parse(UiText.VerifyIntroFormat);
     public static readonly CompositeFormat Theirs = CompositeFormat.Parse(UiText.VerifyTheirsFormat);

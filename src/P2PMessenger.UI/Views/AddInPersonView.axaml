@@ -1,0 +1,66 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:P2PMessenger.UI.ViewModels"
+             xmlns:res="using:P2PMessenger.UI.Resources"
+             xmlns:c="using:P2PMessenger.UI.Controls"
+             x:Class="P2PMessenger.UI.Views.AddInPersonView"
+             x:DataType="vm:AddInPersonViewModel">
+    <ScrollViewer>
+        <StackPanel Margin="16" Spacing="8" MaxWidth="640">
+            <TextBlock x:Name="IntroText" Text="{x:Static res:UiText.InPersonIntro}" TextWrapping="Wrap" />
+            <c:QrCodeView x:Name="QrCode"
+                          Matrix="{Binding QrCode}"
+                          Width="280"
+                          Height="280"
+                          HorizontalAlignment="Center"
+                          AutomationProperties.Name="{x:Static res:UiText.InPersonQrLabel}" />
+            <TextBlock x:Name="NameText" Text="{Binding Name}" HorizontalAlignment="Center" FontSize="16" FontWeight="SemiBold" />
+            <TextBlock x:Name="FingerprintText" Text="{Binding Fingerprint}" HorizontalAlignment="Center" FontFamily="monospace" FontSize="12" />
+            <Button x:Name="ScanButton"
+                    HorizontalAlignment="Center"
+                    Margin="0,8,0,0"
+                    Content="{x:Static res:UiText.InPersonScan}"
+                    Command="{Binding ScanCommand}" />
+            <TextBlock x:Name="ErrorText"
+                       Text="{Binding ErrorMessage}"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
+                       TextWrapping="Wrap" />
+            <Button x:Name="AddByCodeButton"
+                    Content="{x:Static res:UiText.InPersonAddByCode}"
+                    Command="{Binding AddByCodeCommand}"
+                    IsVisible="{Binding OffersTextCodes}" />
+            <Border x:Name="StatusPanel"
+                    Padding="12"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                    IsVisible="{Binding HasStatus}">
+                <StackPanel Spacing="6">
+                    <TextBlock x:Name="StatusText" Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+                    <TextBlock Text="{x:Static res:UiText.AddContactFingerprintLabel}" FontWeight="SemiBold" IsVisible="{Binding HasScannedContact}" />
+                    <SelectableTextBlock x:Name="ScannedFingerprintText" Text="{Binding ScannedFingerprint}" FontFamily="monospace" IsVisible="{Binding HasScannedContact}" />
+                    <Button x:Name="OpenChatButton"
+                            Content="{x:Static res:UiText.InPersonOpenChat}"
+                            Command="{Binding OpenChatCommand}"
+                            IsVisible="{Binding IsConnected}" />
+                </StackPanel>
+            </Border>
+            <Border x:Name="PreviewPanel"
+                    Padding="12"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                    IsVisible="{Binding HasPreview}">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="{x:Static res:UiText.AddContactNameLabel}" FontWeight="SemiBold" />
+                    <TextBlock x:Name="PreviewName" Text="{Binding PreviewName}" FontSize="16" />
+                    <TextBlock Text="{x:Static res:UiText.AddContactFingerprintLabel}" FontWeight="SemiBold" />
+                    <SelectableTextBlock x:Name="PreviewFingerprint" Text="{Binding PreviewFingerprint}" FontFamily="monospace" />
+                    <TextBlock x:Name="PreviewHint" Text="{Binding PreviewHint}" TextWrapping="Wrap" />
+                    <Button x:Name="AddButton" Content="{Binding AddText}" Command="{Binding AddCommand}" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

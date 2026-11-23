@@ -7,6 +7,7 @@
              x:DataType="vm:ContactListViewModel">
     <DockPanel Margin="16">
         <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <Button x:Name="AddInPersonButton" Margin="0,0,8,8" Content="{x:Static res:UiText.ContactListAddInPerson}" Command="{Binding AddInPersonCommand}" />
             <Button x:Name="AddContactButton" Margin="0,0,8,8" Content="{x:Static res:UiText.ContactListAddContact}" Command="{Binding AddContactCommand}" />
             <Button x:Name="MyCodeButton" Margin="0,0,8,8" Content="{x:Static res:UiText.ContactListMyCode}" Command="{Binding MyCodeCommand}" />
             <Button x:Name="PassphraseButton"

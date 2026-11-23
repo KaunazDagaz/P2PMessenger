@@ -16,11 +16,17 @@ public sealed class AppPlatform
     }
 
     public AppPlatform(string? dataFolder, IKeyProtector? keyProtector, Action<bool>? passphraseSetChanged, ILocalInterfaceSource? localInterfaces)
+        : this(dataFolder, keyProtector, passphraseSetChanged, localInterfaces, null)
+    {
+    }
+
+    public AppPlatform(string? dataFolder, IKeyProtector? keyProtector, Action<bool>? passphraseSetChanged, ILocalInterfaceSource? localInterfaces, IQrScanner? qrScanner)
     {
         DataFolder = dataFolder;
         KeyProtector = keyProtector;
         PassphraseSetChanged = passphraseSetChanged;
         LocalInterfaces = localInterfaces;
+        QrScanner = qrScanner;
     }
 
     public static AppPlatform WithoutKeyStore { get; } = new(null, null);
@@ -32,6 +38,8 @@ public sealed class AppPlatform
     public Action<bool>? PassphraseSetChanged { get; }
 
     public ILocalInterfaceSource? LocalInterfaces { get; }
+
+    public IQrScanner? QrScanner { get; }
 
     public ILocalData CreateLocalData() =>
         DataFolder is { Length: > 0 } folder

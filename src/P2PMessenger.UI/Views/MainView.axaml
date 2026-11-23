@@ -21,6 +21,9 @@
         <DataTemplate DataType="vm:AddContactViewModel">
             <v:AddContactView />
         </DataTemplate>
+        <DataTemplate DataType="vm:AddInPersonViewModel">
+            <v:AddInPersonView />
+        </DataTemplate>
         <DataTemplate DataType="vm:ConversationViewModel">
             <v:ConversationView />
         </DataTemplate>

@@ -154,6 +154,42 @@ public sealed class AddContactViewTests
         harness.Messenger.Identity.Dispose();
     }
 
+    [AvaloniaFact]
+    [Trait("Story", "US-02")]
+    public async Task AddContact_ImageWithoutACode_SaysSo()
+    {
+        await using var harness = await UiHarness.StartAsync("Alice");
+        var (page, view) = Open(harness);
+        harness.Platform.OpenResult = new CodeFileResult(CodeFileStatus.NoCodeInImage, null);
+
+        await page.OpenFileCommand.ExecuteAsync(null);
+        UiHarness.Flush();
+
+        Assert.Equal(UiText.AddContactNoCodeInImage, UiHarness.Find<TextBlock>(view, "ErrorText").Text);
+        Assert.False(page.HasPreview);
+        harness.Messenger.Identity.Dispose();
+    }
+
+    [AvaloniaFact]
+    [Trait("Story", "US-02")]
+    public async Task AddContact_CodeReadFromAQrImage_IsAddedAsNotCompared()
+    {
+        await using var harness = await UiHarness.StartAsync("Alice");
+        var (page, view) = Open(harness);
+        using var bob = KeySet.Create();
+        harness.Platform.OpenResult = new CodeFileResult(CodeFileStatus.Done, Code(bob, "Bob").ToText());
+
+        await page.OpenFileCommand.ExecuteAsync(null);
+        UiHarness.Flush();
+        Assert.Equal(UiText.AddContactNewHint, UiHarness.Find<TextBlock>(view, "PreviewHint").Text);
+        await page.AddCommand.ExecuteAsync(null);
+
+        Assert.True(harness.Messenger.Contacts.TryGet(bob.IdentityKey, out var contact));
+        Assert.Equal(CodeExchange.OtherChannel, contact.Exchange);
+        Assert.Equal(KeyComparison.NotCompared, contact.KeyComparison);
+        harness.Messenger.Identity.Dispose();
+    }
+
     private static (AddContactViewModel Page, AddContactView View) Open(UiHarness harness)
     {
         var page = harness.Shell.Pages.AddContact();

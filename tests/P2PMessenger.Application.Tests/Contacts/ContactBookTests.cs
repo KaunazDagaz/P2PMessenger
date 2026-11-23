@@ -301,6 +301,106 @@ public sealed class ContactBookTests : IDisposable
         Assert.Equal(CodeCheckOutcome.AlreadyContact, loaded.Check(Code(bob, "Bob")).Outcome);
     }
 
+    [Fact]
+    [Trait("Story", "US-02")]
+    [Trait("Story", "US-04")]
+    public async Task AddAsync_ScannedInPerson_SavesTheKeyAsCheckedByYouAndAddedInPerson()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        var result = await book.AddAsync(book.Check(Code(bob, "Bob")), CodeExchange.InPerson, cancellationToken);
+
+        Assert.True(result.IsSaved);
+        Assert.Equal(AddContactOutcome.Added, result.Outcome);
+        Assert.Equal(ContactState.WaitingForFirstConnection, result.Contact.State);
+        Assert.Equal(KeyComparison.CheckedByYou, result.Contact.KeyComparison);
+        Assert.Equal(CodeExchange.InPerson, result.Contact.Exchange);
+        var saved = Assert.Single(await store.LoadAllAsync(cancellationToken));
+        Assert.Equal(CodeExchange.InPerson, saved.Exchange);
+        Assert.Equal(ContactChange.Added, Assert.Single(changes).Change);
+    }
+
+    [Fact]
+    [Trait("Story", "US-02")]
+    [Trait("Story", "US-04")]
+    public async Task AddAsync_FromAnotherChannel_IsNotComparedAndKeepsItsChannelThroughLaterChanges()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        var added = await AddAsync(Code(bob, "Bob"), cancellationToken);
+        Assert.True(await book.ConfirmFirstConnectionAsync(bob.IdentityKey, bob.StaticKey, cancellationToken));
+        Assert.True(await book.SetKeyComparisonAsync(bob.IdentityKey, KeyComparison.CheckedByYou, cancellationToken));
+
+        Assert.Equal(CodeExchange.OtherChannel, added.Exchange);
+        Assert.Equal(KeyComparison.NotCompared, added.KeyComparison);
+        Assert.True(book.TryGet(bob.IdentityKey, out var now));
+        Assert.Equal(CodeExchange.OtherChannel, now.Exchange);
+        Assert.Equal(ContactState.Added, now.State);
+        Assert.Equal(KeyComparison.CheckedByYou, now.KeyComparison);
+    }
+
+    [Fact]
+    [Trait("Story", "US-02")]
+    [Trait("Story", "US-05")]
+    public async Task AddAsync_NewConnectionKeysScannedInPerson_AreCheckedByYouAndInPerson()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await AddAsync(Code(bob, "Bob"), cancellationToken);
+        using var renewed = WithNewStaticKey(bob);
+
+        var check = book.Check(Code(renewed, "Bob"));
+        var result = await book.AddAsync(check, CodeExchange.InPerson, cancellationToken);
+
+        Assert.Equal(AddContactOutcome.KeysReplaced, result.Outcome);
+        Assert.True(result.IsSaved);
+        Assert.Equal(renewed.StaticKey, result.Contact.Code.StaticKey);
+        Assert.Equal(KeyComparison.CheckedByYou, result.Contact.KeyComparison);
+        Assert.Equal(CodeExchange.InPerson, result.Contact.Exchange);
+        Assert.Equal(ContactState.WaitingForFirstConnection, result.Contact.State);
+    }
+
+    [Fact]
+    [Trait("Story", "US-04")]
+    public async Task MarkScannedInPersonAsync_SameCodeOfAContact_MarksTheKeyCheckedByYou()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await AddAsync(Code(bob, "Bob"), cancellationToken);
+        changes.Clear();
+
+        var check = book.Check(Code(bob, "Bob"));
+        Assert.True(await book.MarkScannedInPersonAsync(check, cancellationToken));
+
+        Assert.True(book.TryGet(bob.IdentityKey, out var contact));
+        Assert.Equal(KeyComparison.CheckedByYou, contact.KeyComparison);
+        Assert.Equal(CodeExchange.OtherChannel, contact.Exchange);
+        Assert.Equal(ContactChange.KeyComparisonChanged, Assert.Single(changes).Change);
+        Assert.True(await book.MarkScannedInPersonAsync(check, cancellationToken));
+        Assert.Single(changes);
+    }
+
+    [Fact]
+    [Trait("Story", "US-04")]
+    [Trait("Story", "US-05")]
+    public async Task MarkScannedInPersonAsync_AnythingButTheSameCode_ChangesNothing()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await AddAsync(Code(bob, "Bob"), cancellationToken);
+        using var renewed = WithNewStaticKey(bob);
+        using var carol = KeySet.Create();
+        var stale = book.Check(Code(bob, "Bob"));
+        Assert.True((await book.AddAsync(book.Check(Code(renewed, "Bob")), cancellationToken)).IsSaved);
+        changes.Clear();
+
+        Assert.False(await book.MarkScannedInPersonAsync(stale, cancellationToken));
+        Assert.False(await book.MarkScannedInPersonAsync(book.Check(Code(carol, "Carol")), cancellationToken));
+        Assert.False(await book.MarkScannedInPersonAsync(book.Check("hello"), cancellationToken));
+        Assert.False(await book.MarkScannedInPersonAsync(book.Check(own.CodeText), cancellationToken));
+
+        Assert.True(book.TryGet(bob.IdentityKey, out var contact));
+        Assert.Equal(KeyComparison.NotCompared, contact.KeyComparison);
+        Assert.Empty(changes);
+    }
+
     public void Dispose()
     {
         book.Dispose();

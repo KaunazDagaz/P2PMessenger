@@ -92,7 +92,8 @@ public partial class App : Avalonia.Application
             MessengerSetup.InMemory() with { Loggers = CreateLoggers(), Discovery = DiscoverySetup.LocalNetwork(platform.LocalInterfaces) },
             new AvaloniaUiThread(),
             topLevelServices,
-            topLevelServices);
+            topLevelServices,
+            platform.QrScanner ?? NoQrScanner.Instance);
         if (platform.PassphraseSetChanged is { } passphraseSetChanged)
         {
             services.PassphraseSetChanged += (_, set) => passphraseSetChanged(set);
