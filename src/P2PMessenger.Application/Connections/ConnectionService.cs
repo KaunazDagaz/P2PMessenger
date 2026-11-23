@@ -313,31 +313,15 @@ public sealed class ConnectionService : IAsyncDisposable
         }
         catch (SocketException exception)
         {
-            return (null, exception.SocketErrorCode == SocketError.AddressAlreadyInUse ? ListenResult.PortInUse : ListenResult.Failed);
+            return (null, ListenPorts.ResultOf(exception.SocketErrorCode));
         }
     }
 
-    private (TcpConnectionListener? Listener, ListenResult Result) StartOnRandomPort(IPAddress address)
-    {
-        ListenResult last = ListenResult.Failed;
-        for (int attempt = 0; attempt < RandomPortAttempts; attempt++)
-        {
-            int port = RandomNumberGenerator.GetInt32(RandomPortMin, RandomPortMax + 1);
-            (TcpConnectionListener? started, ListenResult result) = Start(address, port);
-            if (started is not null)
-            {
-                return (started, result);
-            }
-
-            last = result;
-            if (result != ListenResult.PortInUse)
-            {
-                break;
-            }
-        }
-
-        return (null, last);
-    }
+    private (TcpConnectionListener? Listener, ListenResult Result) StartOnRandomPort(IPAddress address) =>
+        ListenPorts.StartOnRandomPort(
+            static () => RandomNumberGenerator.GetInt32(RandomPortMin, RandomPortMax + 1),
+            port => TcpConnectionListener.Start(manager, new IPEndPoint(address, port), loggers.CreateLogger<TcpConnectionListener>()),
+            RandomPortAttempts);
 
     private bool IsFresh(NearbyPeer peer) =>
         peer.Endpoint is not null && timeProvider.GetElapsedTime(peer.HeardAt) < heardLifetime;
