@@ -12,16 +12,16 @@ public sealed class AppSliceTests
     [Fact(Timeout = 60_000)]
     [Trait("Story", "US-02")]
     [Trait("Story", "US-03")]
+    [Trait("Story", "US-06")]
+    [Trait("Story", "US-07")]
     [Trait("Story", "US-11")]
-    public async Task TextCodes_BothImportedAndOneSideDials_BothAddEachOtherAndChat()
+    public async Task TextCodes_BothImportedOnOneNetwork_FindEachOtherWithoutAnAddressAddEachOtherAndChat()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         await using var alice = await AppPeer.StartAsync("Alice", cancellationToken);
         await using var bob = await AppPeer.StartAsync("Bob", cancellationToken);
         await alice.ImportAsync(bob, cancellationToken);
         await bob.ImportAsync(alice, cancellationToken);
-
-        Assert.True(alice.Messenger.Connections.SetAddress(bob.Identity.Keys.IdentityKey, bob.Endpoint));
 
         await Eventually.HoldsAsync(() => alice.ContactFor(bob).IsAdded && bob.ContactFor(alice).IsAdded, cancellationToken);
         await Eventually.HoldsAsync(
@@ -31,7 +31,9 @@ public sealed class AppSliceTests
         Assert.Equal(KeyComparison.NotCompared, bob.ContactFor(alice).KeyComparison);
         Assert.Contains(alice.Changes, static change => change.Change == ContactChange.FirstConnection);
         Assert.Contains(bob.Changes, static change => change.Change == ContactChange.FirstConnection);
-        Assert.Equal(DialStatus.None, alice.Messenger.Connections.DialStatusOf(bob.Identity.Keys.IdentityKey));
+        await Eventually.HoldsAsync(() => alice.Messenger.Connections.DialStatusOf(bob.Identity.Keys.IdentityKey) == DialStatus.None, cancellationToken);
+        Assert.Equal(Reachability.Nearby, alice.Messenger.Connections.ReachabilityOf(bob.Identity.Keys.IdentityKey));
+        Assert.Equal(Reachability.Nearby, bob.Messenger.Connections.ReachabilityOf(alice.Identity.Keys.IdentityKey));
 
         var bobKey = bob.Identity.Keys.IdentityKey;
         var aliceKey = alice.Identity.Keys.IdentityKey;
@@ -73,9 +75,10 @@ public sealed class AppSliceTests
         var bobKey = bob.Identity.Keys.IdentityKey;
         await alice.ImportAsync(bob, cancellationToken);
 
-        alice.Messenger.Connections.SetAddress(bobKey, bob.Endpoint);
-
-        await Eventually.HoldsAsync(() => alice.Messenger.Connections.DialStatusOf(bobKey) == DialStatus.Refused, cancellationToken);
+        await Eventually.HoldsAsync(() => AppPeer.HubOfThisTest.Sent.Count >= 10, cancellationToken);
+        await Task.Delay(300, cancellationToken);
+        Assert.False(alice.Messenger.Connections.IsHeard(bobKey));
+        Assert.Equal(DialStatus.None, alice.Messenger.Connections.DialStatusOf(bobKey));
         Assert.False(alice.ContactFor(bob).IsAdded);
         Assert.Empty(bob.Messenger.Contacts.All);
         Assert.Empty(bob.Changes);
@@ -91,7 +94,7 @@ public sealed class AppSliceTests
     [Trait("Story", "US-02")]
     [Trait("Story", "US-05")]
     [Trait("NFR", "NFR-09")]
-    public async Task SwappedCode_IsRefusedByTheRealContactAndNeverAdded()
+    public async Task SwappedCode_TheRealContactIsNeverRecognizedAndNothingIsAdded()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         await using var alice = await AppPeer.StartAsync("Alice", cancellationToken);
@@ -101,10 +104,11 @@ public sealed class AppSliceTests
         var swapped = await alice.ImportAsync(ContactCode.Create(mallory, bobsName).ToText(), CodeCheckOutcome.New, cancellationToken);
         await bob.ImportAsync(alice, cancellationToken);
 
-        alice.Messenger.Connections.SetAddress(swapped.IdentityKey, bob.Endpoint);
-
-        await Eventually.HoldsAsync(() => alice.Messenger.Connections.DialStatusOf(swapped.IdentityKey) == DialStatus.Refused, cancellationToken);
+        await Eventually.HoldsAsync(() => AppPeer.HubOfThisTest.Sent.Count >= 10, cancellationToken);
         await Task.Delay(300, cancellationToken);
+        Assert.False(alice.Messenger.Connections.IsHeard(swapped.IdentityKey));
+        Assert.False(bob.Messenger.Connections.IsHeard(alice.Identity.Keys.IdentityKey));
+        Assert.Equal(DialStatus.None, alice.Messenger.Connections.DialStatusOf(swapped.IdentityKey));
         Assert.False(alice.ContactFor(mallory.IdentityKey).IsAdded);
         Assert.False(bob.ContactFor(alice).IsAdded);
         Assert.DoesNotContain(alice.Changes, static change => change.Change == ContactChange.FirstConnection);
@@ -114,7 +118,7 @@ public sealed class AppSliceTests
     [Fact(Timeout = 60_000)]
     [Trait("Story", "US-05")]
     [Trait("NFR", "NFR-09")]
-    public async Task ContactWithANewIdentity_IsRefusedUntilItsCodeIsAddedAgain()
+    public async Task ContactWithANewIdentity_IsNotRecognizedUntilItsCodeIsAddedAgain()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         await using var alice = await AppPeer.StartAsync("Alice", cancellationToken);
@@ -122,18 +126,18 @@ public sealed class AppSliceTests
         var oldBobKey = oldBob.Identity.Keys.IdentityKey;
         await alice.ImportAsync(oldBob, cancellationToken);
         await oldBob.ImportAsync(alice, cancellationToken);
-        alice.Messenger.Connections.SetAddress(oldBobKey, oldBob.Endpoint);
         await Eventually.HoldsAsync(() => alice.ContactFor(oldBobKey).IsAdded, cancellationToken);
-        alice.Messenger.Connections.SetAddress(oldBobKey, null);
         await oldBob.DisposeAsync();
 
         await using var newBob = await AppPeer.StartAsync("Bob", cancellationToken);
         await newBob.ImportAsync(alice, cancellationToken);
-        newBob.Messenger.Connections.SetAddress(alice.Identity.Keys.IdentityKey, alice.Endpoint);
 
-        await Eventually.HoldsAsync(
-            () => newBob.Messenger.Connections.DialStatusOf(alice.Identity.Keys.IdentityKey) == DialStatus.Refused,
-            cancellationToken);
+        var sentBefore = AppPeer.HubOfThisTest.Sent.Count;
+        await Eventually.HoldsAsync(() => AppPeer.HubOfThisTest.Sent.Count >= sentBefore + 10, cancellationToken);
+        await Task.Delay(300, cancellationToken);
+        Assert.False(alice.Messenger.Connections.IsHeard(newBob.Identity.Keys.IdentityKey));
+        Assert.False(newBob.Messenger.Connections.IsHeard(alice.Identity.Keys.IdentityKey));
+        Assert.Equal(DialStatus.None, newBob.Messenger.Connections.DialStatusOf(alice.Identity.Keys.IdentityKey));
         Assert.Single(alice.Messenger.Contacts.All);
         Assert.Empty(alice.Messenger.Chats.MessagesWith(newBob.Identity.Keys.IdentityKey));
         Assert.False(alice.Messenger.Connections.IsConnected(newBob.Identity.Keys.IdentityKey));
@@ -157,7 +161,6 @@ public sealed class AppSliceTests
         var bob = await AppPeer.StartAsync(bobKeys, "Bob", cancellationToken);
         await alice.ImportAsync(bob, cancellationToken);
         await bob.ImportAsync(alice, cancellationToken);
-        alice.Messenger.Connections.SetAddress(bobKeys.IdentityKey, bob.Endpoint);
         await Eventually.HoldsAsync(() => alice.ContactFor(bobKeys).IsAdded, cancellationToken);
         var renewed = RenewedKeys.WithNewStaticKey(bobKeys);
         await bob.DisposeAsync();
@@ -166,7 +169,6 @@ public sealed class AppSliceTests
 
         var check = alice.Messenger.Contacts.Check(renewedBob.Identity.CodeText);
         var result = await alice.Messenger.Contacts.AddAsync(check, cancellationToken);
-        alice.Messenger.Connections.SetAddress(renewed.IdentityKey, renewedBob.Endpoint);
 
         Assert.Equal(CodeCheckOutcome.NewConnectionKeys, check.Outcome);
         Assert.Equal(AddContactOutcome.KeysReplaced, result.Outcome);
@@ -188,7 +190,6 @@ public sealed class AppSliceTests
         var bobKey = bob.Identity.Keys.IdentityKey;
         await alice.ImportAsync(bob, cancellationToken);
         await bob.ImportAsync(alice, cancellationToken);
-        bob.Messenger.Connections.SetAddress(alice.Identity.Keys.IdentityKey, alice.Endpoint);
         await Eventually.HoldsAsync(() => alice.Messenger.Connections.IsConnected(bobKey), cancellationToken);
 
         await bob.DisposeAsync();

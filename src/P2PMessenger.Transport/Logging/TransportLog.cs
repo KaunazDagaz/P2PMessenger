@@ -36,4 +36,28 @@ internal static partial class TransportLog
 
     [LoggerMessage(EventId = 10, Level = LogLevel.Error, Message = "Connection {Number}: unexpected {ExceptionType}")]
     public static partial void Unexpected(this ILogger logger, long number, string exceptionType);
+
+    [LoggerMessage(EventId = 11, Level = LogLevel.Information, Message = "Looking for contacts on the local network on UDP port {Port}")]
+    public static partial void DiscoveryStarted(this ILogger logger, int port);
+
+    [LoggerMessage(EventId = 12, Level = LogLevel.Warning, Message = "UDP port {Port} could not be opened ({Error}); announcements are still sent, but none are heard")]
+    public static partial void DiscoveryUnavailable(this ILogger logger, int port, SocketError error);
+
+    [LoggerMessage(EventId = 13, Level = LogLevel.Debug, Message = "The local network changed: {Count} local interfaces, other networks: {HasOtherNetwork}")]
+    public static partial void NetworkChanged(this ILogger logger, int count, bool hasOtherNetwork);
+
+    [LoggerMessage(EventId = 14, Level = LogLevel.Debug, Message = "An announcement could not be sent: {Error}")]
+    public static partial void AnnouncementNotSent(this ILogger logger, SocketError error);
+
+    [LoggerMessage(EventId = 15, Level = LogLevel.Debug, Message = "No contact heard for a while: sweeping {Hosts} addresses (subnets of at most {MaxHosts} hosts)")]
+    public static partial void SweepStarted(this ILogger logger, int hosts, int maxHosts);
+
+    [LoggerMessage(EventId = 16, Level = LogLevel.Debug, Message = "The sweep sent {Sent} datagrams in {Milliseconds} ms")]
+    public static partial void SweepFinished(this ILogger logger, int sent, long milliseconds);
+
+    [LoggerMessage(EventId = 17, Level = LogLevel.Debug, Message = "{Count} announcements were not screened because of the screening limit")]
+    public static partial void ScreeningLimited(this ILogger logger, long count);
+
+    [LoggerMessage(EventId = 18, Level = LogLevel.Error, Message = "Discovery: unexpected {ExceptionType}")]
+    public static partial void DiscoveryUnexpected(this ILogger logger, string exceptionType);
 }

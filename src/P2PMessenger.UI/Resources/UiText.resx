@@ -60,6 +60,9 @@
   <data name="ContactListEmpty" xml:space="preserve">
     <value>No contacts yet. Add a contact with the code they sent you, and send them yours.</value>
   </data>
+  <data name="ContactListNoNetwork" xml:space="preserve">
+    <value>This device has no Wi-Fi and no internet. Nearby contacts can be reached if one person shares a hotspot from a phone and the others join it.</value>
+  </data>
   <data name="ContactListAddContact" xml:space="preserve">
     <value>Add contact</value>
   </data>
@@ -72,11 +75,11 @@
   <data name="ContactWaiting" xml:space="preserve">
     <value>Waiting for the first connection</value>
   </data>
-  <data name="ContactConnected" xml:space="preserve">
-    <value>Connected now</value>
+  <data name="ContactReachableNearby" xml:space="preserve">
+    <value>Reachable nearby</value>
   </data>
-  <data name="ContactNotConnected" xml:space="preserve">
-    <value>Not connected</value>
+  <data name="ContactNotReachable" xml:space="preserve">
+    <value>Not reachable now</value>
   </data>
   <data name="ContactKeyNotCompared" xml:space="preserve">
     <value>Key not compared</value>
@@ -201,17 +204,8 @@
   <data name="AddContactStale" xml:space="preserve">
     <value>Your contacts changed meanwhile. Check the code again.</value>
   </data>
-  <data name="AddContactAddressLabel" xml:space="preserve">
-    <value>Contact's address (debug builds only)</value>
-  </data>
-  <data name="AddContactAddressPlaceholder" xml:space="preserve">
-    <value>192.168.1.20:45821</value>
-  </data>
-  <data name="AddContactAddressInvalid" xml:space="preserve">
-    <value>Enter an IP address and a port, such as 192.168.1.20:45821.</value>
-  </data>
   <data name="ConversationWaitingFormat" xml:space="preserve">
-    <value>Waiting for the first connection with {0}. They become a contact when their app proves that it holds the key in their code. They must add your code too.</value>
+    <value>Waiting for the first connection with {0}. They become a contact when their app proves that it holds the key in their code. They must add your code too, and both devices must be on the same network.</value>
   </data>
   <data name="ConversationKeyNotComparedFormat" xml:space="preserve">
     <value>You have not compared keys with {0}. Their code came as text or a file, which can be swapped on the way.</value>
@@ -289,31 +283,19 @@
     <value>Network (debug)</value>
   </data>
   <data name="NetworkIntro" xml:space="preserve">
-    <value>Debug builds only. Until the app finds contacts by itself, it connects to the addresses you enter here.</value>
+    <value>Debug builds only. What this device sees of the local network: its local interfaces, its ports and where each contact was last heard.</value>
   </data>
   <data name="NetworkListeningFormat" xml:space="preserve">
     <value>This device listens on port {0}.</value>
-  </data>
-  <data name="NetworkPortInUseFormat" xml:space="preserve">
-    <value>Port {0} is used by another program. Choose another port.</value>
   </data>
   <data name="NetworkNotListening" xml:space="preserve">
     <value>This device is not listening.</value>
   </data>
   <data name="NetworkAddressesLabel" xml:space="preserve">
-    <value>Addresses of this device</value>
+    <value>Local interfaces of this device</value>
   </data>
   <data name="NetworkNoAddresses" xml:space="preserve">
-    <value>No network address found.</value>
-  </data>
-  <data name="NetworkPortLabel" xml:space="preserve">
-    <value>Port</value>
-  </data>
-  <data name="NetworkListen" xml:space="preserve">
-    <value>Listen on this port</value>
-  </data>
-  <data name="NetworkInvalidPort" xml:space="preserve">
-    <value>Enter a port from 1 to 65535.</value>
+    <value>No local network interface found.</value>
   </data>
   <data name="NetworkContactsLabel" xml:space="preserve">
     <value>Contacts' addresses</value>
@@ -321,37 +303,41 @@
   <data name="NetworkNoContacts" xml:space="preserve">
     <value>No contacts yet.</value>
   </data>
-  <data name="NetworkSave" xml:space="preserve">
-    <value>Save</value>
+  <data name="NetworkDiscoveryFormat" xml:space="preserve">
+    <value>This device announces itself and listens for contacts on UDP port {0}.</value>
   </data>
-  <data name="NetworkClear" xml:space="preserve">
-    <value>Clear</value>
+  <data name="NetworkDiscoveryUnavailableFormat" xml:space="preserve">
+    <value>UDP port {0} is used by another program: this device announces itself but hears no one.</value>
+  </data>
+  <data name="NetworkDiscoveryOff" xml:space="preserve">
+    <value>This device does not look for contacts.</value>
+  </data>
+  <data name="NetworkHeardFormat" xml:space="preserve">
+    <value>Heard at {0}</value>
+  </data>
+  <data name="NetworkNotHeard" xml:space="preserve">
+    <value>Not heard</value>
   </data>
   <data name="DialConnecting" xml:space="preserve">
     <value>Connecting…</value>
   </data>
   <data name="DialUnreachable" xml:space="preserve">
-    <value>No answer at this address. Possible reasons:
-• their app is not running, or it listens on another port;
-• the address is wrong or has changed;
-• the two devices are not on the same network.</value>
+    <value>Their device was heard nearby, but their app did not answer. Possible reasons:
+• their app has just closed or restarted;
+• their device has left the network or changed its address;
+• a firewall on their device turns the connection away.</value>
   </data>
   <data name="DialTimedOut" xml:space="preserve">
-    <value>The attempt timed out. Possible reasons:
+    <value>Their device was heard nearby, but the attempt timed out. Possible reasons:
 • a firewall on their device blocks the app (Windows asks about it when the app first runs);
-• their device is switched off, asleep or out of range;
-• the address is wrong;
+• their device is asleep or out of range;
 • the network is too slow, or their app did not answer in time.</value>
   </data>
   <data name="DialRefused" xml:space="preserve">
-    <value>Their app did not accept the connection. Possible reasons:
-• they have not added your code yet;
-• the codes do not match: a code was swapped on the way, or one of you has created a new identity since you exchanged codes;
-• another program or another device answers at this address;
-• their app is turning away new connections for a moment because too many arrived at once.</value>
-  </data>
-  <data name="DialNoAddress" xml:space="preserve">
-    <value>No address.</value>
+    <value>Their device was heard nearby, but their app did not accept the connection. Possible reasons:
+• another program or device now answers at the address where it was heard, for example after their app restarted;
+• their app is turning away new connections for a moment because too many arrived at once;
+• another device on the network sent an old announcement of theirs again.</value>
   </data>
   <data name="StorageProblemTitle" xml:space="preserve">
     <value>Stored data</value>

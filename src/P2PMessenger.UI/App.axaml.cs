@@ -4,6 +4,7 @@ using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using P2PMessenger.Application;
+using P2PMessenger.Application.Connections;
 using P2PMessenger.Application.Logging;
 using P2PMessenger.UI.Services;
 using P2PMessenger.UI.ViewModels;
@@ -88,7 +89,7 @@ public partial class App : Avalonia.Application
         TopLevelServices topLevelServices = new(topLevel);
         AppServices services = new(
             platform.CreateLocalData(),
-            MessengerSetup.InMemory() with { Loggers = CreateLoggers() },
+            MessengerSetup.InMemory() with { Loggers = CreateLoggers(), Discovery = DiscoverySetup.LocalNetwork(platform.LocalInterfaces) },
             new AvaloniaUiThread(),
             topLevelServices,
             topLevelServices);

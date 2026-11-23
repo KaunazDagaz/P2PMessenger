@@ -3,6 +3,7 @@ using System.Net;
 using P2PMessenger.Application.Chats;
 using P2PMessenger.Application.Delivery;
 using P2PMessenger.Core.Crypto;
+using P2PMessenger.Tests.Shared;
 
 namespace P2PMessenger.Application.Tests.Delivery;
 
@@ -98,7 +99,7 @@ public sealed class OutboxTests
         Assert.Empty(pair.Bob.Chats.MessagesWith(pair.AliceKey));
         Assert.All(pair.Alice.Chats.MessagesWith(pair.BobKey), static message => Assert.Equal(DeliveryState.Waiting, message.Delivery));
 
-        pair.Alice.Connections.SetAddress(pair.BobKey, pair.BobEndpoint);
+        pair.Reconnect();
         await TestMessengers.WaitUntilAsync(() => pair.Alice.Connections.IsConnected(pair.BobKey), cancellationToken);
         var reachable = Stopwatch.StartNew();
         await TestMessengers.WaitUntilAsync(
@@ -125,7 +126,7 @@ public sealed class OutboxTests
         Assert.True(sent.IsQueued);
 
         time.Advance(TimeSpan.FromDays(400));
-        pair.Alice.Connections.SetAddress(pair.BobKey, pair.BobEndpoint);
+        pair.Reconnect();
 
         await TestMessengers.WaitUntilAsync(
             () => pair.Alice.Chats.MessagesWith(pair.BobKey).Single().Delivery == DeliveryState.Received,
@@ -178,7 +179,7 @@ public sealed class OutboxTests
 
         Assert.True(await pair.Alice.DeleteWaitingAsync(pair.BobKey, dropped.Message!.Id, cancellationToken));
         var after = await pair.Alice.SendAsync(pair.BobKey, "after", cancellationToken);
-        pair.Alice.Connections.SetAddress(pair.BobKey, pair.BobEndpoint);
+        pair.Reconnect();
         await TestMessengers.WaitUntilAsync(
             () => pair.Alice.Chats.MessagesWith(pair.BobKey).All(static message => message.Delivery == DeliveryState.Received),
             cancellationToken);
@@ -205,7 +206,7 @@ public sealed class OutboxTests
         Assert.Equal(2, await pair.Alice.DeleteChatAsync(pair.BobKey, cancellationToken));
         Assert.Empty(pair.Alice.Chats.MessagesWith(pair.BobKey));
         await pair.Alice.SendAsync(pair.BobKey, "three", cancellationToken);
-        pair.Alice.Connections.SetAddress(pair.BobKey, pair.BobEndpoint);
+        pair.Reconnect();
         await TestMessengers.WaitUntilAsync(() => pair.Alice.Chats.MessagesWith(pair.BobKey).Single().Delivery == DeliveryState.Received, cancellationToken);
         await Task.Delay(300, cancellationToken);
 
@@ -226,7 +227,7 @@ public sealed class OutboxTests
 
         var turn = await pair.Alice.Chats.EnterDeliveryAsync(pair.BobKey, cancellationToken);
         var deleting = pair.Alice.DeleteWaitingAsync(pair.BobKey, dropped.Message!.Id, cancellationToken);
-        pair.Alice.Connections.SetAddress(pair.BobKey, pair.BobEndpoint);
+        pair.Reconnect();
         await TestMessengers.WaitUntilAsync(() => pair.Alice.Connections.IsConnected(pair.BobKey), cancellationToken);
         await Task.Delay(300, cancellationToken);
         Assert.False(deleting.IsCompleted);
@@ -242,26 +243,29 @@ public sealed class OutboxTests
 
     private sealed class Pair : IAsyncDisposable
     {
-        private Pair(Messenger alice, Messenger bob)
+        private Pair(Messenger alice, Messenger bob, LoopbackDiscovery.Node aliceNode)
         {
             Alice = alice;
             Bob = bob;
+            AliceNode = aliceNode;
         }
 
         public Messenger Alice { get; }
 
         public Messenger Bob { get; }
 
+        public LoopbackDiscovery.Node AliceNode { get; }
+
         public Ed25519PublicKey AliceKey => Alice.Identity.Keys.IdentityKey;
 
         public Ed25519PublicKey BobKey => Bob.Identity.Keys.IdentityKey;
-
-        public IPEndPoint BobEndpoint => new(IPAddress.Loopback, Bob.Connections.ListeningPort ?? throw new InvalidOperationException("Bob is not listening."));
 
         public static Task<Pair> ConnectAsync(CancellationToken cancellationToken) => ConnectAsync(TimeProvider.System, cancellationToken);
 
         public static async Task<Pair> ConnectAsync(TimeProvider aliceTime, CancellationToken cancellationToken)
         {
+            var hub = new LoopbackDiscovery();
+            var aliceNode = hub.CreateNode();
             var alice = await Messenger.StartAsync(
                 TestKeys.NewIdentity("Alice"),
                 MessengerSetup.InMemory() with
@@ -270,13 +274,13 @@ public sealed class OutboxTests
                     ListenPort = 0,
                     Connection = TestMessengers.Fast,
                     TimeProvider = aliceTime,
+                    Discovery = aliceNode.Setup,
                 },
                 cancellationToken);
-            var bob = await TestMessengers.StartAsync("Bob", cancellationToken);
-            var pair = new Pair(alice, bob);
+            var bob = await TestMessengers.StartAsync("Bob", hub.CreateNode(), cancellationToken);
+            var pair = new Pair(alice, bob, aliceNode);
             Assert.True((await alice.Contacts.AddAsync(alice.Contacts.Check(bob.Identity.CodeText), cancellationToken)).IsSaved);
             Assert.True((await bob.Contacts.AddAsync(bob.Contacts.Check(alice.Identity.CodeText), cancellationToken)).IsSaved);
-            alice.Connections.SetAddress(pair.BobKey, pair.BobEndpoint);
             await TestMessengers.WaitUntilAsync(
                 () => alice.Contacts.TryGet(pair.BobKey, out var contact) && contact.IsAdded && alice.Connections.IsConnected(pair.BobKey)
                     && bob.Contacts.TryGet(pair.AliceKey, out var other) && other.IsAdded,
@@ -286,7 +290,8 @@ public sealed class OutboxTests
 
         public async Task DisconnectAsync(CancellationToken cancellationToken)
         {
-            Alice.Connections.SetAddress(BobKey, null);
+            AliceNode.InRange = false;
+            await TestMessengers.WaitUntilAsync(() => !Alice.Connections.IsHeard(BobKey) && !Bob.Connections.IsHeard(AliceKey), cancellationToken);
             if (Alice.Connections.TryGetConnection(BobKey, out var connection))
             {
                 connection.Close();
@@ -294,6 +299,8 @@ public sealed class OutboxTests
 
             await TestMessengers.WaitUntilAsync(() => !Alice.Connections.IsConnected(BobKey) && !Bob.Connections.IsConnected(AliceKey), cancellationToken);
         }
+
+        public void Reconnect() => AliceNode.InRange = true;
 
         public async ValueTask DisposeAsync()
         {

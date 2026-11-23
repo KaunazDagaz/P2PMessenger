@@ -1,4 +1,5 @@
 using System.Net;
+using P2PMessenger.Tests.Shared;
 using P2PMessenger.Transport.Connections;
 
 namespace P2PMessenger.Application.Tests;
@@ -17,6 +18,12 @@ internal static class TestMessengers
         Messenger.StartAsync(
             TestKeys.NewIdentity(name),
             MessengerSetup.InMemory() with { ListenAddress = IPAddress.Loopback, ListenPort = 0, Connection = Fast },
+            cancellationToken);
+
+    public static Task<Messenger> StartAsync(string name, LoopbackDiscovery.Node node, CancellationToken cancellationToken) =>
+        Messenger.StartAsync(
+            TestKeys.NewIdentity(name),
+            MessengerSetup.InMemory() with { ListenAddress = IPAddress.Loopback, ListenPort = 0, Connection = Fast, Discovery = node.Setup },
             cancellationToken);
 
     public static async Task WaitUntilAsync(Func<bool> condition, CancellationToken cancellationToken)

@@ -24,6 +24,16 @@
                     Command="{Binding NetworkCommand}"
                     IsVisible="{x:Static s:BuildInfo.IsDebug}" />
         </WrapPanel>
+        <Border x:Name="NoNetworkPanel"
+                DockPanel.Dock="Top"
+                Margin="0,0,0,12"
+                Padding="12"
+                BorderThickness="1"
+                CornerRadius="4"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                IsVisible="{Binding HasNoNetwork}">
+            <TextBlock x:Name="NoNetworkText" Text="{x:Static res:UiText.ContactListNoNetwork}" TextWrapping="Wrap" />
+        </Border>
         <TextBlock x:Name="EmptyText"
                    DockPanel.Dock="Top"
                    Text="{x:Static res:UiText.ContactListEmpty}"

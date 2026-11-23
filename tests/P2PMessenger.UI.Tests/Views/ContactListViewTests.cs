@@ -3,6 +3,8 @@ using Avalonia.Headless.XUnit;
 using P2PMessenger.Application.Contacts;
 using P2PMessenger.Core.Identity;
 using P2PMessenger.Core.Messages;
+using P2PMessenger.Tests.Shared;
+using P2PMessenger.Transport.Discovery;
 using P2PMessenger.UI.Resources;
 using P2PMessenger.UI.Services;
 using P2PMessenger.UI.ViewModels;
@@ -51,8 +53,9 @@ public sealed class ContactListViewTests
     }
 
     [AvaloniaFact]
+    [Trait("Story", "US-06")]
     [Trait("Story", "US-07")]
-    public async Task ContactList_ConnectionComesAndGoes_ShowsWhetherTheContactIsConnectedNow()
+    public async Task ContactList_ContactFoundAndThenGone_ShowsReachableNearbyAndThenNotReachableNow()
     {
         await using var harness = await UiHarness.StartAsync("Alice");
         var page = Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage);
@@ -60,10 +63,52 @@ public sealed class ContactListViewTests
         harness.Show(view);
 
         var bob = await harness.ConnectPeerAsync("Bob");
-        await UiHarness.WaitUntilAsync(() => UiHarness.Texts(view).Contains(UiText.ContactConnected));
+        await UiHarness.WaitUntilAsync(() => UiHarness.Texts(view).Contains(UiText.ContactReachableNearby));
 
         await UiHarness.StopPeerAsync(bob);
-        await UiHarness.WaitUntilAsync(() => UiHarness.Texts(view).Contains(UiText.ContactNotConnected));
+        await UiHarness.WaitUntilAsync(() => UiHarness.Texts(view).Contains(UiText.ContactNotReachable));
+        Assert.DoesNotContain(UiText.DialUnreachable, UiHarness.Texts(view));
+        Assert.DoesNotContain(UiText.DialTimedOut, UiHarness.Texts(view));
+        Assert.DoesNotContain(UiText.DialRefused, UiHarness.Texts(view));
+        harness.Messenger.Identity.Dispose();
+    }
+
+    [AvaloniaFact]
+    [Trait("Story", "US-07")]
+    public async Task ContactList_NoWiFiAndNoInternet_SaysThatOnePersonCanShareAHotspot()
+    {
+        await using var harness = await UiHarness.StartAsync("Alice", NetworkSnapshot.None);
+        var page = Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage);
+        var view = new ContactListView { DataContext = page };
+        harness.Show(view);
+
+        Assert.True(page.HasNoNetwork);
+        Assert.True(UiHarness.Find<Border>(view, "NoNetworkPanel").IsVisible);
+        Assert.Equal(UiText.ContactListNoNetwork, UiHarness.Find<TextBlock>(view, "NoNetworkText").Text);
+        Assert.Contains("one person shares a hotspot", UiText.ContactListNoNetwork, StringComparison.Ordinal);
+
+        harness.Node.Network = NetworkSnapshot.Create([LoopbackDiscovery.Interface], hasOtherNetwork: false);
+        await UiHarness.WaitUntilAsync(() => !page.HasNoNetwork);
+        Assert.False(UiHarness.Find<Border>(view, "NoNetworkPanel").IsVisible);
+
+        harness.Node.Network = NetworkSnapshot.Create([], hasOtherNetwork: true);
+        await Task.Delay(1500);
+        UiHarness.Flush();
+        Assert.False(page.HasNoNetwork);
+        harness.Messenger.Identity.Dispose();
+    }
+
+    [AvaloniaFact]
+    [Trait("Story", "US-07")]
+    public async Task ContactList_WithANetwork_SaysNothingAboutAHotspot()
+    {
+        await using var harness = await UiHarness.StartAsync("Alice");
+        var page = Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage);
+        var view = new ContactListView { DataContext = page };
+        harness.Show(view);
+
+        Assert.False(page.HasNoNetwork);
+        Assert.False(UiHarness.Find<Border>(view, "NoNetworkPanel").IsVisible);
         harness.Messenger.Identity.Dispose();
     }
 

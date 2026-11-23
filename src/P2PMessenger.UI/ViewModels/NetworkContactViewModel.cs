@@ -1,7 +1,7 @@
 using System.Net;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using P2PMessenger.Application;
+using P2PMessenger.Application.Connections;
 using P2PMessenger.Application.Contacts;
 using P2PMessenger.UI.Resources;
 
@@ -13,13 +13,10 @@ public sealed partial class NetworkContactViewModel : ViewModelBase
     private readonly Contact contact;
 
     [ObservableProperty]
-    private string addressText;
-
-    [ObservableProperty]
     private string statusText = string.Empty;
 
     [ObservableProperty]
-    private string? errorMessage;
+    private string heardText = string.Empty;
 
     public NetworkContactViewModel(Messenger messenger, Contact contact)
     {
@@ -28,9 +25,6 @@ public sealed partial class NetworkContactViewModel : ViewModelBase
 
         this.messenger = messenger;
         this.contact = contact;
-        addressText = messenger.Connections.TryGetAddress(contact.IdentityKey, out IPEndPoint? address)
-            ? address.ToString()
-            : string.Empty;
         Refresh();
     }
 
@@ -40,34 +34,13 @@ public sealed partial class NetworkContactViewModel : ViewModelBase
 
     public void Refresh()
     {
-        bool hasAddress = messenger.Connections.TryGetAddress(contact.IdentityKey, out _);
-        StatusText = messenger.Connections.IsConnected(contact.IdentityKey)
-            ? UiText.ContactConnected
-            : DialTexts.Failure(messenger.Connections.DialStatusOf(contact.IdentityKey))
-                ?? (hasAddress ? UiText.DialConnecting : UiText.DialNoAddress);
-    }
-
-    [RelayCommand]
-    private void Save()
-    {
-        if (!IPEndPoint.TryParse(AddressText.Trim(), out IPEndPoint? address) || address.Port == 0)
-        {
-            ErrorMessage = UiText.AddContactAddressInvalid;
-            return;
-        }
-
-        ErrorMessage = null;
-        AddressText = address.ToString();
-        messenger.Connections.SetAddress(contact.IdentityKey, address);
-        Refresh();
-    }
-
-    [RelayCommand]
-    private void Clear()
-    {
-        ErrorMessage = null;
-        AddressText = string.Empty;
-        messenger.Connections.SetAddress(contact.IdentityKey, null);
-        Refresh();
+        ConnectionService connections = messenger.Connections;
+        Reachability reachability = connections.ReachabilityOf(contact.IdentityKey);
+        StatusText = reachability == Reachability.Nearby
+            ? UiText.ContactReachableNearby
+            : DialTexts.Failure(connections.DialStatusOf(contact.IdentityKey)) ?? ReachabilityTexts.Status(contact, reachability);
+        HeardText = connections.TryGetHeardEndpoint(contact.IdentityKey, out IPEndPoint? endpoint)
+            ? Formats.With(Formats.Heard, endpoint)
+            : UiText.NetworkNotHeard;
     }
 }

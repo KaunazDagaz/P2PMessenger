@@ -154,30 +154,6 @@ public sealed class AddContactViewTests
         harness.Messenger.Identity.Dispose();
     }
 
-    [AvaloniaFact(Skip = "Debug builds only: Release builds have no address field.", SkipUnless = nameof(BuildInfo.IsDebug), SkipType = typeof(BuildInfo))]
-    public async Task AddContact_InvalidDebugAddress_IsRefusedBeforeAnythingIsSaved()
-    {
-        await using var harness = await UiHarness.StartAsync("Alice");
-        var (page, view) = Open(harness);
-        using var bob = KeySet.Create();
-        page.CodeText = Code(bob, "Bob").ToText();
-        page.CheckCommand.Execute(null);
-
-        page.AddressText = "not an address";
-        await page.AddCommand.ExecuteAsync(null);
-        UiHarness.Flush();
-
-        Assert.Equal(UiText.AddContactAddressInvalid, UiHarness.Find<TextBlock>(view, "ErrorText").Text);
-        Assert.Empty(harness.Messenger.Contacts.All);
-
-        page.AddressText = "127.0.0.1:45999";
-        await page.AddCommand.ExecuteAsync(null);
-
-        Assert.True(harness.Messenger.Connections.TryGetAddress(bob.IdentityKey, out var address));
-        Assert.Equal(45999, address.Port);
-        harness.Messenger.Identity.Dispose();
-    }
-
     private static (AddContactViewModel Page, AddContactView View) Open(UiHarness harness)
     {
         var page = harness.Shell.Pages.AddContact();

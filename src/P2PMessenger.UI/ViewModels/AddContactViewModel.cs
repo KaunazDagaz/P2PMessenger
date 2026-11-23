@@ -1,4 +1,3 @@
-using System.Net;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using P2PMessenger.Application;
@@ -19,9 +18,6 @@ public sealed partial class AddContactViewModel : PageViewModel
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CheckCommand))]
     private string codeText = string.Empty;
-
-    [ObservableProperty]
-    private string addressText = string.Empty;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CheckCommand), nameof(OpenFileCommand), nameof(AddCommand))]
@@ -113,13 +109,6 @@ public sealed partial class AddContactViewModel : PageViewModel
             return;
         }
 
-        IPEndPoint? address = null;
-        if (BuildInfo.IsDebug && !string.IsNullOrWhiteSpace(AddressText) && !IPEndPoint.TryParse(AddressText.Trim(), out address))
-        {
-            ErrorMessage = UiText.AddContactAddressInvalid;
-            return;
-        }
-
         IsBusy = true;
         ErrorMessage = null;
         try
@@ -130,11 +119,6 @@ public sealed partial class AddContactViewModel : PageViewModel
                 ErrorMessage = UiText.AddContactStale;
                 ClearPreview();
                 return;
-            }
-
-            if (address is not null)
-            {
-                messenger.Connections.SetAddress(result.Contact.IdentityKey, address);
             }
 
             navigation.Replace(pages.Conversation(result.Contact));

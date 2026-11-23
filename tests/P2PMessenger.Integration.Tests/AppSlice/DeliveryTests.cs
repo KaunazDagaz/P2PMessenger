@@ -35,12 +35,10 @@ public sealed class DeliveryTests
         {
             await alice.ImportAsync(bob, cancellationToken);
             await bob.ImportAsync(alice, cancellationToken);
-            alice.Messenger.Connections.SetAddress(bobKey, bob.Endpoint);
             await Eventually.HoldsAsync(() => alice.ContactFor(bob).IsAdded && bob.ContactFor(alice).IsAdded, cancellationToken);
 
             await bob.DisposeAsync();
             await Eventually.HoldsAsync(() => !alice.Messenger.Connections.IsConnected(bobKey), cancellationToken);
-            alice.Messenger.Connections.SetAddress(bobKey, null);
             foreach (var text in new[] { "while you were away 1", "while you were away 2", "while you were away 3" })
             {
                 Assert.Equal(SendOutcome.Queued, (await alice.Messenger.SendAsync(bobKey, text, cancellationToken)).Outcome);
@@ -57,7 +55,6 @@ public sealed class DeliveryTests
 
             bob = await AppPeer.StartSavedAsync(bobPath, bobProtector, "Bob", cancellationToken);
             Assert.Empty(bob.Messenger.Chats.MessagesWith(aliceKey));
-            alice.Messenger.Connections.SetAddress(bobKey, bob.Endpoint);
             await Eventually.HoldsAsync(() => alice.Messenger.Connections.IsConnected(bobKey), cancellationToken);
             var reachable = Stopwatch.StartNew();
             await Eventually.HoldsAsync(
@@ -157,8 +154,8 @@ public sealed class DeliveryTests
         using var aliceAtBob = TestContacts.Create(bobKeys, alice.Identity.Keys);
         using var aliceAtCarol = TestContacts.Create(carolKeys, alice.Identity.Keys);
 
-        alice.Messenger.Connections.SetAddress(bobKeys.IdentityKey, bobServer.Endpoint);
-        alice.Messenger.Connections.SetAddress(carolKeys.IdentityKey, carolServer.Endpoint);
+        await using var hearingBob = alice.HearFrom(bobKeys, bobServer.Endpoint);
+        await using var hearingCarol = alice.HearFrom(carolKeys, carolServer.Endpoint);
         await using var bob = await RawContact.AcceptAsync(bobServer, bobKeys, aliceAtBob, cancellationToken);
         await using var carol = await RawContact.AcceptAsync(carolServer, carolKeys, aliceAtCarol, cancellationToken);
         await Eventually.HoldsAsync(() => alice.ContactFor(bobKeys).IsAdded && alice.ContactFor(carolKeys).IsAdded, cancellationToken);

@@ -1,7 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:P2PMessenger.UI.ViewModels"
-             xmlns:s="using:P2PMessenger.UI.Services"
              xmlns:res="using:P2PMessenger.UI.Resources"
              x:Class="P2PMessenger.UI.Views.AddContactView"
              x:DataType="vm:AddContactViewModel">
@@ -38,13 +37,6 @@
                     <TextBlock Text="{x:Static res:UiText.AddContactFingerprintLabel}" FontWeight="SemiBold" />
                     <SelectableTextBlock x:Name="PreviewFingerprint" Text="{Binding PreviewFingerprint}" FontFamily="monospace" />
                     <TextBlock x:Name="PreviewHint" Text="{Binding PreviewHint}" TextWrapping="Wrap" />
-                    <StackPanel Spacing="4" IsVisible="{x:Static s:BuildInfo.IsDebug}">
-                        <TextBlock Text="{x:Static res:UiText.AddContactAddressLabel}" FontWeight="SemiBold" />
-                        <TextBox x:Name="AddressBox"
-                                 Text="{Binding AddressText}"
-                                 PlaceholderText="{x:Static res:UiText.AddContactAddressPlaceholder}"
-                                 AutomationProperties.Name="{x:Static res:UiText.AddContactAddressLabel}" />
-                    </StackPanel>
                     <Button x:Name="AddButton"
                             Content="{Binding AddText}"
                             Command="{Binding AddCommand}"

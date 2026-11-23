@@ -34,7 +34,6 @@ public sealed class RestartTests
                 aliceCode = alice.Identity.CodeText;
                 await alice.ImportAsync(bob, cancellationToken);
                 await bob.ImportAsync(alice, cancellationToken);
-                alice.Messenger.Connections.SetAddress(bobKey, bob.Endpoint);
                 await Eventually.HoldsAsync(() => alice.ContactFor(bob).IsAdded && alice.Messenger.Connections.IsConnected(bobKey), cancellationToken);
                 Assert.True(await alice.Messenger.Contacts.SetKeyComparisonAsync(bobKey, KeyComparison.CheckedByYou, cancellationToken));
 
@@ -63,7 +62,6 @@ public sealed class RestartTests
             Assert.True(TextMessage.TryCreate(received.Id, received.Sequence, received.WrittenAt, received.Text, out var replay));
             Assert.False(await restarted.Messenger.Chats.ReceiveAsync(bobKey, replay, cancellationToken));
 
-            restarted.Messenger.Connections.SetAddress(bobKey, bob.Endpoint);
             await Eventually.HoldsAsync(() => restarted.Messenger.Connections.IsConnected(bobKey) && bob.Messenger.Connections.IsConnected(aliceKey), cancellationToken);
             var sent = await restarted.Messenger.SendAsync(bobKey, "alice 3", cancellationToken);
             Assert.Equal(SendOutcome.Queued, sent.Outcome);

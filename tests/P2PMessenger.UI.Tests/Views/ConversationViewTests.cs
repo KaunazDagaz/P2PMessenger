@@ -78,7 +78,7 @@ public sealed class ConversationViewTests
         var view = new ConversationView { DataContext = page };
         harness.Shell.Push(page);
         harness.Show(view);
-        Assert.Equal(UiText.ContactConnected, UiHarness.Find<TextBlock>(view, "StatusText").Text);
+        Assert.Equal(UiText.ContactReachableNearby, UiHarness.Find<TextBlock>(view, "StatusText").Text);
         Assert.False(UiHarness.Find<Border>(view, "WaitingPanel").IsVisible);
 
         page.Draft = "Hi Bob\r\n";
@@ -124,7 +124,7 @@ public sealed class ConversationViewTests
         await page.SendCommand.ExecuteAsync(null);
         UiHarness.Flush();
 
-        Assert.Equal(UiText.ContactNotConnected, UiHarness.Find<TextBlock>(view, "StatusText").Text);
+        Assert.Equal(UiText.ContactNotReachable, UiHarness.Find<TextBlock>(view, "StatusText").Text);
         Assert.False(UiHarness.Find<TextBlock>(view, "ErrorText").IsVisible);
         Assert.Equal(string.Empty, page.Draft);
         var message = Assert.Single(page.Messages);
@@ -204,36 +204,40 @@ public sealed class ConversationViewTests
 
     [AvaloniaFact]
     [Trait("Story", "US-02")]
-    public async Task Conversation_FirstConnectionRefused_ListsEveryPossibleReason()
+    [Trait("Story", "US-07")]
+    public async Task Conversation_HeardButRefused_ListsEveryPossibleReason()
     {
         await using var harness = await UiHarness.StartAsync("Alice");
-        var bob = await UiHarness.StartPeerAsync("Bob");
-        var result = await harness.Messenger.Contacts.AddAsync(harness.Messenger.Contacts.Check(bob.Identity.CodeText), CancellationToken.None);
-        Assert.True(result.IsSaved);
-        var page = harness.Shell.Pages.Conversation(result.Contact);
+        using var bob = KeySet.Create();
+        var carol = await harness.StartPeerAsync("Carol");
+        var contact = await harness.AddContactAsync(bob, "Bob");
+        var page = harness.Shell.Pages.Conversation(contact);
         var view = new ConversationView { DataContext = page };
         harness.Shell.Push(page);
         harness.Show(view);
 
-        harness.Messenger.Connections.SetAddress(result.Contact.IdentityKey, UiHarness.EndpointOf(bob));
-        await UiHarness.WaitUntilAsync(() => page.AttemptText == UiText.DialRefused);
+        await using (harness.HearFrom(bob, carol.Connections.ListeningPort!.Value))
+        {
+            await UiHarness.WaitUntilAsync(() => page.AttemptText == UiText.DialRefused);
 
-        UiHarness.Flush();
-        Assert.True(UiHarness.Find<Border>(view, "AttemptPanel").IsVisible);
-        var attempt = UiHarness.Find<TextBlock>(view, "AttemptText");
-        Assert.Contains("they have not added your code yet", attempt.Text, StringComparison.Ordinal);
-        Assert.Contains("the codes do not match", attempt.Text, StringComparison.Ordinal);
-        Assert.Contains("another program or another device answers at this address", attempt.Text, StringComparison.Ordinal);
-        Assert.Contains("too many arrived at once", attempt.Text, StringComparison.Ordinal);
+            Assert.True(UiHarness.Find<Border>(view, "AttemptPanel").IsVisible);
+            var attempt = UiHarness.Find<TextBlock>(view, "AttemptText");
+            Assert.StartsWith("Their device was heard nearby, but their app did not accept the connection. Possible reasons:", attempt.Text, StringComparison.Ordinal);
+            Assert.Contains("another program or device now answers at the address where it was heard", attempt.Text, StringComparison.Ordinal);
+            Assert.Contains("too many arrived at once", attempt.Text, StringComparison.Ordinal);
+            Assert.Contains("sent an old announcement of theirs again", attempt.Text, StringComparison.Ordinal);
+        }
+
+        Assert.Equal(UiText.ContactWaiting, UiHarness.Find<TextBlock>(view, "StatusText").Text);
         Assert.True(UiHarness.Find<Border>(view, "WaitingPanel").IsVisible);
-        Assert.Empty(bob.Contacts.All);
-        await UiHarness.StopPeerAsync(bob);
+        Assert.Empty(carol.Contacts.All);
+        await UiHarness.StopPeerAsync(carol);
         harness.Messenger.Identity.Dispose();
     }
 
     [AvaloniaFact]
-    [Trait("Story", "US-02")]
-    public async Task Conversation_NobodyListening_ListsTheReasonsForNoAnswer()
+    [Trait("Story", "US-07")]
+    public async Task Conversation_HeardButNobodyListens_ListsTheReasonsForNoAnswer()
     {
         await using var harness = await UiHarness.StartAsync("Alice");
         using var bob = KeySet.Create();
@@ -244,20 +248,49 @@ public sealed class ConversationViewTests
         harness.Show(view);
         using var closed = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
         closed.Start();
-        var address = (System.Net.IPEndPoint)closed.LocalEndpoint;
+        var port = ((System.Net.IPEndPoint)closed.LocalEndpoint).Port;
         closed.Stop();
 
-        harness.Messenger.Connections.SetAddress(bob.IdentityKey, address);
-        await UiHarness.WaitUntilAsync(() => page.AttemptText == UiText.DialUnreachable);
+        await using (harness.HearFrom(bob, port))
+        {
+            await UiHarness.WaitUntilAsync(() => page.AttemptText == UiText.DialUnreachable);
 
-        UiHarness.Flush();
-        Assert.True(UiHarness.Find<Border>(view, "AttemptPanel").IsVisible);
-        Assert.StartsWith("No answer at this address. Possible reasons:", UiHarness.Find<TextBlock>(view, "AttemptText").Text, StringComparison.Ordinal);
+            Assert.True(UiHarness.Find<Border>(view, "AttemptPanel").IsVisible);
+            Assert.StartsWith("Their device was heard nearby, but their app did not answer. Possible reasons:", UiHarness.Find<TextBlock>(view, "AttemptText").Text, StringComparison.Ordinal);
+            await Task.Delay(500, TestContext.Current.CancellationToken);
+            UiHarness.Flush();
+            Assert.True(UiHarness.Find<Border>(view, "AttemptPanel").IsVisible);
+        }
+
+        await UiHarness.WaitUntilAsync(() =>
+            !harness.Messenger.Connections.IsHeard(bob.IdentityKey)
+            && harness.Messenger.Connections.DialStatusOf(bob.IdentityKey) == Application.Connections.DialStatus.None
+            && page.AttemptText is null);
+        Assert.False(UiHarness.Find<Border>(view, "AttemptPanel").IsVisible);
         harness.Messenger.Identity.Dispose();
     }
 
     [AvaloniaFact]
-    public async Task Conversation_ContactWithoutAnAddress_ShowsNoAttempt()
+    [Trait("Story", "US-07")]
+    public async Task Conversation_AddedContactNotHeard_ShowsNotReachableNowWithoutAGuess()
+    {
+        await using var harness = await UiHarness.StartAsync("Alice");
+        var bob = await harness.ConnectPeerAsync("Bob");
+        var contact = harness.ContactOf(bob);
+        await UiHarness.StopPeerAsync(bob);
+        await UiHarness.WaitUntilAsync(() => !harness.Messenger.Connections.IsHeard(contact.IdentityKey) && harness.Messenger.Connections.DialStatusOf(contact.IdentityKey) == Application.Connections.DialStatus.None);
+        var page = harness.Shell.Pages.Conversation(contact);
+        var view = new ConversationView { DataContext = page };
+        harness.Show(view);
+
+        Assert.Equal(UiText.ContactNotReachable, UiHarness.Find<TextBlock>(view, "StatusText").Text);
+        Assert.Null(page.AttemptText);
+        Assert.False(UiHarness.Find<Border>(view, "AttemptPanel").IsVisible);
+        harness.Messenger.Identity.Dispose();
+    }
+
+    [AvaloniaFact]
+    public async Task Conversation_ContactNeverHeard_ShowsNoAttempt()
     {
         await using var harness = await UiHarness.StartAsync("Alice");
         using var bob = KeySet.Create();

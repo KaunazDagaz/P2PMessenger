@@ -1,11 +1,9 @@
 using System.Collections.ObjectModel;
-using System.Globalization;
-using System.Net;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using P2PMessenger.Application;
 using P2PMessenger.Application.Connections;
 using P2PMessenger.Application.Contacts;
+using P2PMessenger.Transport.Discovery;
 using P2PMessenger.UI.Resources;
 using P2PMessenger.UI.Services;
 
@@ -20,14 +18,7 @@ public sealed partial class NetworkViewModel : PageViewModel
     private string listeningText = string.Empty;
 
     [ObservableProperty]
-    private string portText;
-
-    [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(ListenCommand))]
-    private bool isBusy;
-
-    [ObservableProperty]
-    private string? errorMessage;
+    private string discoveryText = string.Empty;
 
     [ObservableProperty]
     private string addressesText = string.Empty;
@@ -42,14 +33,7 @@ public sealed partial class NetworkViewModel : PageViewModel
 
         this.messenger = messenger;
         this.uiThread = uiThread;
-        int port = messenger.Connections.ListeningPort ?? messenger.Connections.LastRequestedPort ?? MessengerSetup.DefaultPort;
-        portText = port.ToString(CultureInfo.InvariantCulture);
-        if (messenger.Connections.ListeningPort is null && messenger.Connections.LastListenResult == ListenResult.PortInUse)
-        {
-            errorMessage = Formats.With(Formats.PortInUse, port);
-        }
-
-        RefreshListening();
+        RefreshDevice();
         RefreshContacts();
     }
 
@@ -57,13 +41,11 @@ public sealed partial class NetworkViewModel : PageViewModel
 
     public ObservableCollection<NetworkContactViewModel> Contacts { get; } = [];
 
-    private bool IsIdle => !IsBusy;
-
     public override void OnShown()
     {
         messenger.Connections.Changed += OnConnectionChanged;
         messenger.Contacts.Changed += OnContactChanged;
-        RefreshListening();
+        RefreshDevice();
         RefreshContacts();
     }
 
@@ -73,38 +55,9 @@ public sealed partial class NetworkViewModel : PageViewModel
         messenger.Contacts.Changed -= OnContactChanged;
     }
 
-    [RelayCommand(CanExecute = nameof(IsIdle))]
-    private async Task ListenAsync(CancellationToken cancellationToken)
-    {
-        if (!int.TryParse(PortText.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out int port) || port is < 1 or > IPEndPoint.MaxPort)
-        {
-            ErrorMessage = UiText.NetworkInvalidPort;
-            return;
-        }
-
-        IsBusy = true;
-        ErrorMessage = null;
-        try
-        {
-            ListenResult result = await messenger.Connections.ListenAsync(IPAddress.Any, port, cancellationToken);
-            ErrorMessage = result switch
-            {
-                ListenResult.Listening => null,
-                ListenResult.PortInUse => Formats.With(Formats.PortInUse, port),
-                ListenResult.InvalidPort => UiText.NetworkInvalidPort,
-                _ => UiText.NetworkNotListening,
-            };
-            RefreshListening();
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
     private void OnConnectionChanged(object? sender, ConnectionChangedEventArgs e) => uiThread.Post(() =>
     {
-        RefreshListening();
+        RefreshDevice();
         foreach (NetworkContactViewModel contact in Contacts)
         {
             contact.Refresh();
@@ -119,14 +72,20 @@ public sealed partial class NetworkViewModel : PageViewModel
         }
     }
 
-    private void RefreshListening()
+    private void RefreshDevice()
     {
-        int? port = messenger.Connections.ListeningPort;
-        ListeningText = port is { } listening ? Formats.With(Formats.Listening, listening) : UiText.NetworkNotListening;
-        IReadOnlyList<IPAddress> addresses = LocalAddresses.Find();
-        AddressesText = addresses.Count == 0
+        ConnectionService connections = messenger.Connections;
+        ListeningText = connections.ListeningPort is { } port ? Formats.With(Formats.Listening, port) : UiText.NetworkNotListening;
+        DiscoveryText = connections.DiscoveryState switch
+        {
+            DiscoveryState.Running => Formats.With(Formats.Discovery, connections.DiscoveryPort),
+            DiscoveryState.Unavailable => Formats.With(Formats.DiscoveryUnavailable, connections.DiscoveryPort),
+            _ => UiText.NetworkDiscoveryOff,
+        };
+        IReadOnlyList<LocalInterface> interfaces = connections.Network?.Interfaces ?? [];
+        AddressesText = interfaces.Count == 0
             ? UiText.NetworkNoAddresses
-            : string.Join(Environment.NewLine, addresses.Select(address => port is { } p ? new IPEndPoint(address, p).ToString() : address.ToString()));
+            : string.Join(Environment.NewLine, interfaces.Select(static item => item.ToString()));
     }
 
     private void RefreshContacts()

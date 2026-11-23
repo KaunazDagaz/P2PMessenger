@@ -10,12 +10,18 @@ using P2PMessenger.Core.Crypto;
 using P2PMessenger.Core.Messages;
 using P2PMessenger.Core.Sessions;
 using P2PMessenger.Transport.Connections;
+using P2PMessenger.Transport.Discovery;
 using P2PMessenger.Transport.Tcp;
 
 namespace P2PMessenger.Application.Connections;
 
 public sealed class ConnectionService : IAsyncDisposable
 {
+    public const int RandomPortMin = 49152;
+    public const int RandomPortMax = 65535;
+
+    private const int RandomPortAttempts = 32;
+
     private readonly OwnIdentity own;
     private readonly ContactBook contacts;
     private readonly ChatLog chats;
@@ -27,9 +33,11 @@ public sealed class ConnectionService : IAsyncDisposable
     private readonly Lock gate = new();
     private readonly Dictionary<Ed25519PublicKey, SessionContact> sessionContacts = [];
     private readonly List<SessionContact> retired = [];
-    private readonly Dictionary<Ed25519PublicKey, IPEndPoint> addresses = [];
-    private readonly Dictionary<Ed25519PublicKey, Dialer> dialers = [];
+    private readonly Dictionary<Ed25519PublicKey, NearbyPeer> nearby = [];
+    private readonly List<Dialer> finishedDialers = [];
     private TcpConnectionListener? listener;
+    private LocalNetworkDiscovery? discovery;
+    private TimeSpan heardLifetime = new DiscoveryOptions().HeardLifetime;
     private bool disposed;
 
     internal ConnectionService(
@@ -70,18 +78,52 @@ public sealed class ConnectionService : IAsyncDisposable
 
     public ListenResult LastListenResult { get; private set; } = ListenResult.Failed;
 
-    public int? LastRequestedPort { get; private set; }
+    public DiscoveryState DiscoveryState
+    {
+        get
+        {
+            lock (gate)
+            {
+                return discovery?.State ?? DiscoveryState.NotStarted;
+            }
+        }
+    }
+
+    public int? DiscoveryPort { get; private set; }
+
+    public NetworkSnapshot? Network
+    {
+        get
+        {
+            lock (gate)
+            {
+                return discovery?.Network;
+            }
+        }
+    }
 
     public bool IsConnected(Ed25519PublicKey contactKey) => manager.TryGetConnection(contactKey, out _);
 
-    public bool TryGetAddress(Ed25519PublicKey contactKey, [NotNullWhen(true)] out IPEndPoint? address)
+    public Reachability ReachabilityOf(Ed25519PublicKey contactKey) =>
+        IsConnected(contactKey) ? Reachability.Nearby : Reachability.NotReachable;
+
+    public bool IsHeard(Ed25519PublicKey contactKey) => TryGetHeardEndpoint(contactKey, out _);
+
+    public bool TryGetHeardEndpoint(Ed25519PublicKey contactKey, [NotNullWhen(true)] out IPEndPoint? endpoint)
     {
         ArgumentNullException.ThrowIfNull(contactKey);
 
         lock (gate)
         {
-            return addresses.TryGetValue(contactKey, out address);
+            if (nearby.TryGetValue(contactKey, out NearbyPeer? peer) && IsFresh(peer) && peer.Endpoint is { } heard)
+            {
+                endpoint = heard;
+                return true;
+            }
         }
+
+        endpoint = null;
+        return false;
     }
 
     public DialStatus DialStatusOf(Ed25519PublicKey contactKey)
@@ -90,11 +132,11 @@ public sealed class ConnectionService : IAsyncDisposable
 
         lock (gate)
         {
-            return dialers.TryGetValue(contactKey, out Dialer? dialer) ? dialer.Status : DialStatus.None;
+            return nearby.TryGetValue(contactKey, out NearbyPeer? peer) && peer.Dialer is { } dialer ? dialer.Status : DialStatus.None;
         }
     }
 
-    public async Task<ListenResult> ListenAsync(IPAddress address, int port, CancellationToken cancellationToken)
+    public async Task<ListenResult> ListenAsync(IPAddress address, int? port, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(address);
 
@@ -117,27 +159,18 @@ public sealed class ConnectionService : IAsyncDisposable
         }
 
         cancellationToken.ThrowIfCancellationRequested();
-        ListenResult result;
-        TcpConnectionListener? started = null;
-        try
-        {
-            started = TcpConnectionListener.Start(manager, new IPEndPoint(address, port), loggers.CreateLogger<TcpConnectionListener>());
-            result = ListenResult.Listening;
-        }
-        catch (SocketException exception)
-        {
-            result = exception.SocketErrorCode == SocketError.AddressAlreadyInUse ? ListenResult.PortInUse : ListenResult.Failed;
-        }
+        (TcpConnectionListener? started, ListenResult result) = port is { } chosen ? Start(address, chosen) : StartOnRandomPort(address);
 
         bool keep;
+        LocalNetworkDiscovery? running;
         lock (gate)
         {
             keep = !disposed;
+            running = discovery;
             if (keep)
             {
                 listener = started;
                 LastListenResult = result;
-                LastRequestedPort = port;
             }
         }
 
@@ -147,44 +180,17 @@ public sealed class ConnectionService : IAsyncDisposable
             return ListenResult.Failed;
         }
 
+        running?.SetAnnouncedPort(started?.LocalEndpoint.Port);
         RaiseChanged(null);
         return result;
-    }
-
-    public bool SetAddress(Ed25519PublicKey contactKey, IPEndPoint? address)
-    {
-        ArgumentNullException.ThrowIfNull(contactKey);
-
-        Dialer? previous;
-        lock (gate)
-        {
-            ObjectDisposedException.ThrowIf(disposed, this);
-            if (!sessionContacts.ContainsKey(contactKey))
-            {
-                return false;
-            }
-
-            if (address is null)
-            {
-                addresses.Remove(contactKey);
-            }
-            else
-            {
-                addresses[contactKey] = address;
-            }
-
-            previous = RestartDialerLocked(contactKey);
-        }
-
-        previous?.Retire();
-        RaiseChanged(contactKey);
-        return true;
     }
 
     public async ValueTask DisposeAsync()
     {
         TcpConnectionListener? stopping;
-        Dialer[] stoppingDialers;
+        LocalNetworkDiscovery? stoppingDiscovery;
+        Dialer[] activeDialers;
+        Dialer[] doneDialers;
         lock (gate)
         {
             if (disposed)
@@ -195,12 +201,24 @@ public sealed class ConnectionService : IAsyncDisposable
             disposed = true;
             stopping = listener;
             listener = null;
-            stoppingDialers = [.. dialers.Values];
-            dialers.Clear();
+            stoppingDiscovery = discovery;
+            activeDialers = [.. nearby.Values.Select(static peer => peer.Dialer).OfType<Dialer>()];
+            doneDialers = [.. finishedDialers];
+            foreach (NearbyPeer peer in nearby.Values)
+            {
+                peer.Dialer = null;
+            }
+
+            finishedDialers.Clear();
         }
 
         contacts.Changed -= OnContactChanged;
-        foreach (Dialer dialer in stoppingDialers)
+        if (stoppingDiscovery is not null)
+        {
+            await stoppingDiscovery.DisposeAsync().ConfigureAwait(false);
+        }
+
+        foreach (Dialer dialer in activeDialers)
         {
             dialer.Cancel();
         }
@@ -211,8 +229,8 @@ public sealed class ConnectionService : IAsyncDisposable
         }
 
         await manager.DisposeAsync().ConfigureAwait(false);
-        await Task.WhenAll(stoppingDialers.Select(static dialer => dialer.Loop)).ConfigureAwait(false);
-        foreach (Dialer dialer in stoppingDialers)
+        await Task.WhenAll(activeDialers.Select(static dialer => dialer.Loop)).ConfigureAwait(false);
+        foreach (Dialer dialer in activeDialers.Concat(doneDialers))
         {
             dialer.Dispose();
         }
@@ -227,6 +245,46 @@ public sealed class ConnectionService : IAsyncDisposable
             sessionContacts.Clear();
             retired.Clear();
         }
+    }
+
+    internal void StartDiscovery(DiscoverySetup setup)
+    {
+        ArgumentNullException.ThrowIfNull(setup);
+
+        IDiscoveryLink link = setup.Links(setup.Options);
+        LocalNetworkDiscovery started;
+        try
+        {
+            started = new LocalNetworkDiscovery(
+                known,
+                setup.Interfaces,
+                link,
+                new DiscoveryObserver(this),
+                setup.Options,
+                timeProvider,
+                loggers.CreateLogger<LocalNetworkDiscovery>());
+        }
+        catch
+        {
+            link.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            throw;
+        }
+
+        lock (gate)
+        {
+            ObjectDisposedException.ThrowIf(disposed, this);
+            if (discovery is not null)
+            {
+                throw new InvalidOperationException("Discovery has already been started.");
+            }
+
+            discovery = started;
+            heardLifetime = setup.Options.HeardLifetime;
+            DiscoveryPort = setup.Options.Port;
+        }
+
+        started.Start(ListeningPort);
+        RaiseChanged(null);
     }
 
     internal bool TryGetConnection(Ed25519PublicKey contactKey, [NotNullWhen(true)] out ContactConnection? connection) =>
@@ -247,17 +305,67 @@ public sealed class ConnectionService : IAsyncDisposable
         _ => DialStatus.Refused,
     };
 
+    private (TcpConnectionListener? Listener, ListenResult Result) Start(IPAddress address, int port)
+    {
+        try
+        {
+            return (TcpConnectionListener.Start(manager, new IPEndPoint(address, port), loggers.CreateLogger<TcpConnectionListener>()), ListenResult.Listening);
+        }
+        catch (SocketException exception)
+        {
+            return (null, exception.SocketErrorCode == SocketError.AddressAlreadyInUse ? ListenResult.PortInUse : ListenResult.Failed);
+        }
+    }
+
+    private (TcpConnectionListener? Listener, ListenResult Result) StartOnRandomPort(IPAddress address)
+    {
+        ListenResult last = ListenResult.Failed;
+        for (int attempt = 0; attempt < RandomPortAttempts; attempt++)
+        {
+            int port = RandomNumberGenerator.GetInt32(RandomPortMin, RandomPortMax + 1);
+            (TcpConnectionListener? started, ListenResult result) = Start(address, port);
+            if (started is not null)
+            {
+                return (started, result);
+            }
+
+            last = result;
+            if (result != ListenResult.PortInUse)
+            {
+                break;
+            }
+        }
+
+        return (null, last);
+    }
+
+    private bool IsFresh(NearbyPeer peer) =>
+        peer.Endpoint is not null && timeProvider.GetElapsedTime(peer.HeardAt) < heardLifetime;
+
     private void OnContactChanged(object? sender, ContactChangedEventArgs e)
     {
         switch (e.Change)
         {
             case ContactChange.Added:
                 Know(e.Contact);
+                AnnounceSoon();
                 break;
             case ContactChange.KeysReplaced:
                 Replace(e.Contact);
+                AnnounceSoon();
                 break;
         }
+    }
+
+    private void AnnounceSoon()
+    {
+        LocalNetworkDiscovery? running;
+        lock (gate)
+        {
+            running = discovery;
+        }
+
+        running?.AnnounceSoon();
     }
 
     private void Know(Contact contact)
@@ -286,7 +394,7 @@ public sealed class ConnectionService : IAsyncDisposable
             return;
         }
 
-        Dialer? previous;
+        Dialer? previous = null;
         lock (gate)
         {
             if (disposed)
@@ -310,7 +418,10 @@ public sealed class ConnectionService : IAsyncDisposable
                 sessionContact.Dispose();
             }
 
-            previous = RestartDialerLocked(contact.IdentityKey);
+            if (nearby.Remove(contact.IdentityKey, out NearbyPeer? peer))
+            {
+                previous = peer.Dialer;
+            }
         }
 
         previous?.Retire();
@@ -322,24 +433,79 @@ public sealed class ConnectionService : IAsyncDisposable
         RaiseChanged(contact.IdentityKey);
     }
 
-    private Dialer? RestartDialerLocked(Ed25519PublicKey contactKey)
+    private void OnHeard(SessionContact contact, IPEndPoint endpoint)
     {
-        dialers.Remove(contactKey, out Dialer? previous);
-        if (addresses.TryGetValue(contactKey, out IPEndPoint? address)
-            && sessionContacts.TryGetValue(contactKey, out SessionContact? sessionContact))
+        Ed25519PublicKey contactKey = contact.IdentityKey;
+        bool firstHeard;
+        lock (gate)
         {
-            Dialer dialer = new(address);
-            dialers.Add(contactKey, dialer);
-            dialer.Loop = Task.Run(() => DialLoopAsync(contactKey, sessionContact, dialer), CancellationToken.None);
+            if (disposed || !sessionContacts.TryGetValue(contactKey, out SessionContact? current) || !ReferenceEquals(current, contact))
+            {
+                return;
+            }
+
+            if (!nearby.TryGetValue(contactKey, out NearbyPeer? peer))
+            {
+                peer = new NearbyPeer();
+                nearby.Add(contactKey, peer);
+            }
+
+            firstHeard = !IsFresh(peer) || peer.Dialer is null;
+            peer.Endpoint = endpoint;
+            peer.HeardAt = timeProvider.GetTimestamp();
+            if (peer.Dialer is null)
+            {
+                DisposeFinishedDialersLocked();
+                Dialer dialer = new();
+                peer.Dialer = dialer;
+                dialer.Loop = Task.Run(() => DialLoopAsync(contactKey, contact, dialer), CancellationToken.None);
+            }
         }
 
-        return previous;
+        if (firstHeard)
+        {
+            RaiseChanged(contactKey);
+        }
+    }
+
+    private void DisposeFinishedDialersLocked()
+    {
+        for (int index = finishedDialers.Count - 1; index >= 0; index--)
+        {
+            Dialer finished = finishedDialers[index];
+            if (finished.Loop.IsCompleted)
+            {
+                finishedDialers.RemoveAt(index);
+                finished.Dispose();
+            }
+        }
+    }
+
+    private bool TryTakeEndpoint(Ed25519PublicKey contactKey, Dialer dialer, [NotNullWhen(true)] out IPEndPoint? endpoint)
+    {
+        lock (gate)
+        {
+            endpoint = null;
+            if (!nearby.TryGetValue(contactKey, out NearbyPeer? peer) || !ReferenceEquals(peer.Dialer, dialer))
+            {
+                return false;
+            }
+
+            if (IsFresh(peer))
+            {
+                endpoint = peer.Endpoint!;
+                return true;
+            }
+
+            peer.Dialer = null;
+            finishedDialers.Add(dialer);
+            return false;
+        }
     }
 
     private async Task DialLoopAsync(Ed25519PublicKey contactKey, SessionContact contact, Dialer dialer)
     {
         CancellationToken stop = dialer.Token;
-        TcpDialer tcp = new(dialer.Address);
         TimeSpan delay = options.ReconnectDelayMin;
         try
         {
@@ -354,10 +520,17 @@ public sealed class ConnectionService : IAsyncDisposable
                     continue;
                 }
 
-                SetStatus(contactKey, dialer, DialStatus.Connecting);
-                ConnectResult result = await manager.ConnectAsync(contact, tcp, stop).ConfigureAwait(false);
+                if (!TryTakeEndpoint(contactKey, dialer, out IPEndPoint? endpoint))
+                {
+                    RaiseChanged(contactKey);
+                    return;
+                }
+
+                SetConnecting(contactKey, dialer);
+                ConnectResult result = await manager.ConnectAsync(contact, new TcpDialer(endpoint), stop).ConfigureAwait(false);
                 if (result.IsConnected)
                 {
+                    SetStatus(contactKey, dialer, DialStatus.None);
                     delay = options.ReconnectDelayMin;
                     continue;
                 }
@@ -378,6 +551,21 @@ public sealed class ConnectionService : IAsyncDisposable
         }
     }
 
+    private void SetConnecting(Ed25519PublicKey contactKey, Dialer dialer)
+    {
+        lock (gate)
+        {
+            if (dialer.Status != DialStatus.None)
+            {
+                return;
+            }
+
+            dialer.Status = DialStatus.Connecting;
+        }
+
+        RaiseChanged(contactKey);
+    }
+
     private void SetStatus(Ed25519PublicKey contactKey, Dialer dialer, DialStatus status)
     {
         lock (gate)
@@ -395,17 +583,23 @@ public sealed class ConnectionService : IAsyncDisposable
 
     private void RaiseChanged(Ed25519PublicKey? contactKey) => Changed?.Invoke(this, new ConnectionChangedEventArgs(contactKey));
 
+    private sealed class NearbyPeer
+    {
+        public IPEndPoint? Endpoint { get; set; }
+
+        public long HeardAt { get; set; }
+
+        public Dialer? Dialer { get; set; }
+    }
+
     private sealed class Dialer : IDisposable
     {
         private readonly CancellationTokenSource stop = new();
 
-        public Dialer(IPEndPoint address)
+        public Dialer()
         {
-            Address = address;
             Token = stop.Token;
         }
-
-        public IPEndPoint Address { get; }
 
         public CancellationToken Token { get; }
 
@@ -422,6 +616,20 @@ public sealed class ConnectionService : IAsyncDisposable
         }
 
         public void Dispose() => stop.Dispose();
+    }
+
+    private sealed class DiscoveryObserver : IDiscoveryObserver
+    {
+        private readonly ConnectionService service;
+
+        public DiscoveryObserver(ConnectionService service)
+        {
+            this.service = service;
+        }
+
+        public void Heard(SessionContact contact, IPEndPoint endpoint) => service.OnHeard(contact, endpoint);
+
+        public void NetworkChanged(NetworkSnapshot network) => service.RaiseChanged(null);
     }
 
     private sealed class Observer : IConnectionObserver

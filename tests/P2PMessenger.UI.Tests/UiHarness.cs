@@ -8,7 +8,10 @@ using P2PMessenger.Application.Identity;
 using P2PMessenger.Application.LocalData;
 using P2PMessenger.Core.Contacts;
 using P2PMessenger.Core.Identity;
+using P2PMessenger.Core.Sessions;
+using P2PMessenger.Tests.Shared;
 using P2PMessenger.Transport.Connections;
+using P2PMessenger.Transport.Discovery;
 using P2PMessenger.UI.Services;
 using P2PMessenger.UI.ViewModels;
 
@@ -18,10 +21,12 @@ internal sealed class UiHarness : IAsyncDisposable
 {
     private readonly List<Window> windows = [];
 
-    private UiHarness(AppServices services, FakePlatform platform)
+    private UiHarness(AppServices services, FakePlatform platform, LoopbackDiscovery hub, LoopbackDiscovery.Node node)
     {
         Services = services;
         Platform = platform;
+        Hub = hub;
+        Node = node;
         Shell = new MainViewModel(services);
     }
 
@@ -31,30 +36,48 @@ internal sealed class UiHarness : IAsyncDisposable
 
     public MainViewModel Shell { get; }
 
+    public LoopbackDiscovery Hub { get; }
+
+    public LoopbackDiscovery.Node Node { get; }
+
     public Messenger Messenger => Services.Messenger ?? throw new InvalidOperationException("The messenger has not started.");
+
+    private static ConnectionOptions Fast { get; } = new()
+    {
+        ReconnectDelayMin = TimeSpan.FromMilliseconds(50),
+        ReconnectDelayMax = TimeSpan.FromMilliseconds(400),
+    };
 
     public static UiHarness Create() => Create(new InMemoryLocalData());
 
-    public static UiHarness Create(ILocalData localData)
+    public static UiHarness Create(ILocalData localData) => Create(localData, null);
+
+    public static UiHarness Create(ILocalData localData, NetworkSnapshot? network)
     {
         FakePlatform platform = new();
+        LoopbackDiscovery hub = new();
+        LoopbackDiscovery.Node node = hub.CreateNode();
+        if (network is not null)
+        {
+            node.Network = network;
+        }
+
         MessengerSetup setup = MessengerSetup.InMemory() with
         {
             ListenAddress = IPAddress.Loopback,
             ListenPort = 0,
-            Connection = new ConnectionOptions
-            {
-                ReconnectDelayMin = TimeSpan.FromMilliseconds(50),
-                ReconnectDelayMax = TimeSpan.FromMilliseconds(400),
-            },
+            Connection = Fast,
+            Discovery = node.Setup,
         };
         AppServices services = new(localData, setup, new AvaloniaUiThread(), platform, platform);
-        return new UiHarness(services, platform);
+        return new UiHarness(services, platform, hub, node);
     }
 
-    public static async Task<UiHarness> StartAsync(string name)
+    public static Task<UiHarness> StartAsync(string name) => StartAsync(name, null);
+
+    public static async Task<UiHarness> StartAsync(string name, NetworkSnapshot? network)
     {
-        UiHarness harness = Create();
+        UiHarness harness = Create(new InMemoryLocalData(), network);
         Assert.True((await harness.Services.OpenLocalDataAsync(CancellationToken.None)).IsOpen);
         CreateIdentityResult created = await harness.Services.Identities.CreateAsync(name, CancellationToken.None);
         Assert.True(created.IsCreated);
@@ -108,23 +131,30 @@ internal sealed class UiHarness : IAsyncDisposable
         return result.Contact;
     }
 
-    public static async Task<Messenger> StartPeerAsync(string name)
+    public async Task<Messenger> StartPeerAsync(string name)
     {
         Assert.True(DisplayName.TryCreate(name, out DisplayName? displayName));
-        MessengerSetup setup = MessengerSetup.InMemory() with { ListenAddress = IPAddress.Loopback, ListenPort = 0 };
+        MessengerSetup setup = MessengerSetup.InMemory() with
+        {
+            ListenAddress = IPAddress.Loopback,
+            ListenPort = 0,
+            Connection = Fast,
+            Discovery = Hub.CreateNode().Setup,
+        };
         return await Messenger.StartAsync(new OwnIdentity(KeySet.Create(), displayName), setup, CancellationToken.None);
     }
 
-    public static IPEndPoint EndpointOf(Messenger peer) =>
-        new(IPAddress.Loopback, peer.Connections.ListeningPort ?? throw new InvalidOperationException("The peer is not listening."));
+    public IAsyncDisposable HearFrom(KeySet sender, int port)
+    {
+        Assert.True(SessionContact.TryCreate(sender, Messenger.Identity.Keys.IdentityKey, Messenger.Identity.Keys.StaticKey, out SessionContact? recipient));
+        return Hub.AnnounceAs(recipient, port);
+    }
 
     public async Task<Messenger> ConnectPeerAsync(string name)
     {
         Messenger peer = await StartPeerAsync(name);
         Assert.True((await peer.Contacts.AddAsync(peer.Contacts.Check(Messenger.Identity.CodeText), CancellationToken.None)).IsSaved);
         Assert.True((await Messenger.Contacts.AddAsync(Messenger.Contacts.Check(peer.Identity.CodeText), CancellationToken.None)).IsSaved);
-        int port = Messenger.Connections.ListeningPort ?? throw new InvalidOperationException("The messenger is not listening.");
-        Assert.True(peer.Connections.SetAddress(Messenger.Identity.Keys.IdentityKey, new IPEndPoint(IPAddress.Loopback, port)));
         await WaitUntilAsync(() =>
             Messenger.Contacts.TryGet(peer.Identity.Keys.IdentityKey, out Contact? contact)
             && contact.IsAdded
