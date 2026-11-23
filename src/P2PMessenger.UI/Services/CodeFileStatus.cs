@@ -6,4 +6,5 @@ public enum CodeFileStatus
     Cancelled = 1,
     Failed = 2,
     TooLarge = 3,
+    NoCodeInImage = 4,
 }

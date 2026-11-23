@@ -278,7 +278,9 @@ public sealed partial class ConversationViewModel : PageViewModel
         ContactName = contact.Name.Value;
         Fingerprint = contact.Fingerprint.ToGroupedString();
         WaitingText = contact.IsAdded ? null : Formats.With(Formats.Waiting, ContactName);
-        KeyNotComparedText = contact.KeyComparison == KeyComparison.NotCompared ? Formats.With(Formats.KeyNotCompared, ContactName) : null;
+        KeyNotComparedText = contact.KeyComparison == KeyComparison.NotCompared
+            ? Formats.With(contact.Exchange == CodeExchange.InPerson ? Formats.KeyNotComparedInPerson : Formats.KeyNotCompared, ContactName)
+            : null;
         Reachability reachability = messenger.Connections.ReachabilityOf(contactKey);
         StatusText = ReachabilityTexts.Status(contact, reachability);
         AttemptText = reachability == Reachability.NotReachable ? DialTexts.Failure(messenger.Connections.DialStatusOf(contactKey)) : null;

@@ -29,12 +29,13 @@ internal sealed class DatabaseContactStore : IContactStore
         new(
             stored.Code,
             stored.Status == StoredContactStatus.Confirmed ? ContactState.Added : ContactState.WaitingForFirstConnection,
-            stored.KeyChecked ? KeyComparison.CheckedByYou : KeyComparison.NotCompared);
+            stored.KeyChecked ? KeyComparison.CheckedByYou : KeyComparison.NotCompared,
+            stored.AddedVia == ContactChannel.InPerson ? CodeExchange.InPerson : CodeExchange.OtherChannel);
 
     private static StoredContact ToStored(Contact contact) =>
         new(
             contact.Code,
-            ContactChannel.OtherChannel,
+            contact.Exchange == CodeExchange.InPerson ? ContactChannel.InPerson : ContactChannel.OtherChannel,
             contact.State == ContactState.Added ? StoredContactStatus.Confirmed : StoredContactStatus.WaitingForFirstConnection,
             contact.KeyComparison == KeyComparison.CheckedByYou);
 }

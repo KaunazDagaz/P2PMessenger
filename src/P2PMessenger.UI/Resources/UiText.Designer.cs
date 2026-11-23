@@ -148,6 +148,15 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Contact code (text or image).
+        /// </summary>
+        public static string AddContactFileType {
+            get {
+                return ResourceManager.GetString("AddContactFileType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The file could not be read..
         /// </summary>
         public static string AddContactFileUnreadable {
@@ -166,7 +175,7 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Paste the code your contact sent you, or open their code file. They must add your code too..
+        ///   Looks up a localized string similar to Paste the code your contact sent you, or open their code file or QR image. They must add your code too..
         /// </summary>
         public static string AddContactIntro {
             get {
@@ -202,7 +211,7 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The app will ask you both to compare fingerprints, because a code sent as text or a file can be swapped on the way..
+        ///   Looks up a localized string similar to The app will ask you both to compare fingerprints, because a code sent as text, a file or an image can be swapped on the way..
         /// </summary>
         public static string AddContactNewHint {
             get {
@@ -220,6 +229,15 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to No contact code was found in this image. Open a sharper picture of the whole QR code, or ask for the code as text..
+        /// </summary>
+        public static string AddContactNoCodeInImage {
+            get {
+                return ResourceManager.GetString("AddContactNoCodeInImage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to This is not a P2PMessenger contact code..
         /// </summary>
         public static string AddContactNotACode {
@@ -229,7 +247,7 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Open a code file.
+        ///   Looks up a localized string similar to Open a file or image.
         /// </summary>
         public static string AddContactOpenFile {
             get {
@@ -373,6 +391,15 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Add in person.
+        /// </summary>
+        public static string ContactListAddInPerson {
+            get {
+                return ResourceManager.GetString("ContactListAddInPerson", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Delete all data.
         /// </summary>
         public static string ContactListDeleteAllData {
@@ -382,7 +409,7 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to No contacts yet. Add a contact with the code they sent you, and send them yours..
+        ///   Looks up a localized string similar to No contacts yet. Meet them and add each other in person, or add the code they sent you and send them yours..
         /// </summary>
         public static string ContactListEmpty {
             get {
@@ -535,11 +562,20 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to You have not compared keys with {0}. Their code came as text or a file, which can be swapped on the way..
+        ///   Looks up a localized string similar to You have not compared keys with {0}. Their code came as text, a file or an image, which can be swapped on the way..
         /// </summary>
         public static string ConversationKeyNotComparedFormat {
             get {
                 return ResourceManager.GetString("ConversationKeyNotComparedFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The key of {0} is marked as not compared. Compare fingerprints with {0} before you trust this contact..
+        /// </summary>
+        public static string ConversationKeyNotComparedInPersonFormat {
+            get {
+                return ResourceManager.GetString("ConversationKeyNotComparedInPersonFormat", resourceCulture);
             }
         }
         
@@ -918,6 +954,132 @@ namespace P2PMessenger.UI.Resources {
         public static string DialUnreachable {
             get {
                 return ResourceManager.GetString("DialUnreachable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Add a code they sent.
+        /// </summary>
+        public static string InPersonAddByCode {
+            get {
+                return ResourceManager.GetString("InPersonAddByCode", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} is added, with the key checked by you. Now let {0} scan your code. Your apps connect when both of you have scanned and you are on the same network..
+        /// </summary>
+        public static string InPersonAddedFormat {
+            get {
+                return ResourceManager.GetString("InPersonAddedFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} is already a contact, and the key you scanned matches the one you have. It is now marked as checked by you..
+        /// </summary>
+        public static string InPersonAlreadyCheckedFormat {
+            get {
+                return ResourceManager.GetString("InPersonAlreadyCheckedFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The camera could not be started. Close other apps that use it and try again, or exchange codes as text, a file or a QR image instead..
+        /// </summary>
+        public static string InPersonCameraFailed {
+            get {
+                return ResourceManager.GetString("InPersonCameraFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The app may not use the camera. Allow it in the system settings, or exchange codes as text, a file or a QR image instead..
+        /// </summary>
+        public static string InPersonCameraRefused {
+            get {
+                return ResourceManager.GetString("InPersonCameraRefused", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} scanned your code too, and your apps are connected. The app checked their key, not who they are..
+        /// </summary>
+        public static string InPersonConnectedFormat {
+            get {
+                return ResourceManager.GetString("InPersonConnectedFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Do this only while you are together. Each of you opens this page and scans the code on the other&apos;s screen. A code that someone sent you goes to &quot;Add contact&quot; instead, because it may have been swapped on the way..
+        /// </summary>
+        public static string InPersonIntro {
+            get {
+                return ResourceManager.GetString("InPersonIntro", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The new connection keys of {0} are accepted, with the key checked by you. Now let {0} scan your code. Your apps connect when both of you have scanned and you are on the same network..
+        /// </summary>
+        public static string InPersonKeysAcceptedFormat {
+            get {
+                return ResourceManager.GetString("InPersonKeysAcceptedFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to No camera was found on this device. Exchange codes as text, a file or a QR image instead..
+        /// </summary>
+        public static string InPersonNoCamera {
+            get {
+                return ResourceManager.GetString("InPersonNoCamera", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This QR code is not a P2PMessenger contact code..
+        /// </summary>
+        public static string InPersonNotACode {
+            get {
+                return ResourceManager.GetString("InPersonNotACode", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Open chat.
+        /// </summary>
+        public static string InPersonOpenChat {
+            get {
+                return ResourceManager.GetString("InPersonOpenChat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Your QR code.
+        /// </summary>
+        public static string InPersonQrLabel {
+            get {
+                return ResourceManager.GetString("InPersonQrLabel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Scan their code.
+        /// </summary>
+        public static string InPersonScan {
+            get {
+                return ResourceManager.GetString("InPersonScan", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Add in person.
+        /// </summary>
+        public static string InPersonTitle {
+            get {
+                return ResourceManager.GetString("InPersonTitle", resourceCulture);
             }
         }
         
@@ -1345,11 +1507,56 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to {0} contact code.png.
+        /// </summary>
+        public static string ProfileImageFileNameFormat {
+            get {
+                return ResourceManager.GetString("ProfileImageFileNameFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Save your QR code.
+        /// </summary>
+        public static string ProfileImageFileTitle {
+            get {
+                return ResourceManager.GetString("ProfileImageFileTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The QR image is saved..
+        /// </summary>
+        public static string ProfileImageSaved {
+            get {
+                return ResourceManager.GetString("ProfileImageSaved", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Your name.
         /// </summary>
         public static string ProfileNameLabel {
             get {
                 return ResourceManager.GetString("ProfileNameLabel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to To add each other in person, both of you open &quot;Add in person&quot; and scan the code on the other&apos;s screen. To send your code through another messenger, send the text below or save the QR code as an image..
+        /// </summary>
+        public static string ProfileQrHelp {
+            get {
+                return ResourceManager.GetString("ProfileQrHelp", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Your QR code.
+        /// </summary>
+        public static string ProfileQrLabel {
+            get {
+                return ResourceManager.GetString("ProfileQrLabel", resourceCulture);
             }
         }
         
@@ -1381,11 +1588,56 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Save QR image.
+        /// </summary>
+        public static string ProfileSaveImage {
+            get {
+                return ResourceManager.GetString("ProfileSaveImage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to My code.
         /// </summary>
         public static string ProfileTitle {
             get {
                 return ResourceManager.GetString("ProfileTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Cancel.
+        /// </summary>
+        public static string ScanCancel {
+            get {
+                return ResourceManager.GetString("ScanCancel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Point the camera at the QR code on their screen..
+        /// </summary>
+        public static string ScanHint {
+            get {
+                return ResourceManager.GetString("ScanHint", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Starting the camera….
+        /// </summary>
+        public static string ScanStarting {
+            get {
+                return ResourceManager.GetString("ScanStarting", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Scan their code.
+        /// </summary>
+        public static string ScanTitle {
+            get {
+                return ResourceManager.GetString("ScanTitle", resourceCulture);
             }
         }
         

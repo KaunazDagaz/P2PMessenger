@@ -8,8 +8,10 @@
     <PackageVersion Include="Avalonia.Android" Version="12.1.6" />
     <PackageVersion Include="Avalonia.Desktop" Version="12.1.6" />
     <PackageVersion Include="Avalonia.Headless.XUnit" Version="12.1.6" />
+    <PackageVersion Include="Avalonia.Skia" Version="12.1.6" />
     <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.1.6" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageVersion Include="ZXing.Net" Version="0.16.11" />
   </ItemGroup>
 
   <ItemGroup Label="Cryptography">
@@ -21,11 +23,16 @@
   </ItemGroup>
 
   <ItemGroup Label="Desktop">
+    <PackageVersion Include="FlashCap" Version="1.13.0" />
     <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="11.0.0" />
     <PackageVersion Include="Tmds.DBus.Protocol" Version="0.95.2" />
   </ItemGroup>
 
   <ItemGroup Label="Android">
+    <PackageVersion Include="Xamarin.AndroidX.Camera.Camera2" Version="1.6.2" />
+    <PackageVersion Include="Xamarin.AndroidX.Camera.Core" Version="1.6.2" />
+    <PackageVersion Include="Xamarin.AndroidX.Camera.Lifecycle" Version="1.6.2" />
+    <PackageVersion Include="Xamarin.AndroidX.Camera.View" Version="1.6.2" />
     <PackageVersion Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.2.0.2" />
   </ItemGroup>
 

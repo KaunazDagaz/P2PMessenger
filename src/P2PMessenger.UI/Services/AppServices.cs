@@ -20,12 +20,24 @@ public sealed class AppServices : IAsyncDisposable
         IUiThread uiThread,
         IClipboardService clipboard,
         ICodeFileService codeFiles)
+        : this(localData, setup, uiThread, clipboard, codeFiles, NoQrScanner.Instance)
+    {
+    }
+
+    public AppServices(
+        ILocalData localData,
+        MessengerSetup setup,
+        IUiThread uiThread,
+        IClipboardService clipboard,
+        ICodeFileService codeFiles,
+        IQrScanner qrScanner)
     {
         ArgumentNullException.ThrowIfNull(localData);
         ArgumentNullException.ThrowIfNull(setup);
         ArgumentNullException.ThrowIfNull(uiThread);
         ArgumentNullException.ThrowIfNull(clipboard);
         ArgumentNullException.ThrowIfNull(codeFiles);
+        ArgumentNullException.ThrowIfNull(qrScanner);
 
         this.localData = localData;
         initialSetup = setup;
@@ -33,6 +45,7 @@ public sealed class AppServices : IAsyncDisposable
         UiThread = uiThread;
         Clipboard = clipboard;
         CodeFiles = codeFiles;
+        QrScanner = qrScanner;
         Lock = new AppLock(localData, setup.TimeProvider);
     }
 
@@ -53,6 +66,8 @@ public sealed class AppServices : IAsyncDisposable
     public IClipboardService Clipboard { get; }
 
     public ICodeFileService CodeFiles { get; }
+
+    public IQrScanner QrScanner { get; }
 
     public TimeProvider TimeProvider => setup.TimeProvider;
 

@@ -60,6 +60,9 @@ public sealed partial class ContactListViewModel : PageViewModel
     }
 
     [RelayCommand]
+    private void AddInPerson() => navigation.Push(pages.AddInPerson());
+
+    [RelayCommand]
     private void AddContact() => navigation.Push(pages.AddContact());
 
     [RelayCommand]

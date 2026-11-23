@@ -86,6 +86,9 @@ public sealed partial class AddContactViewModel : PageViewModel
                 case CodeFileStatus.TooLarge:
                     ErrorMessage = UiText.AddContactFileTooLarge;
                     break;
+                case CodeFileStatus.NoCodeInImage:
+                    ErrorMessage = UiText.AddContactNoCodeInImage;
+                    break;
                 case CodeFileStatus.Failed:
                     ErrorMessage = UiText.AddContactFileUnreadable;
                     break;

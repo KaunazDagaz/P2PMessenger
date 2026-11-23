@@ -1,4 +1,5 @@
 using P2PMessenger.Application.LocalData;
+using P2PMessenger.Desktop.Camera;
 using P2PMessenger.Desktop.KeyStores;
 using P2PMessenger.UI.Services;
 
@@ -12,7 +13,7 @@ public static class DesktopPlatform
     public static AppPlatform FromArguments(IReadOnlyList<string> arguments)
     {
         ArgumentNullException.ThrowIfNull(arguments);
-        return new AppPlatform(DataFolder(arguments), CreateKeyProtector());
+        return new AppPlatform(DataFolder(arguments), CreateKeyProtector(), null, null, new DesktopQrScanner());
     }
 
     public static string? DataFolder(IReadOnlyList<string> arguments)

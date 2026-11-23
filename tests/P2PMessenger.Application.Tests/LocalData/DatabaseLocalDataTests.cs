@@ -181,6 +181,43 @@ public sealed class DatabaseLocalDataTests
     }
 
     [Fact]
+    [Trait("Story", "US-02")]
+    [Trait("Story", "US-04")]
+    public async Task Open_AfterARestart_KeepsWhetherEachContactWasAddedInPerson()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        using var folder = new LocalDataFolder();
+        var protector = new TestKeyProtector();
+        using var bobKeys = KeySet.Create();
+        using var carolKeys = KeySet.Create();
+        await using (var created = new DatabaseLocalData(folder.DatabasePath, protector))
+        {
+            var result = await created.CreateAsync(null, cancellationToken);
+            Assert.True(result.IsOpen);
+            var identities = new IdentityService(result.Stores.Identity);
+            var identity = await identities.CreateAsync("Alice", cancellationToken);
+            Assert.True(identity.IsCreated);
+            identity.Identity.Dispose();
+            await result.Stores.Contacts.SaveAsync(new Contact(TestKeys.Code(bobKeys, "Bob"), ContactState.WaitingForFirstConnection, KeyComparison.CheckedByYou, CodeExchange.InPerson), cancellationToken);
+            await result.Stores.Contacts.SaveAsync(new Contact(TestKeys.Code(carolKeys, "Carol"), ContactState.Added, KeyComparison.NotCompared, CodeExchange.OtherChannel), cancellationToken);
+        }
+
+        Assert.Equal(1L, await ScalarAsync(folder.DatabasePath, "SELECT count(*) FROM contact WHERE added_via = 1;", cancellationToken));
+        Assert.Equal(1L, await ScalarAsync(folder.DatabasePath, "SELECT count(*) FROM contact WHERE added_via = 2;", cancellationToken));
+
+        await using var localData = new DatabaseLocalData(folder.DatabasePath, protector);
+        var opened = await localData.OpenAsync(cancellationToken);
+        Assert.True(opened.IsOpen);
+        var contacts = await opened.Stores.Contacts.LoadAllAsync(cancellationToken);
+        var bob = Assert.Single(contacts, contact => contact.IdentityKey.Equals(bobKeys.IdentityKey));
+        var carol = Assert.Single(contacts, contact => contact.IdentityKey.Equals(carolKeys.IdentityKey));
+        Assert.Equal(CodeExchange.InPerson, bob.Exchange);
+        Assert.Equal(KeyComparison.CheckedByYou, bob.KeyComparison);
+        Assert.Equal(CodeExchange.OtherChannel, carol.Exchange);
+        Assert.Equal(KeyComparison.NotCompared, carol.KeyComparison);
+    }
+
+    [Fact]
     [Trait("Story", "US-20")]
     [Trait("Story", "US-15")]
     [Trait("NFR", "NFR-06")]

@@ -69,7 +69,7 @@ internal sealed class UiHarness : IAsyncDisposable
             Connection = Fast,
             Discovery = node.Setup,
         };
-        AppServices services = new(localData, setup, new AvaloniaUiThread(), platform, platform);
+        AppServices services = new(localData, setup, new AvaloniaUiThread(), platform, platform, platform);
         return new UiHarness(services, platform, hub, node);
     }
 
