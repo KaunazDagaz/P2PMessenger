@@ -33,7 +33,7 @@
     <PackageVersion Include="Xamarin.AndroidX.Camera.Core" Version="1.6.2" />
     <PackageVersion Include="Xamarin.AndroidX.Camera.Lifecycle" Version="1.6.2" />
     <PackageVersion Include="Xamarin.AndroidX.Camera.View" Version="1.6.2" />
-    <PackageVersion Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.2.0.2" />
+    <PackageVersion Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.2.0.3" />
   </ItemGroup>
 
   <ItemGroup Label="Storage">

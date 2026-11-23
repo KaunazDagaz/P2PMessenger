@@ -11,6 +11,7 @@
     <Project Path="src/P2PMessenger.UI/P2PMessenger.UI.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/P2PMessenger.Android.Tests/P2PMessenger.Android.Tests.csproj" />
     <Project Path="tests/P2PMessenger.Application.Tests/P2PMessenger.Application.Tests.csproj" />
     <Project Path="tests/P2PMessenger.Core.Tests/P2PMessenger.Core.Tests.csproj" />
     <Project Path="tests/P2PMessenger.Desktop.Tests/P2PMessenger.Desktop.Tests.csproj" />

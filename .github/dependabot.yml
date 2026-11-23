@@ -14,9 +14,6 @@ updates:
       - dependency-name: xunit.v3.mtp-v2
         update-types:
           - version-update:semver-major
-      - dependency-name: Xamarin.AndroidX.Core.SplashScreen
-        versions:
-          - '1.2.0.3'
 
   - package-ecosystem: dotnet-sdk
     directory: /

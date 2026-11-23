@@ -769,7 +769,7 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to No key store answered on this computer, so the app can save your data only under a passphrase. Enter one above, or start the key store (on Linux, a Secret Service such as GNOME Keyring) and try again..
+        ///   Looks up a localized string similar to No key store answered on this device, so the app can save your data only under a passphrase. Enter one above, or start the key store (on Linux, a Secret Service such as GNOME Keyring) and try again..
         /// </summary>
         public static string CreateIdentityPassphraseRequired {
             get {

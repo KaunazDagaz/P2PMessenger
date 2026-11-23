@@ -1,6 +1,7 @@
 using Android.Runtime;
 using Avalonia;
 using Avalonia.Android;
+using P2PMessenger.Android.KeyStores;
 using P2PMessenger.Android.Scanning;
 using P2PMessenger.UI;
 using P2PMessenger.UI.Services;
@@ -18,7 +19,12 @@ public class MainApplication : AvaloniaAndroidApplication<App>
     }
 
     protected override AppBuilder CreateAppBuilder() =>
-        AppBuilder.Configure(() => new App(new AppPlatform(DataFolder(), null, MainActivity.HideFromRecents, new AndroidInterfaceSource(), new AndroidQrScanner()))).UseAndroid();
+        AppBuilder.Configure(() => new App(new AppPlatform(
+            DataFolder(),
+            new AndroidKeystoreKeyProtector(new AndroidKeystoreKeys(this)),
+            MainActivity.HideFromRecents,
+            new AndroidInterfaceSource(),
+            new AndroidQrScanner()))).UseAndroid();
 
     private string? DataFolder() =>
         NoBackupFilesDir?.AbsolutePath is { Length: > 0 } folder ? System.IO.Path.Combine(folder, DataFolderName) : null;
