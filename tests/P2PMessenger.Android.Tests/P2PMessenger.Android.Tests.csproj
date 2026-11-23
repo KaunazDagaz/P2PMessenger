@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\src\P2PMessenger.Android\KeyStores\AndroidKeystoreKeyProtector.cs" Link="Head\KeyStores\AndroidKeystoreKeyProtector.cs" />
+    <Compile Include="..\..\src\P2PMessenger.Android\KeyStores\IKeystoreKeys.cs" Link="Head\KeyStores\IKeystoreKeys.cs" />
+    <Compile Include="..\..\src\P2PMessenger.Android\KeyStores\KeystoreStatus.cs" Link="Head\KeyStores\KeystoreStatus.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\P2PMessenger.Application\P2PMessenger.Application.csproj" />
+  </ItemGroup>
+</Project>

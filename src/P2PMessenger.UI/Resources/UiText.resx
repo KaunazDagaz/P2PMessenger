@@ -376,7 +376,7 @@
     <value>Without a passphrase, nothing is saved on this device: your identity, contacts and messages are lost when the app closes.</value>
   </data>
   <data name="CreateIdentityPassphraseRequired" xml:space="preserve">
-    <value>No key store answered on this computer, so the app can save your data only under a passphrase. Enter one above, or start the key store (on Linux, a Secret Service such as GNOME Keyring) and try again.</value>
+    <value>No key store answered on this device, so the app can save your data only under a passphrase. Enter one above, or start the key store (on Linux, a Secret Service such as GNOME Keyring) and try again.</value>
   </data>
   <data name="ContactListPassphrase" xml:space="preserve">
     <value>Passphrase</value>

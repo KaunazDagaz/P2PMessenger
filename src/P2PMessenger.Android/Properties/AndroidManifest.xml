@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:installLocation="auto">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools" android:installLocation="auto">
   <uses-permission android:name="android.permission.INTERNET" />
   <uses-permission android:name="android.permission.CAMERA" />
   <uses-feature android:name="android.hardware.camera.any" android:required="false" />
-  <application android:label="P2PMessenger" android:icon="@drawable/Icon" />
+  <application android:label="P2PMessenger" android:icon="@drawable/Icon" android:allowBackup="false" android:dataExtractionRules="@xml/data_extraction_rules">
+    <receiver android:name="androidx.profileinstaller.ProfileInstallReceiver" tools:node="remove" />
+  </application>
 </manifest>
