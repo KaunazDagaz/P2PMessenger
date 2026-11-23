@@ -3,6 +3,7 @@ using P2PMessenger.Application.Connections;
 using P2PMessenger.Application.Contacts;
 using P2PMessenger.Core.Identity;
 using P2PMessenger.Core.Messages;
+using P2PMessenger.Tests.Shared;
 using static P2PMessenger.Application.Tests.TestKeys;
 
 namespace P2PMessenger.Application.Tests;
@@ -135,17 +136,28 @@ public sealed class MessengerTests
         messenger.Identity.Dispose();
     }
 
-    [Fact]
+    [Fact(Timeout = 60_000)]
     public async Task Contacts_AddedWhileRunning_ReachTheConnectionService()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
-        await using var messenger = await TestMessengers.StartAsync("Alice", cancellationToken);
+        var hub = new LoopbackDiscovery();
+        await using var messenger = await TestMessengers.StartAsync("Alice", hub.CreateNode(), cancellationToken);
         using var bob = KeySet.Create();
+        using (var before = new CancellationTokenSource(TimeSpan.FromMilliseconds(400)))
+        {
+            await Connections.ConnectionServiceTests.AnnounceAsync(hub, bob, messenger, 50_000, before.Token);
+        }
 
-        Assert.False(messenger.Connections.SetAddress(bob.IdentityKey, new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, 1)));
+        Assert.False(messenger.Connections.IsHeard(bob.IdentityKey));
         Assert.True((await messenger.Contacts.AddAsync(messenger.Contacts.Check(Code(bob, "Bob")), cancellationToken)).IsSaved);
+        using (var after = new CancellationTokenSource())
+        {
+            var announcing = Connections.ConnectionServiceTests.AnnounceAsync(hub, bob, messenger, 50_000, after.Token);
+            await TestMessengers.WaitUntilAsync(() => messenger.Connections.IsHeard(bob.IdentityKey), cancellationToken);
+            await after.CancelAsync();
+            await announcing;
+        }
 
-        Assert.True(messenger.Connections.SetAddress(bob.IdentityKey, new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, 1)));
         Assert.Equal(ContactState.WaitingForFirstConnection, Assert.Single(messenger.Contacts.All).State);
         messenger.Identity.Dispose();
     }

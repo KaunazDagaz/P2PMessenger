@@ -57,6 +57,10 @@ public sealed class Messenger : IAsyncDisposable
         try
         {
             await connections.ListenAsync(setup.ListenAddress, setup.ListenPort, cancellationToken).ConfigureAwait(false);
+            if (setup.Discovery is { } discovery)
+            {
+                connections.StartDiscovery(discovery);
+            }
         }
         catch
         {

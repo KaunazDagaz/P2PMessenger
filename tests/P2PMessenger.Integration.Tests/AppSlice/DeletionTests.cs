@@ -27,7 +27,6 @@ public sealed class DeletionTests
             aliceKey = alice.Identity.Keys.IdentityKey;
             await alice.ImportAsync(bob, cancellationToken);
             await bob.ImportAsync(alice, cancellationToken);
-            alice.Messenger.Connections.SetAddress(bobKey, bob.Endpoint);
             await Eventually.HoldsAsync(() => alice.ContactFor(bob).IsAdded && alice.Messenger.Connections.IsConnected(bobKey), cancellationToken);
             foreach (var text in new[] { "alice 1", "alice 2" })
             {
@@ -48,7 +47,6 @@ public sealed class DeletionTests
 
         Assert.Empty(restarted.Messenger.Chats.MessagesWith(bobKey));
         Assert.True(restarted.ContactFor(bob).IsAdded);
-        restarted.Messenger.Connections.SetAddress(bobKey, bob.Endpoint);
         await Eventually.HoldsAsync(() => restarted.Messenger.Connections.IsConnected(bobKey) && bob.Messenger.Connections.IsConnected(aliceKey), cancellationToken);
         var sent = await restarted.Messenger.SendAsync(bobKey, "alice 3", cancellationToken);
         Assert.Equal(3, sent.Message?.Sequence);
@@ -77,11 +75,11 @@ public sealed class DeletionTests
             aliceKey = alice.Identity.Keys.IdentityKey;
             await alice.ImportAsync(bob, cancellationToken);
             await bob.ImportAsync(alice, cancellationToken);
-            alice.Messenger.Connections.SetAddress(bobKey, bob.Endpoint);
             await Eventually.HoldsAsync(() => alice.ContactFor(bob).IsAdded && alice.Messenger.Connections.IsConnected(bobKey), cancellationToken);
         }
 
         await Eventually.HoldsAsync(() => !bob.Messenger.Connections.IsConnected(aliceKey), cancellationToken);
+        bob.Node.InRange = false;
         await using (var alice = await AppPeer.StartSavedAsync(databasePath, protector, "Alice", cancellationToken))
         {
             Assert.False(alice.Messenger.Connections.IsConnected(bobKey));
@@ -90,11 +88,11 @@ public sealed class DeletionTests
             Assert.True(await alice.Messenger.DeleteWaitingAsync(bobKey, dropped.Message!.Id, cancellationToken));
         }
 
+        bob.Node.InRange = true;
         await using var restarted = await AppPeer.StartSavedAsync(databasePath, protector, "Alice", cancellationToken);
         Assert.Equal("keep", Assert.Single(restarted.Messenger.Chats.MessagesWith(bobKey)).Text);
         var after = await restarted.Messenger.SendAsync(bobKey, "after", cancellationToken);
         Assert.Equal(3, after.Message?.Sequence);
-        restarted.Messenger.Connections.SetAddress(bobKey, bob.Endpoint);
         await Eventually.HoldsAsync(
             () => restarted.Messenger.Chats.MessagesWith(bobKey).All(static message => message.Delivery == DeliveryState.Received),
             cancellationToken);

@@ -6,4 +6,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\P2PMessenger.Application\P2PMessenger.Application.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Shared\LoopbackDiscovery.cs" Link="Shared\LoopbackDiscovery.cs" />
+  </ItemGroup>
 </Project>

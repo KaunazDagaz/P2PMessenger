@@ -7,19 +7,10 @@
     <ScrollViewer>
         <StackPanel Margin="16" Spacing="8" MaxWidth="640">
             <TextBlock Text="{x:Static res:UiText.NetworkIntro}" TextWrapping="Wrap" />
-            <TextBlock x:Name="ListeningText" Text="{Binding ListeningText}" FontWeight="SemiBold" Margin="0,8,0,0" />
-            <TextBlock Text="{x:Static res:UiText.NetworkAddressesLabel}" FontWeight="SemiBold" />
+            <TextBlock x:Name="ListeningText" Text="{Binding ListeningText}" FontWeight="SemiBold" Margin="0,8,0,0" TextWrapping="Wrap" />
+            <TextBlock x:Name="DiscoveryText" Text="{Binding DiscoveryText}" FontWeight="SemiBold" TextWrapping="Wrap" />
+            <TextBlock Text="{x:Static res:UiText.NetworkAddressesLabel}" FontWeight="SemiBold" Margin="0,8,0,0" />
             <SelectableTextBlock x:Name="AddressesText" Text="{Binding AddressesText}" FontFamily="monospace" />
-            <TextBlock Text="{x:Static res:UiText.NetworkPortLabel}" FontWeight="SemiBold" Margin="0,8,0,0" />
-            <DockPanel>
-                <Button x:Name="ListenButton" DockPanel.Dock="Right" Margin="8,0,0,0" Content="{x:Static res:UiText.NetworkListen}" Command="{Binding ListenCommand}" />
-                <TextBox x:Name="PortBox" Text="{Binding PortText}" AutomationProperties.Name="{x:Static res:UiText.NetworkPortLabel}" />
-            </DockPanel>
-            <TextBlock x:Name="ErrorText"
-                       Text="{Binding ErrorMessage}"
-                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
-                       TextWrapping="Wrap" />
             <TextBlock Text="{x:Static res:UiText.NetworkContactsLabel}" FontWeight="SemiBold" Margin="0,8,0,0" />
             <TextBlock Text="{x:Static res:UiText.NetworkNoContacts}" IsVisible="{Binding HasNoContacts}" />
             <ItemsControl x:Name="ContactItems" ItemsSource="{Binding Contacts}">
@@ -28,16 +19,8 @@
                         <StackPanel Spacing="4" Margin="0,0,0,12">
                             <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
                             <TextBlock Text="{Binding Fingerprint}" FontFamily="monospace" FontSize="12" />
-                            <DockPanel>
-                                <Button DockPanel.Dock="Right" Margin="8,0,0,0" Content="{x:Static res:UiText.NetworkClear}" Command="{Binding ClearCommand}" />
-                                <Button DockPanel.Dock="Right" Margin="8,0,0,0" Content="{x:Static res:UiText.NetworkSave}" Command="{Binding SaveCommand}" />
-                                <TextBox Text="{Binding AddressText}" PlaceholderText="{x:Static res:UiText.AddContactAddressPlaceholder}" AutomationProperties.Name="{Binding Name}" />
-                            </DockPanel>
+                            <TextBlock Text="{Binding HeardText}" FontFamily="monospace" />
                             <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
-                            <TextBlock Text="{Binding ErrorMessage}"
-                                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
-                                       TextWrapping="Wrap" />
                         </StackPanel>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>

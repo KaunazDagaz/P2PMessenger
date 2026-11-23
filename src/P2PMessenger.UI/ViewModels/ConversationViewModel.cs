@@ -279,11 +279,9 @@ public sealed partial class ConversationViewModel : PageViewModel
         Fingerprint = contact.Fingerprint.ToGroupedString();
         WaitingText = contact.IsAdded ? null : Formats.With(Formats.Waiting, ContactName);
         KeyNotComparedText = contact.KeyComparison == KeyComparison.NotCompared ? Formats.With(Formats.KeyNotCompared, ContactName) : null;
-        bool connected = messenger.Connections.IsConnected(contactKey);
-        StatusText = !contact.IsAdded
-            ? UiText.ContactWaiting
-            : connected ? UiText.ContactConnected : UiText.ContactNotConnected;
-        AttemptText = connected ? null : DialTexts.Failure(messenger.Connections.DialStatusOf(contactKey));
+        Reachability reachability = messenger.Connections.ReachabilityOf(contactKey);
+        StatusText = ReachabilityTexts.Status(contact, reachability);
+        AttemptText = reachability == Reachability.NotReachable ? DialTexts.Failure(messenger.Connections.DialStatusOf(contactKey)) : null;
     }
 
     private void RefreshMessages()

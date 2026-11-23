@@ -31,7 +31,6 @@ public sealed class PassphraseTests
             aliceKey = alice.Identity.Keys.IdentityKey;
             await alice.ImportAsync(bob, cancellationToken);
             await bob.ImportAsync(alice, cancellationToken);
-            alice.Messenger.Connections.SetAddress(bobKey, bob.Endpoint);
             await Eventually.HoldsAsync(() => alice.ContactFor(bob).IsAdded && bob.ContactFor(alice).IsAdded, cancellationToken);
             Assert.Equal(SendOutcome.Queued, (await alice.Messenger.SendAsync(bobKey, "alice 1", cancellationToken)).Outcome);
             await Eventually.HoldsAsync(() => bob.Messenger.Chats.MessagesWith(aliceKey).Count == 1, cancellationToken);
@@ -56,7 +55,6 @@ public sealed class PassphraseTests
             restarted = await AppPeer.StartSavedAsync(localData, "Someone else", Passphrase, cancellationToken);
             Assert.Equal(aliceKey, restarted.Identity.Keys.IdentityKey);
             Assert.Single(restarted.Messenger.Chats.MessagesWith(bobKey));
-            bob.Messenger.Connections.SetAddress(aliceKey, restarted.Endpoint);
 
             await Eventually.HoldsAsync(() => restarted.Messenger.Chats.MessagesWith(bobKey).Count == 2, cancellationToken);
             await Eventually.HoldsAsync(() => bob.Messenger.Chats.WaitingFor(aliceKey).Count == 0, cancellationToken);
@@ -92,7 +90,6 @@ public sealed class PassphraseTests
             using var appLock = new AppLock(localData, TimeProvider.System);
             await alice.ImportAsync(bob, cancellationToken);
             await bob.ImportAsync(alice, cancellationToken);
-            alice.Messenger.Connections.SetAddress(bobKey, bob.Endpoint);
             await Eventually.HoldsAsync(() => alice.ContactFor(bob).IsAdded && bob.ContactFor(alice).IsAdded, cancellationToken);
 
             appLock.LockNow();

@@ -20,7 +20,9 @@ internal static class Formats
     public static readonly CompositeFormat Checked = CompositeFormat.Parse(UiText.VerifyCheckedFormat);
     public static readonly CompositeFormat NotCompared = CompositeFormat.Parse(UiText.VerifyNotComparedFormat);
     public static readonly CompositeFormat Listening = CompositeFormat.Parse(UiText.NetworkListeningFormat);
-    public static readonly CompositeFormat PortInUse = CompositeFormat.Parse(UiText.NetworkPortInUseFormat);
+    public static readonly CompositeFormat Discovery = CompositeFormat.Parse(UiText.NetworkDiscoveryFormat);
+    public static readonly CompositeFormat DiscoveryUnavailable = CompositeFormat.Parse(UiText.NetworkDiscoveryUnavailableFormat);
+    public static readonly CompositeFormat Heard = CompositeFormat.Parse(UiText.NetworkHeardFormat);
     public static readonly CompositeFormat PassphraseHint = CompositeFormat.Parse(UiText.PassphraseHintFormat);
     public static readonly CompositeFormat PassphraseTooShort = CompositeFormat.Parse(UiText.PassphraseTooShortFormat);
     public static readonly CompositeFormat PassphraseStateSet = CompositeFormat.Parse(UiText.PassphraseStateSetFormat);

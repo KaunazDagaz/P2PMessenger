@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using P2PMessenger.Application;
 using P2PMessenger.Application.Contacts;
@@ -5,19 +6,24 @@ using P2PMessenger.Application.Identity;
 using P2PMessenger.Application.LocalData;
 using P2PMessenger.Core.Crypto;
 using P2PMessenger.Core.Identity;
+using P2PMessenger.Core.Sessions;
 using P2PMessenger.Integration.Tests.Connections;
+using P2PMessenger.Tests.Shared;
 
 namespace P2PMessenger.Integration.Tests.AppSlice;
 
 internal sealed class AppPeer : IAsyncDisposable
 {
+    private static readonly ConcurrentDictionary<string, LoopbackDiscovery> Hubs = new(StringComparer.Ordinal);
+
     private readonly List<ContactChangedEventArgs> changes = [];
     private readonly Lock gate = new();
     private readonly ILocalData? localData;
 
-    private AppPeer(Messenger messenger, ILocalData? localData = null)
+    private AppPeer(Messenger messenger, LoopbackDiscovery.Node node, ILocalData? localData = null)
     {
         Messenger = messenger;
+        Node = node;
         this.localData = localData;
         messenger.Contacts.Changed += (_, change) =>
         {
@@ -28,7 +34,11 @@ internal sealed class AppPeer : IAsyncDisposable
         };
     }
 
+    public static LoopbackDiscovery HubOfThisTest => Hubs.GetOrAdd(TestContext.Current.Test?.UniqueID ?? string.Empty, static _ => new LoopbackDiscovery());
+
     public Messenger Messenger { get; }
+
+    public LoopbackDiscovery.Node Node { get; }
 
     public OwnIdentity Identity => Messenger.Identity;
 
@@ -54,13 +64,15 @@ internal sealed class AppPeer : IAsyncDisposable
     public static async Task<AppPeer> StartAsync(KeySet keys, string name, Func<MessengerSetup, MessengerSetup> adjust, CancellationToken cancellationToken)
     {
         Assert.True(DisplayName.TryCreate(name, out var displayName));
+        var node = HubOfThisTest.CreateNode();
         var setup = MessengerSetup.InMemory() with
         {
             ListenAddress = IPAddress.Loopback,
             ListenPort = 0,
             Connection = TestOptions.Fast,
+            Discovery = node.Setup,
         };
-        return new AppPeer(await Messenger.StartAsync(new OwnIdentity(keys, displayName), adjust(setup), cancellationToken));
+        return new AppPeer(await Messenger.StartAsync(new OwnIdentity(keys, displayName), adjust(setup), cancellationToken), node);
     }
 
     public static Task<AppPeer> StartSavedAsync(string databasePath, IKeyProtector protector, string name, CancellationToken cancellationToken) =>
@@ -92,6 +104,7 @@ internal sealed class AppPeer : IAsyncDisposable
                 identity = created.Identity;
             }
 
+            var node = HubOfThisTest.CreateNode();
             var setup = MessengerSetup.InMemory() with
             {
                 ContactStore = opened.Stores.Contacts,
@@ -100,8 +113,9 @@ internal sealed class AppPeer : IAsyncDisposable
                 ListenAddress = IPAddress.Loopback,
                 ListenPort = 0,
                 Connection = TestOptions.Fast,
+                Discovery = node.Setup,
             };
-            return new AppPeer(await Messenger.StartAsync(identity, setup, cancellationToken), localData);
+            return new AppPeer(await Messenger.StartAsync(identity, setup, cancellationToken), node, localData);
         }
         catch
         {
@@ -123,6 +137,12 @@ internal sealed class AppPeer : IAsyncDisposable
         ImportAsync(other.Identity.CodeText, CodeCheckOutcome.New, cancellationToken);
 
     public Contact ContactFor(AppPeer other) => ContactFor(other.Identity.Keys.IdentityKey);
+
+    public IAsyncDisposable HearFrom(KeySet sender, IPEndPoint endpoint)
+    {
+        Assert.True(SessionContact.TryCreate(sender, Identity.Keys.IdentityKey, Identity.Keys.StaticKey, out var recipient));
+        return HubOfThisTest.AnnounceAs(recipient, endpoint.Port);
+    }
 
     public Contact ContactFor(KeySet other) => ContactFor(other.IdentityKey);
 

@@ -16,9 +16,7 @@ public sealed class ContactItemViewModel : ViewModelBase
         Contact = contact;
         Name = contact.Name.Value;
         Fingerprint = contact.Fingerprint.ToGroupedString();
-        StatusText = !contact.IsAdded
-            ? UiText.ContactWaiting
-            : messenger.Connections.IsConnected(contact.IdentityKey) ? UiText.ContactConnected : UiText.ContactNotConnected;
+        StatusText = ReachabilityTexts.Status(contact, messenger.Connections.ReachabilityOf(contact.IdentityKey));
         KeyText = contact.KeyComparison == KeyComparison.CheckedByYou ? UiText.ContactKeyChecked : UiText.ContactKeyNotCompared;
         int unread = messenger.Chats.UnreadCount(contact.IdentityKey);
         UnreadText = unread > 0 ? Formats.With(Formats.Unread, unread) : null;

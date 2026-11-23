@@ -20,6 +20,9 @@ public sealed partial class ContactListViewModel : PageViewModel
     [ObservableProperty]
     private bool isEmpty = true;
 
+    [ObservableProperty]
+    private bool hasNoNetwork;
+
     public ContactListViewModel(Messenger messenger, IUiThread uiThread, INavigationService navigation, Pages pages, bool offersPassphrase)
     {
         ArgumentNullException.ThrowIfNull(messenger);
@@ -88,5 +91,6 @@ public sealed partial class ContactListViewModel : PageViewModel
         }
 
         IsEmpty = Contacts.Count == 0;
+        HasNoNetwork = messenger.Connections.Network is { HasAnyNetwork: false };
     }
 }

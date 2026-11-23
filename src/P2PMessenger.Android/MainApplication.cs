@@ -17,7 +17,7 @@ public class MainApplication : AvaloniaAndroidApplication<App>
     }
 
     protected override AppBuilder CreateAppBuilder() =>
-        AppBuilder.Configure(() => new App(new AppPlatform(DataFolder(), null, MainActivity.HideFromRecents))).UseAndroid();
+        AppBuilder.Configure(() => new App(new AppPlatform(DataFolder(), null, MainActivity.HideFromRecents, new AndroidInterfaceSource()))).UseAndroid();
 
     private string? DataFolder() =>
         NoBackupFilesDir?.AbsolutePath is { Length: > 0 } folder ? System.IO.Path.Combine(folder, DataFolderName) : null;

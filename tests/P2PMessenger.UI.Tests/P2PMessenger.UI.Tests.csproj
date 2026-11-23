@@ -11,4 +11,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\P2PMessenger.UI\P2PMessenger.UI.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Shared\LoopbackDiscovery.cs" Link="Shared\LoopbackDiscovery.cs" />
+  </ItemGroup>
 </Project>

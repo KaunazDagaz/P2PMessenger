@@ -85,33 +85,6 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Enter an IP address and a port, such as 192.168.1.20:45821..
-        /// </summary>
-        public static string AddContactAddressInvalid {
-            get {
-                return ResourceManager.GetString("AddContactAddressInvalid", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Contact&apos;s address (debug builds only).
-        /// </summary>
-        public static string AddContactAddressLabel {
-            get {
-                return ResourceManager.GetString("AddContactAddressLabel", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to 192.168.1.20:45821.
-        /// </summary>
-        public static string AddContactAddressPlaceholder {
-            get {
-                return ResourceManager.GetString("AddContactAddressPlaceholder", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to {0} is already a contact..
         /// </summary>
         public static string AddContactAlreadyContactFormat {
@@ -373,15 +346,6 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Connected now.
-        /// </summary>
-        public static string ContactConnected {
-            get {
-                return ResourceManager.GetString("ContactConnected", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Key checked by you.
         /// </summary>
         public static string ContactKeyChecked {
@@ -445,6 +409,15 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to This device has no Wi-Fi and no internet. Nearby contacts can be reached if one person shares a hotspot from a phone and the others join it..
+        /// </summary>
+        public static string ContactListNoNetwork {
+            get {
+                return ResourceManager.GetString("ContactListNoNetwork", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Passphrase.
         /// </summary>
         public static string ContactListPassphrase {
@@ -463,11 +436,20 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Not connected.
+        ///   Looks up a localized string similar to Not reachable now.
         /// </summary>
-        public static string ContactNotConnected {
+        public static string ContactNotReachable {
             get {
-                return ResourceManager.GetString("ContactNotConnected", resourceCulture);
+                return ResourceManager.GetString("ContactNotReachable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Reachable nearby.
+        /// </summary>
+        public static string ContactReachableNearby {
+            get {
+                return ResourceManager.GetString("ContactReachableNearby", resourceCulture);
             }
         }
         
@@ -643,7 +625,7 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Waiting for the first connection with {0}. They become a contact when their app proves that it holds the key in their code. They must add your code too..
+        ///   Looks up a localized string similar to Waiting for the first connection with {0}. They become a contact when their app proves that it holds the key in their code. They must add your code too, and both devices must be on the same network..
         /// </summary>
         public static string ConversationWaitingFormat {
             get {
@@ -904,20 +886,10 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to No address..
-        /// </summary>
-        public static string DialNoAddress {
-            get {
-                return ResourceManager.GetString("DialNoAddress", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Their app did not accept the connection. Possible reasons:
-        ///• they have not added your code yet;
-        ///• the codes do not match: a code was swapped on the way, or one of you has created a new identity since you exchanged codes;
-        ///• another program or another device answers at this address;
-        ///• their app is turning away new connections for a moment because too many arrived at once..
+        ///   Looks up a localized string similar to Their device was heard nearby, but their app did not accept the connection. Possible reasons:
+        ///• another program or device now answers at the address where it was heard, for example after their app restarted;
+        ///• their app is turning away new connections for a moment because too many arrived at once;
+        ///• another device on the network sent an old announcement of theirs again..
         /// </summary>
         public static string DialRefused {
             get {
@@ -926,10 +898,9 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The attempt timed out. Possible reasons:
+        ///   Looks up a localized string similar to Their device was heard nearby, but the attempt timed out. Possible reasons:
         ///• a firewall on their device blocks the app (Windows asks about it when the app first runs);
-        ///• their device is switched off, asleep or out of range;
-        ///• the address is wrong;
+        ///• their device is asleep or out of range;
         ///• the network is too slow, or their app did not answer in time..
         /// </summary>
         public static string DialTimedOut {
@@ -939,10 +910,10 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to No answer at this address. Possible reasons:
-        ///• their app is not running, or it listens on another port;
-        ///• the address is wrong or has changed;
-        ///• the two devices are not on the same network..
+        ///   Looks up a localized string similar to Their device was heard nearby, but their app did not answer. Possible reasons:
+        ///• their app has just closed or restarted;
+        ///• their device has left the network or changed its address;
+        ///• a firewall on their device turns the connection away..
         /// </summary>
         public static string DialUnreachable {
             get {
@@ -978,20 +949,11 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Addresses of this device.
+        ///   Looks up a localized string similar to Local interfaces of this device.
         /// </summary>
         public static string NetworkAddressesLabel {
             get {
                 return ResourceManager.GetString("NetworkAddressesLabel", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Clear.
-        /// </summary>
-        public static string NetworkClear {
-            get {
-                return ResourceManager.GetString("NetworkClear", resourceCulture);
             }
         }
         
@@ -1005,29 +967,47 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Debug builds only. Until the app finds contacts by itself, it connects to the addresses you enter here..
+        ///   Looks up a localized string similar to This device announces itself and listens for contacts on UDP port {0}..
+        /// </summary>
+        public static string NetworkDiscoveryFormat {
+            get {
+                return ResourceManager.GetString("NetworkDiscoveryFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This device does not look for contacts..
+        /// </summary>
+        public static string NetworkDiscoveryOff {
+            get {
+                return ResourceManager.GetString("NetworkDiscoveryOff", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to UDP port {0} is used by another program: this device announces itself but hears no one..
+        /// </summary>
+        public static string NetworkDiscoveryUnavailableFormat {
+            get {
+                return ResourceManager.GetString("NetworkDiscoveryUnavailableFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Heard at {0}.
+        /// </summary>
+        public static string NetworkHeardFormat {
+            get {
+                return ResourceManager.GetString("NetworkHeardFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Debug builds only. What this device sees of the local network: its local interfaces, its ports and where each contact was last heard..
         /// </summary>
         public static string NetworkIntro {
             get {
                 return ResourceManager.GetString("NetworkIntro", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Enter a port from 1 to 65535..
-        /// </summary>
-        public static string NetworkInvalidPort {
-            get {
-                return ResourceManager.GetString("NetworkInvalidPort", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Listen on this port.
-        /// </summary>
-        public static string NetworkListen {
-            get {
-                return ResourceManager.GetString("NetworkListen", resourceCulture);
             }
         }
         
@@ -1041,7 +1021,7 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to No network address found..
+        ///   Looks up a localized string similar to No local network interface found..
         /// </summary>
         public static string NetworkNoAddresses {
             get {
@@ -1059,38 +1039,20 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Not heard.
+        /// </summary>
+        public static string NetworkNotHeard {
+            get {
+                return ResourceManager.GetString("NetworkNotHeard", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to This device is not listening..
         /// </summary>
         public static string NetworkNotListening {
             get {
                 return ResourceManager.GetString("NetworkNotListening", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Port {0} is used by another program. Choose another port..
-        /// </summary>
-        public static string NetworkPortInUseFormat {
-            get {
-                return ResourceManager.GetString("NetworkPortInUseFormat", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Port.
-        /// </summary>
-        public static string NetworkPortLabel {
-            get {
-                return ResourceManager.GetString("NetworkPortLabel", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Save.
-        /// </summary>
-        public static string NetworkSave {
-            get {
-                return ResourceManager.GetString("NetworkSave", resourceCulture);
             }
         }
         
