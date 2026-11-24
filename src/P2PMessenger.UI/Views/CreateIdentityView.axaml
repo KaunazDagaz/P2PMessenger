@@ -26,6 +26,12 @@
                 <TextBlock x:Name="HintText" Text="{x:Static vm:CreateIdentityViewModel.Hint}" TextWrapping="Wrap" />
                 <TextBlock x:Name="SkipWarningText" Text="{Binding SkipWarning}" TextWrapping="Wrap" IsVisible="{Binding IsSkippingPassphrase}" />
             </StackPanel>
+            <StackPanel x:Name="TorPanel" Spacing="4" IsVisible="{Binding OffersTor}">
+                <CheckBox x:Name="UseTorCheckBox"
+                          IsChecked="{Binding UseTor}"
+                          Content="{x:Static res:UiText.CreateIdentityUseTor}" />
+                <TextBlock x:Name="UseTorHintText" Text="{x:Static res:UiText.CreateIdentityUseTorHint}" TextWrapping="Wrap" />
+            </StackPanel>
             <Button x:Name="CreateButton"
                     Content="{x:Static res:UiText.CreateIdentityCreate}"
                     Command="{Binding CreateCommand}"

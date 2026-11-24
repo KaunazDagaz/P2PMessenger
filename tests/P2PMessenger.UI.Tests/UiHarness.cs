@@ -3,8 +3,10 @@ using Avalonia.Controls;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using P2PMessenger.Application;
+using P2PMessenger.Application.Background;
 using P2PMessenger.Application.Contacts;
 using P2PMessenger.Application.Identity;
+using P2PMessenger.Application.Internet;
 using P2PMessenger.Application.LocalData;
 using P2PMessenger.Core.Contacts;
 using P2PMessenger.Core.Identity;
@@ -54,7 +56,10 @@ internal sealed class UiHarness : IAsyncDisposable
 
     public static UiHarness Create(ILocalData localData, NetworkSnapshot? network) => Create(localData, network, null);
 
-    public static UiHarness Create(ILocalData localData, NetworkSnapshot? network, BackgroundPorts? background)
+    public static UiHarness Create(ILocalData localData, NetworkSnapshot? network, BackgroundPorts? background) =>
+        Create(localData, network, background, null, null);
+
+    public static UiHarness Create(ILocalData localData, NetworkSnapshot? network, BackgroundPorts? background, TorSetup? tor, ISettingsStore? settings)
     {
         FakePlatform platform = new();
         LoopbackDiscovery hub = new();
@@ -70,8 +75,13 @@ internal sealed class UiHarness : IAsyncDisposable
             ListenPort = 0,
             Connection = Fast,
             Discovery = node.Setup,
+            Tor = tor,
         };
-        AppServices services = new(localData, setup, new AvaloniaUiThread(), platform, platform, platform) { Background = background };
+        AppServices services = new(localData, setup, new AvaloniaUiThread(), platform, platform, platform)
+        {
+            Background = background,
+            TorSettings = new InternetRouteSettings(settings ?? new InMemorySettingsStore()),
+        };
         return new UiHarness(services, platform, hub, node);
     }
 

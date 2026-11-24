@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using P2PMessenger.Android.Background;
 using P2PMessenger.Android.KeyStores;
 using P2PMessenger.Android.Scanning;
+using P2PMessenger.Android.Tor;
 using P2PMessenger.Application.Background;
 using P2PMessenger.UI;
 using P2PMessenger.UI.Services;
@@ -68,6 +69,8 @@ public class MainApplication : AvaloniaAndroidApplication<App>
             new AndroidQrScanner())
         {
             Background = provider.GetRequiredService<BackgroundPorts>(),
+            Tor = AndroidTor.Setup(ApplicationInfo?.NativeLibraryDir, NoBackupFilesDir?.AbsolutePath),
+            Settings = provider.GetRequiredService<ISettingsStore>(),
         });
         _ = collection.AddTransient(provider => new App(provider.GetRequiredService<AppPlatform>()));
         return collection.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });

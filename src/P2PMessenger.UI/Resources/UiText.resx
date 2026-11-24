@@ -27,6 +27,12 @@
   <data name="CommonDismiss" xml:space="preserve">
     <value>Dismiss</value>
   </data>
+  <data name="CreateIdentityUseTor" xml:space="preserve">
+    <value>Use Tor for the internet route</value>
+  </data>
+  <data name="CreateIdentityUseTorHint" xml:space="preserve">
+    <value>Others on the same network can see that a device uses Tor. You can turn it off or on later on the contact list.</value>
+  </data>
   <data name="CreateIdentityTitle" xml:space="preserve">
     <value>Create your identity</value>
   </data>
@@ -62,6 +68,39 @@
   </data>
   <data name="ContactListNoNetwork" xml:space="preserve">
     <value>This device has no Wi-Fi and no internet. Nearby contacts can be reached if one person shares a hotspot from a phone and the others join it.</value>
+  </data>
+  <data name="ContactListTorOff" xml:space="preserve">
+    <value>Internet route off: Tor is turned off on this device. Nearby messaging continues.</value>
+  </data>
+  <data name="ContactListTurnTorOff" xml:space="preserve">
+    <value>Turn off Tor</value>
+  </data>
+  <data name="ContactListTurnTorOn" xml:space="preserve">
+    <value>Turn on Tor</value>
+  </data>
+  <data name="ContactListTorStartingFormat" xml:space="preserve">
+    <value>Connecting to Tor ({0} %). Nearby messaging works meanwhile.</value>
+  </data>
+  <data name="ContactListTorConnected" xml:space="preserve">
+    <value>Connected to Tor.</value>
+  </data>
+  <data name="ContactListTorNotInBuild" xml:space="preserve">
+    <value>Internet route unavailable: Tor is not part of this build. Nearby messaging continues.</value>
+  </data>
+  <data name="ContactListTorNoNetwork" xml:space="preserve">
+    <value>Internet route unavailable: this device has no network connection. Nearby messaging continues.</value>
+  </data>
+  <data name="ContactListTorClockWrong" xml:space="preserve">
+    <value>Internet route unavailable: the date or time on this device is wrong, so Tor cannot connect. Set the correct date and time; nearby messaging continues.</value>
+  </data>
+  <data name="ContactListTorCannotReach" xml:space="preserve">
+    <value>Internet route unavailable: the app cannot reach the Tor network. Tor may be blocked here, or the internet does not work. Nearby messaging continues.</value>
+  </data>
+  <data name="ContactListTorFailed" xml:space="preserve">
+    <value>Internet route unavailable: Tor could not start on this device. The app tries again shortly; nearby messaging continues.</value>
+  </data>
+  <data name="ContactListTorStopped" xml:space="preserve">
+    <value>Internet route unavailable: Tor stopped. The app starts it again shortly; nearby messaging continues.</value>
   </data>
   <data name="ContactListAddContact" xml:space="preserve">
     <value>Add contact</value>
@@ -287,6 +326,9 @@
   </data>
   <data name="NetworkListeningFormat" xml:space="preserve">
     <value>This device listens on port {0}.</value>
+  </data>
+  <data name="NetworkTorFormat" xml:space="preserve">
+    <value>Tor: {0}, {1} %, problem: {2}, onion service published: {3}, onion target: {4}.</value>
   </data>
   <data name="NetworkNotListening" xml:space="preserve">
     <value>This device is not listening.</value>

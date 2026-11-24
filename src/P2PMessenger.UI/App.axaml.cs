@@ -4,7 +4,9 @@ using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using P2PMessenger.Application;
+using P2PMessenger.Application.Background;
 using P2PMessenger.Application.Connections;
+using P2PMessenger.Application.Internet;
 using P2PMessenger.Application.Logging;
 using P2PMessenger.UI.Services;
 using P2PMessenger.UI.ViewModels;
@@ -109,13 +111,14 @@ public partial class App : Avalonia.Application
         TopLevelServices topLevelServices = new(topLevel);
         AppServices services = new(
             platform.CreateLocalData(),
-            MessengerSetup.InMemory() with { Loggers = CreateLoggers(), Discovery = DiscoverySetup.LocalNetwork(platform.LocalInterfaces) },
+            MessengerSetup.InMemory() with { Loggers = CreateLoggers(), Discovery = DiscoverySetup.LocalNetwork(platform.LocalInterfaces), Tor = platform.Tor },
             new AvaloniaUiThread(),
             topLevelServices,
             topLevelServices,
             platform.QrScanner ?? NoQrScanner.Instance)
         {
             Background = platform.Background,
+            TorSettings = new InternetRouteSettings(platform.Settings ?? new InMemorySettingsStore()),
         };
         if (platform.PassphraseSetChanged is { } passphraseSetChanged)
         {

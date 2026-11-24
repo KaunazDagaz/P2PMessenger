@@ -12,6 +12,7 @@ using P2PMessenger.Core.Sessions;
 using P2PMessenger.Transport.Connections;
 using P2PMessenger.Transport.Discovery;
 using P2PMessenger.Transport.Tcp;
+using P2PMessenger.Transport.Tor;
 
 namespace P2PMessenger.Application.Connections;
 
@@ -246,6 +247,9 @@ public sealed class ConnectionService : IAsyncDisposable
             retired.Clear();
         }
     }
+
+    internal OnionListener StartOnionListener(string? socketPath) =>
+        OnionListener.Start(manager, socketPath, loggers.CreateLogger<OnionListener>());
 
     internal void StartDiscovery(DiscoverySetup setup)
     {

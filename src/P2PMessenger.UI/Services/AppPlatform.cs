@@ -1,3 +1,5 @@
+using P2PMessenger.Application.Background;
+using P2PMessenger.Application.Internet;
 using P2PMessenger.Application.LocalData;
 using P2PMessenger.Transport.Discovery;
 
@@ -42,6 +44,10 @@ public sealed class AppPlatform
     public IQrScanner? QrScanner { get; }
 
     public BackgroundPorts? Background { get; init; }
+
+    public TorSetup? Tor { get; init; }
+
+    public ISettingsStore? Settings { get; init; }
 
     public ILocalData CreateLocalData() =>
         DataFolder is { Length: > 0 } folder

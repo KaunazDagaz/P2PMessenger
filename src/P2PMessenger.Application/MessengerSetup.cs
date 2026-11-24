@@ -5,6 +5,7 @@ using P2PMessenger.Application.Chats;
 using P2PMessenger.Application.Connections;
 using P2PMessenger.Application.Contacts;
 using P2PMessenger.Application.Delivery;
+using P2PMessenger.Application.Internet;
 using P2PMessenger.Core.Messages;
 using P2PMessenger.Transport.Connections;
 
@@ -29,6 +30,8 @@ public sealed record MessengerSetup
     public int? ListenPort { get; init; }
 
     public DiscoverySetup? Discovery { get; init; }
+
+    public TorSetup? Tor { get; init; }
 
     public TimeProvider TimeProvider { get; init; } = TimeProvider.System;
 

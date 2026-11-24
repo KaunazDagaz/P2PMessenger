@@ -1,5 +1,7 @@
 using P2PMessenger.Application;
+using P2PMessenger.Application.Background;
 using P2PMessenger.Application.Identity;
+using P2PMessenger.Application.Internet;
 using P2PMessenger.Application.LocalData;
 using P2PMessenger.Application.Locking;
 
@@ -88,6 +90,10 @@ public sealed class AppServices : IAsyncDisposable
 
     public BackgroundPorts? Background { get; init; }
 
+    public InternetRouteSettings TorSettings { get; init; } = new(new InMemorySettingsStore());
+
+    public bool OffersTor => initialSetup.Tor is { IsInBuild: true };
+
     public Messenger? Messenger { get; private set; }
 
     public async Task<LocalDataResult> OpenLocalDataAsync(CancellationToken cancellationToken) =>
@@ -121,7 +127,8 @@ public sealed class AppServices : IAsyncDisposable
                 return running;
             }
 
-            started = await Messenger.StartAsync(owner, setup, cancellationToken).ConfigureAwait(false);
+            MessengerSetup chosen = setup.Tor is { } tor ? setup with { Tor = tor with { Enabled = TorSettings.UseTor } } : setup;
+            started = await Messenger.StartAsync(owner, chosen, cancellationToken).ConfigureAwait(false);
             identity = owner;
             Messenger = started;
         }
@@ -151,6 +158,8 @@ public sealed class AppServices : IAsyncDisposable
             identity?.Dispose();
             identity = null;
             deleted = await localData.DeleteAllAsync(cancellationToken).ConfigureAwait(false);
+            deleted &= initialSetup.Tor?.DeleteData() ?? true;
+            TorSettings.Reset();
             identities = null;
             Mode = null;
             OpenStatus = null;
@@ -170,6 +179,15 @@ public sealed class AppServices : IAsyncDisposable
         ProtectionChanged?.Invoke(this, EventArgs.Empty);
         PassphraseSetChanged?.Invoke(this, false);
         return deleted;
+    }
+
+    public async Task SetTorAsync(bool on, CancellationToken cancellationToken)
+    {
+        TorSettings.UseTor = on;
+        if (Messenger is { } running)
+        {
+            await running.InternetRoute.SetEnabledAsync(on, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     public async Task QuitAsync()

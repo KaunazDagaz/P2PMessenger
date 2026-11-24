@@ -2,6 +2,7 @@ using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
 using P2PMessenger.Transport.Admission;
 using P2PMessenger.Transport.Connections;
+using P2PMessenger.Transport.Tor;
 
 namespace P2PMessenger.Transport.Logging;
 
@@ -60,4 +61,25 @@ internal static partial class TransportLog
 
     [LoggerMessage(EventId = 18, Level = LogLevel.Error, Message = "Discovery: unexpected {ExceptionType}")]
     public static partial void DiscoveryUnexpected(this ILogger logger, string exceptionType);
+
+    [LoggerMessage(EventId = 19, Level = LogLevel.Information, Message = "Starting tor, attempt {Attempt}")]
+    public static partial void TorStarting(this ILogger logger, int attempt);
+
+    [LoggerMessage(EventId = 20, Level = LogLevel.Warning, Message = "tor could not be started or controlled: {Failure}")]
+    public static partial void TorStartFailed(this ILogger logger, TorStartFailure failure);
+
+    [LoggerMessage(EventId = 21, Level = LogLevel.Information, Message = "tor is controlled after {Milliseconds} ms; the onion service was added")]
+    public static partial void TorControlled(this ILogger logger, long milliseconds);
+
+    [LoggerMessage(EventId = 22, Level = LogLevel.Information, Message = "Internet route: {State}, {Progress} %, problem {Problem}, onion service published: {Published}")]
+    public static partial void TorStatusChanged(this ILogger logger, TorState state, int progress, TorProblem problem, bool published);
+
+    [LoggerMessage(EventId = 23, Level = LogLevel.Warning, Message = "tor stopped (exit code {ExitCode}); it is started again in {Seconds} s")]
+    public static partial void TorStopped(this ILogger logger, int? exitCode, double seconds);
+
+    [LoggerMessage(EventId = 24, Level = LogLevel.Information, Message = "Listening for onion connections on a {Kind}")]
+    public static partial void OnionListening(this ILogger logger, OnionTargetKind kind);
+
+    [LoggerMessage(EventId = 25, Level = LogLevel.Warning, Message = "The onion socket could not be opened ({Error}); a loopback port is used instead")]
+    public static partial void OnionSocketUnavailable(this ILogger logger, SocketError error);
 }

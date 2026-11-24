@@ -40,6 +40,19 @@
                 IsVisible="{Binding HasNoNetwork}">
             <TextBlock x:Name="NoNetworkText" Text="{x:Static res:UiText.ContactListNoNetwork}" TextWrapping="Wrap" />
         </Border>
+        <DockPanel x:Name="InternetRoutePanel" DockPanel.Dock="Top" Margin="0,0,0,12">
+            <Button x:Name="SwitchTorButton"
+                    DockPanel.Dock="Right"
+                    Margin="12,0,0,0"
+                    VerticalAlignment="Center"
+                    Content="{Binding TorSwitchText}"
+                    Command="{Binding SwitchTorCommand}"
+                    IsVisible="{Binding CanSwitchTor}" />
+            <TextBlock x:Name="InternetRouteText"
+                       VerticalAlignment="Center"
+                       Text="{Binding InternetRouteText}"
+                       TextWrapping="Wrap" />
+        </DockPanel>
         <TextBlock x:Name="EmptyText"
                    DockPanel.Dock="Top"
                    Text="{x:Static res:UiText.ContactListEmpty}"

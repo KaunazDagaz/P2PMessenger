@@ -26,6 +26,8 @@ internal static class Formats
     public static readonly CompositeFormat Checked = CompositeFormat.Parse(UiText.VerifyCheckedFormat);
     public static readonly CompositeFormat NotCompared = CompositeFormat.Parse(UiText.VerifyNotComparedFormat);
     public static readonly CompositeFormat Listening = CompositeFormat.Parse(UiText.NetworkListeningFormat);
+    public static readonly CompositeFormat Tor = CompositeFormat.Parse(UiText.NetworkTorFormat);
+    public static readonly CompositeFormat TorStarting = CompositeFormat.Parse(UiText.ContactListTorStartingFormat);
     public static readonly CompositeFormat Discovery = CompositeFormat.Parse(UiText.NetworkDiscoveryFormat);
     public static readonly CompositeFormat DiscoveryUnavailable = CompositeFormat.Parse(UiText.NetworkDiscoveryUnavailableFormat);
     public static readonly CompositeFormat Heard = CompositeFormat.Parse(UiText.NetworkHeardFormat);
@@ -37,4 +39,6 @@ internal static class Formats
     public static readonly CompositeFormat MessageDeleted = CompositeFormat.Parse(UiText.ConversationMessageDeletedFormat);
 
     public static string With(CompositeFormat format, object? argument) => string.Format(CultureInfo.CurrentCulture, format, argument);
+
+    public static string WithAll(CompositeFormat format, params object?[] arguments) => string.Format(CultureInfo.CurrentCulture, format, arguments);
 }

@@ -100,6 +100,41 @@ public sealed class ManifestTests
         Assert.Equal("@xml/data_extraction_rules", (string?)application.Attribute(AndroidNamespace + "dataExtractionRules"));
     }
 
+    [Fact]
+    [Trait("Story", "US-09")]
+    public void Manifest_NativeLibraries_AreExtractedSoTorCanBeStartedFromThem()
+    {
+        var application = Assert.Single(Manifest().Elements("application"));
+
+        Assert.Equal("true", (string?)application.Attribute(AndroidNamespace + "extractNativeLibs"));
+    }
+
+    [Fact]
+    [Trait("Story", "US-09")]
+    public void Project_TorBundles_AreNativeLibrariesForTheirAbisOnlyWhenDownloaded()
+    {
+        var project = XDocument.Load(HeadFile("P2PMessenger.Android.csproj")).Root!;
+        var libraries = project.Elements("ItemGroup").Elements("AndroidNativeLibrary").ToList();
+
+        Assert.Equal(["arm64-v8a", "armeabi-v7a", "x86_64"], libraries.Select(static element => (string?)element.Attribute("Abi")));
+        Assert.All(libraries, static element =>
+        {
+            var include = (string?)element.Attribute("Include");
+            Assert.EndsWith("/tor/libTor.so", include, StringComparison.Ordinal);
+            Assert.Equal($"Exists('{include}')", (string?)element.Attribute("Condition"));
+        });
+    }
+
+    [Fact]
+    [Trait("NFR", "NFR-18")]
+    public void Project_Architectures_IncludeThirtyTwoBitArmForOlderPhones()
+    {
+        var project = XDocument.Load(HeadFile("P2PMessenger.Android.csproj")).Root!;
+        var identifiers = Assert.Single(project.Elements("PropertyGroup").Elements("RuntimeIdentifiers"));
+
+        Assert.Equal(["android-arm", "android-arm64", "android-x64"], identifiers.Value.Split(';'));
+    }
+
     [Theory]
     [Trait("NFR", "NFR-11")]
     [InlineData("cloud-backup")]

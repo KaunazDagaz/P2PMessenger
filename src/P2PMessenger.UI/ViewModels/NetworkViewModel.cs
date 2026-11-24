@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using P2PMessenger.Application;
 using P2PMessenger.Application.Connections;
 using P2PMessenger.Application.Contacts;
+using P2PMessenger.Application.Internet;
 using P2PMessenger.Transport.Discovery;
 using P2PMessenger.UI.Resources;
 using P2PMessenger.UI.Services;
@@ -22,6 +23,9 @@ public sealed partial class NetworkViewModel : PageViewModel
 
     [ObservableProperty]
     private string addressesText = string.Empty;
+
+    [ObservableProperty]
+    private string torText = string.Empty;
 
     [ObservableProperty]
     private bool hasNoContacts;
@@ -45,6 +49,7 @@ public sealed partial class NetworkViewModel : PageViewModel
     {
         messenger.Connections.Changed += OnConnectionChanged;
         messenger.Contacts.Changed += OnContactChanged;
+        messenger.InternetRoute.Changed += OnInternetRouteChanged;
         RefreshDevice();
         RefreshContacts();
     }
@@ -53,6 +58,7 @@ public sealed partial class NetworkViewModel : PageViewModel
     {
         messenger.Connections.Changed -= OnConnectionChanged;
         messenger.Contacts.Changed -= OnContactChanged;
+        messenger.InternetRoute.Changed -= OnInternetRouteChanged;
     }
 
     private void OnConnectionChanged(object? sender, ConnectionChangedEventArgs e) => uiThread.Post(() =>
@@ -63,6 +69,8 @@ public sealed partial class NetworkViewModel : PageViewModel
             contact.Refresh();
         }
     });
+
+    private void OnInternetRouteChanged(object? sender, EventArgs e) => uiThread.Post(RefreshDevice);
 
     private void OnContactChanged(object? sender, ContactChangedEventArgs e)
     {
@@ -86,6 +94,8 @@ public sealed partial class NetworkViewModel : PageViewModel
         AddressesText = interfaces.Count == 0
             ? UiText.NetworkNoAddresses
             : string.Join(Environment.NewLine, interfaces.Select(static item => item.ToString()));
+        InternetRouteStatus tor = messenger.InternetRoute.Status;
+        TorText = Formats.WithAll(Formats.Tor, tor.State, tor.Progress, tor.Problem, tor.OnionServicePublished, messenger.InternetRoute.TargetKind);
     }
 
     private void RefreshContacts()

@@ -16,6 +16,7 @@ public sealed partial class ContactListViewModel : PageViewModel
     private readonly IUiThread uiThread;
     private readonly INavigationService navigation;
     private readonly Pages pages;
+    private readonly Func<bool, CancellationToken, Task>? setTor;
 
     [ObservableProperty]
     private bool isEmpty = true;
@@ -23,12 +24,30 @@ public sealed partial class ContactListViewModel : PageViewModel
     [ObservableProperty]
     private bool hasNoNetwork;
 
+    [ObservableProperty]
+    private string internetRouteText = string.Empty;
+
+    [ObservableProperty]
+    private bool canSwitchTor;
+
+    [ObservableProperty]
+    private string torSwitchText = string.Empty;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SwitchTorCommand))]
+    private bool isSwitchingTor;
+
     public ContactListViewModel(Messenger messenger, IUiThread uiThread, INavigationService navigation, Pages pages, bool offersPassphrase)
         : this(messenger, uiThread, navigation, pages, offersPassphrase, false)
     {
     }
 
     public ContactListViewModel(Messenger messenger, IUiThread uiThread, INavigationService navigation, Pages pages, bool offersPassphrase, bool offersBackground)
+        : this(messenger, uiThread, navigation, pages, offersPassphrase, offersBackground, null)
+    {
+    }
+
+    public ContactListViewModel(Messenger messenger, IUiThread uiThread, INavigationService navigation, Pages pages, bool offersPassphrase, bool offersBackground, Func<bool, CancellationToken, Task>? setTor)
     {
         ArgumentNullException.ThrowIfNull(messenger);
         ArgumentNullException.ThrowIfNull(uiThread);
@@ -39,6 +58,7 @@ public sealed partial class ContactListViewModel : PageViewModel
         this.uiThread = uiThread;
         this.navigation = navigation;
         this.pages = pages;
+        this.setTor = setTor;
         OffersPassphrase = offersPassphrase;
         OffersBackground = offersBackground;
         Refresh();
@@ -57,6 +77,7 @@ public sealed partial class ContactListViewModel : PageViewModel
         messenger.Contacts.Changed += OnContactChanged;
         messenger.Chats.Changed += OnChatChanged;
         messenger.Connections.Changed += OnConnectionChanged;
+        messenger.InternetRoute.Changed += OnInternetRouteChanged;
         Refresh();
     }
 
@@ -65,6 +86,7 @@ public sealed partial class ContactListViewModel : PageViewModel
         messenger.Contacts.Changed -= OnContactChanged;
         messenger.Chats.Changed -= OnChatChanged;
         messenger.Connections.Changed -= OnConnectionChanged;
+        messenger.InternetRoute.Changed -= OnInternetRouteChanged;
     }
 
     [RelayCommand]
@@ -96,6 +118,40 @@ public sealed partial class ContactListViewModel : PageViewModel
 
     private void OnConnectionChanged(object? sender, ConnectionChangedEventArgs e) => uiThread.Post(Refresh);
 
+    private void OnInternetRouteChanged(object? sender, EventArgs e) => uiThread.Post(RefreshInternetRoute);
+
+    private bool CanRunTorSwitch => !IsSwitchingTor;
+
+    [RelayCommand(CanExecute = nameof(CanRunTorSwitch))]
+    private async Task SwitchTorAsync(CancellationToken cancellationToken)
+    {
+        if (setTor is null)
+        {
+            return;
+        }
+
+        IsSwitchingTor = true;
+        try
+        {
+            await setTor(!messenger.InternetRoute.IsOn, cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
+        {
+        }
+        finally
+        {
+            IsSwitchingTor = false;
+            RefreshInternetRoute();
+        }
+    }
+
+    private void RefreshInternetRoute()
+    {
+        InternetRouteText = InternetRouteLines.Describe(messenger.InternetRoute.Status);
+        CanSwitchTor = setTor is not null && messenger.InternetRoute.IsInBuild;
+        TorSwitchText = messenger.InternetRoute.IsOn ? UiText.ContactListTurnTorOff : UiText.ContactListTurnTorOn;
+    }
+
     private void Refresh()
     {
         Contacts.Clear();
@@ -106,5 +162,6 @@ public sealed partial class ContactListViewModel : PageViewModel
 
         IsEmpty = Contacts.Count == 0;
         HasNoNetwork = messenger.Connections.Network is { HasAnyNetwork: false };
+        RefreshInternetRoute();
     }
 }
