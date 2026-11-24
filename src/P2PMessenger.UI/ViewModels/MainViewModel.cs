@@ -171,6 +171,11 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
 
                 await services.StartMessengerAsync(identity, cancellationToken);
                 ResetTo(Pages.ContactList());
+                if (services.Background is { ShouldOffer: true })
+                {
+                    Push(Pages.Background(true));
+                }
+
                 break;
             case LocalDataStatus.NotCreated:
                 ResetTo(Pages.CreateIdentity());

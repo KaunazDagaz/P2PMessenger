@@ -42,6 +42,9 @@
         <DataTemplate DataType="vm:DeleteAllDataPageViewModel">
             <v:DeleteAllDataPageView />
         </DataTemplate>
+        <DataTemplate DataType="vm:BackgroundViewModel">
+            <v:BackgroundView />
+        </DataTemplate>
     </UserControl.DataTemplates>
 
     <DockPanel>

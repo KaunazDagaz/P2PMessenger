@@ -319,6 +319,195 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Allow running in the background.
+        /// </summary>
+        public static string BackgroundBatteryAllow {
+            get {
+                return ResourceManager.GetString("BackgroundBatteryAllow", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Battery optimisation is off for P2PMessenger, so Android lets it run while the phone is idle..
+        /// </summary>
+        public static string BackgroundBatteryExempt {
+            get {
+                return ResourceManager.GetString("BackgroundBatteryExempt", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Battery optimisation is on for P2PMessenger: Android may delay messages while the phone is idle. P2PMessenger keeps working..
+        /// </summary>
+        public static string BackgroundBatteryNotExempt {
+            get {
+                return ResourceManager.GetString("BackgroundBatteryNotExempt", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Not allowed. Android may delay messages while the phone is idle; P2PMessenger keeps working, and you can allow it here later..
+        /// </summary>
+        public static string BackgroundBatteryRefused {
+            get {
+                return ResourceManager.GetString("BackgroundBatteryRefused", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Continue.
+        /// </summary>
+        public static string BackgroundContinue {
+            get {
+                return ResourceManager.GetString("BackgroundContinue", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to To keep receiving messages while the phone is idle, allow P2PMessenger to run in the background and to show notifications. You can change this later on the Background page..
+        /// </summary>
+        public static string BackgroundFirstRun {
+            get {
+                return ResourceManager.GetString("BackgroundFirstRun", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to P2PMessenger keeps running while the screen is off, with a notification that stays while it runs, so that messages from contacts nearby reach this phone..
+        /// </summary>
+        public static string BackgroundIntro {
+            get {
+                return ResourceManager.GetString("BackgroundIntro", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Allow notifications.
+        /// </summary>
+        public static string BackgroundNotificationsAllow {
+            get {
+                return ResourceManager.GetString("BackgroundNotificationsAllow", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Notifications are on: a new message shows who sent it while P2PMessenger is in the background..
+        /// </summary>
+        public static string BackgroundNotificationsAllowed {
+            get {
+                return ResourceManager.GetString("BackgroundNotificationsAllowed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Notifications are off for P2PMessenger: you will not see new messages while it is in the background, and the notification that it is running is hidden..
+        /// </summary>
+        public static string BackgroundNotificationsOff {
+            get {
+                return ResourceManager.GetString("BackgroundNotificationsOff", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Open app settings.
+        /// </summary>
+        public static string BackgroundOpenSettings {
+            get {
+                return ResourceManager.GetString("BackgroundOpenSettings", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Show message text in notifications.
+        /// </summary>
+        public static string BackgroundPreviews {
+            get {
+                return ResourceManager.GetString("BackgroundPreviews", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to When this is off, a notification shows only who sent the message. The lock screen never shows the sender or the text..
+        /// </summary>
+        public static string BackgroundPreviewsHint {
+            get {
+                return ResourceManager.GetString("BackgroundPreviewsHint", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Quit P2PMessenger.
+        /// </summary>
+        public static string BackgroundQuit {
+            get {
+                return ResourceManager.GetString("BackgroundQuit", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Quit.
+        /// </summary>
+        public static string BackgroundQuitConfirm {
+            get {
+                return ResourceManager.GetString("BackgroundQuitConfirm", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to P2PMessenger could not quit. Try again..
+        /// </summary>
+        public static string BackgroundQuitFailed {
+            get {
+                return ResourceManager.GetString("BackgroundQuitFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Quit P2PMessenger?.
+        /// </summary>
+        public static string BackgroundQuitQuestion {
+            get {
+                return ResourceManager.GetString("BackgroundQuitQuestion", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Quitting….
+        /// </summary>
+        public static string BackgroundQuitting {
+            get {
+                return ResourceManager.GetString("BackgroundQuitting", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to It stops running in the background, and messages will not arrive on this phone until you open the app again. Waiting messages stay on this device..
+        /// </summary>
+        public static string BackgroundQuitWarning {
+            get {
+                return ResourceManager.GetString("BackgroundQuitWarning", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Android does not let P2PMessenger run in the background, because its battery use is restricted: the app stops soon after you leave it, and messages arrive only while it is open. To change this, allow background use in the app&apos;s battery settings..
+        /// </summary>
+        public static string BackgroundRestricted {
+            get {
+                return ResourceManager.GetString("BackgroundRestricted", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Background and notifications.
+        /// </summary>
+        public static string BackgroundTitle {
+            get {
+                return ResourceManager.GetString("BackgroundTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Back.
         /// </summary>
         public static string CommonBack {
@@ -396,6 +585,15 @@ namespace P2PMessenger.UI.Resources {
         public static string ContactListAddInPerson {
             get {
                 return ResourceManager.GetString("ContactListAddInPerson", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Background.
+        /// </summary>
+        public static string ContactListBackground {
+            get {
+                return ResourceManager.GetString("ContactListBackground", resourceCulture);
             }
         }
         
@@ -1224,6 +1422,87 @@ namespace P2PMessenger.UI.Resources {
         public static string NetworkTitle {
             get {
                 return ResourceManager.GetString("NetworkTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to New messages on the lock screen.
+        /// </summary>
+        public static string NotificationChannelLockScreen {
+            get {
+                return ResourceManager.GetString("NotificationChannelLockScreen", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Messages.
+        /// </summary>
+        public static string NotificationChannelMessages {
+            get {
+                return ResourceManager.GetString("NotificationChannelMessages", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Running in the background.
+        /// </summary>
+        public static string NotificationChannelService {
+            get {
+                return ResourceManager.GetString("NotificationChannelService", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to New message.
+        /// </summary>
+        public static string NotificationNewMessage {
+            get {
+                return ResourceManager.GetString("NotificationNewMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Quit.
+        /// </summary>
+        public static string NotificationQuit {
+            get {
+                return ResourceManager.GetString("NotificationQuit", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Receiving messages from contacts nearby..
+        /// </summary>
+        public static string NotificationServiceText {
+            get {
+                return ResourceManager.GetString("NotificationServiceText", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to P2PMessenger is running.
+        /// </summary>
+        public static string NotificationServiceTitle {
+            get {
+                return ResourceManager.GetString("NotificationServiceTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Open P2PMessenger and enter your passphrase to receive messages..
+        /// </summary>
+        public static string NotificationUnlockText {
+            get {
+                return ResourceManager.GetString("NotificationUnlockText", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to P2PMessenger is locked.
+        /// </summary>
+        public static string NotificationUnlockTitle {
+            get {
+                return ResourceManager.GetString("NotificationUnlockTitle", resourceCulture);
             }
         }
         

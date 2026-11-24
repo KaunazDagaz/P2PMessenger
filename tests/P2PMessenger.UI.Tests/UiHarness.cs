@@ -52,7 +52,9 @@ internal sealed class UiHarness : IAsyncDisposable
 
     public static UiHarness Create(ILocalData localData) => Create(localData, null);
 
-    public static UiHarness Create(ILocalData localData, NetworkSnapshot? network)
+    public static UiHarness Create(ILocalData localData, NetworkSnapshot? network) => Create(localData, network, null);
+
+    public static UiHarness Create(ILocalData localData, NetworkSnapshot? network, BackgroundPorts? background)
     {
         FakePlatform platform = new();
         LoopbackDiscovery hub = new();
@@ -69,7 +71,7 @@ internal sealed class UiHarness : IAsyncDisposable
             Connection = Fast,
             Discovery = node.Setup,
         };
-        AppServices services = new(localData, setup, new AvaloniaUiThread(), platform, platform, platform);
+        AppServices services = new(localData, setup, new AvaloniaUiThread(), platform, platform, platform) { Background = background };
         return new UiHarness(services, platform, hub, node);
     }
 

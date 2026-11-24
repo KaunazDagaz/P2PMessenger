@@ -7,6 +7,10 @@
     <Compile Include="..\..\src\P2PMessenger.Android\KeyStores\AndroidKeystoreKeyProtector.cs" Link="Head\KeyStores\AndroidKeystoreKeyProtector.cs" />
     <Compile Include="..\..\src\P2PMessenger.Android\KeyStores\IKeystoreKeys.cs" Link="Head\KeyStores\IKeystoreKeys.cs" />
     <Compile Include="..\..\src\P2PMessenger.Android\KeyStores\KeystoreStatus.cs" Link="Head\KeyStores\KeystoreStatus.cs" />
+    <Compile Include="..\..\src\P2PMessenger.Android\Background\BackgroundRules.cs" Link="Head\Background\BackgroundRules.cs" />
+    <Compile Include="..\..\src\P2PMessenger.Android\Background\BackgroundState.cs" Link="Head\Background\BackgroundState.cs" />
+    <Compile Include="..\..\src\P2PMessenger.Android\Background\HeartbeatReading.cs" Link="Head\Background\HeartbeatReading.cs" />
+    <Compile Include="..\..\src\P2PMessenger.Android\Background\LockScreenNotice.cs" Link="Head\Background\LockScreenNotice.cs" />
   </ItemGroup>
 
   <ItemGroup>
