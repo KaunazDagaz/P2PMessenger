@@ -13,6 +13,7 @@ public sealed class AppServices : IAsyncDisposable
     private MessengerSetup setup;
     private IdentityService? identities;
     private OwnIdentity? identity;
+    private int disposed;
 
     public AppServices(
         ILocalData localData,
@@ -55,6 +56,8 @@ public sealed class AppServices : IAsyncDisposable
 
     public event EventHandler? MessengerStarted;
 
+    public event EventHandler? MessengerStopped;
+
     public event EventHandler<bool>? PassphraseSetChanged;
 
     public IdentityService Identities => identities ?? throw new InvalidOperationException("The local data has not been opened yet.");
@@ -80,6 +83,10 @@ public sealed class AppServices : IAsyncDisposable
     public LocalDataProtection Protection => localData.Protection;
 
     public LocalDataMode? Mode { get; private set; }
+
+    public LocalDataStatus? OpenStatus { get; private set; }
+
+    public BackgroundPorts? Background { get; init; }
 
     public Messenger? Messenger { get; private set; }
 
@@ -130,12 +137,14 @@ public sealed class AppServices : IAsyncDisposable
     public async Task<bool> DeleteAllDataAsync(CancellationToken cancellationToken)
     {
         bool deleted;
+        bool stopped = false;
         await starting.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             if (Messenger is { } running)
             {
                 Messenger = null;
+                stopped = true;
                 await running.DisposeAsync().ConfigureAwait(false);
             }
 
@@ -144,6 +153,7 @@ public sealed class AppServices : IAsyncDisposable
             deleted = await localData.DeleteAllAsync(cancellationToken).ConfigureAwait(false);
             identities = null;
             Mode = null;
+            OpenStatus = null;
             setup = initialSetup;
             Lock.Reset();
         }
@@ -152,13 +162,36 @@ public sealed class AppServices : IAsyncDisposable
             starting.Release();
         }
 
+        if (stopped)
+        {
+            MessengerStopped?.Invoke(this, EventArgs.Empty);
+        }
+
         ProtectionChanged?.Invoke(this, EventArgs.Empty);
         PassphraseSetChanged?.Invoke(this, false);
         return deleted;
     }
 
+    public async Task QuitAsync()
+    {
+        Background?.Service.StopRunning();
+        try
+        {
+            await DisposeAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            Background?.Service.EndProcess();
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
+        if (Interlocked.Exchange(ref disposed, 1) != 0)
+        {
+            return;
+        }
+
         Lock.Dispose();
         if (Messenger is { } running)
         {
@@ -172,6 +205,7 @@ public sealed class AppServices : IAsyncDisposable
 
     private LocalDataResult Adopt(LocalDataResult result)
     {
+        OpenStatus = result.Status;
         if (!result.IsOpen || identities is not null)
         {
             return result;

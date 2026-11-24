@@ -24,6 +24,11 @@ public sealed partial class ContactListViewModel : PageViewModel
     private bool hasNoNetwork;
 
     public ContactListViewModel(Messenger messenger, IUiThread uiThread, INavigationService navigation, Pages pages, bool offersPassphrase)
+        : this(messenger, uiThread, navigation, pages, offersPassphrase, false)
+    {
+    }
+
+    public ContactListViewModel(Messenger messenger, IUiThread uiThread, INavigationService navigation, Pages pages, bool offersPassphrase, bool offersBackground)
     {
         ArgumentNullException.ThrowIfNull(messenger);
         ArgumentNullException.ThrowIfNull(uiThread);
@@ -35,12 +40,15 @@ public sealed partial class ContactListViewModel : PageViewModel
         this.navigation = navigation;
         this.pages = pages;
         OffersPassphrase = offersPassphrase;
+        OffersBackground = offersBackground;
         Refresh();
     }
 
     public override string Title => UiText.ContactListTitle;
 
     public bool OffersPassphrase { get; }
+
+    public bool OffersBackground { get; }
 
     public ObservableCollection<ContactItemViewModel> Contacts { get; } = [];
 
@@ -73,6 +81,9 @@ public sealed partial class ContactListViewModel : PageViewModel
 
     [RelayCommand]
     private void Passphrase() => navigation.Push(pages.Passphrase());
+
+    [RelayCommand]
+    private void Background() => navigation.Push(pages.Background(false));
 
     [RelayCommand]
     private void DeleteAllData() => navigation.Push(pages.DeleteAllData());

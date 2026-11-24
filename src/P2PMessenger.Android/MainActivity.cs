@@ -16,6 +16,7 @@ public class MainActivity : AvaloniaMainActivity
     private static WeakReference<MainActivity>? resumed;
     private static WeakReference<MainActivity>? created;
     private static bool hiddenFromRecents;
+    private static int started;
 
     public static MainActivity? Current
     {
@@ -27,6 +28,23 @@ public class MainActivity : AvaloniaMainActivity
                 return resumed?.TryGetTarget(out activity) == true || created?.TryGetTarget(out activity) == true ? activity : null;
             }
         }
+    }
+
+    public static bool IsVisible
+    {
+        get
+        {
+            lock (Sync)
+            {
+                return started > 0;
+            }
+        }
+    }
+
+    public static void FinishAll()
+    {
+        MainActivity? activity = Current;
+        activity?.RunOnUiThread(activity.FinishAndRemoveTask);
     }
 
     public static void HideFromRecents(bool hide)
@@ -51,6 +69,25 @@ public class MainActivity : AvaloniaMainActivity
 
         ActivityResult = ActivityResults.OnActivityResult;
         RequestPermissionsResult = ActivityResults.OnPermissionsResult;
+    }
+
+    protected override void OnStart()
+    {
+        base.OnStart();
+        lock (Sync)
+        {
+            started++;
+        }
+    }
+
+    protected override void OnStop()
+    {
+        lock (Sync)
+        {
+            started = Math.Max(0, started - 1);
+        }
+
+        base.OnStop();
     }
 
     protected override void OnResume()

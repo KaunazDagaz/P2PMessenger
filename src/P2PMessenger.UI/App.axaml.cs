@@ -38,15 +38,35 @@ public partial class App : Avalonia.Application
         switch (ApplicationLifetime)
         {
             case IActivityApplicationLifetime activityLifetime:
-                MainViewModel activityShell = new(CreateServices(() => activityView is null ? null : TopLevel.GetTopLevel(activityView)));
-                activityLifetime.MainViewFactory = () => activityView = new MainView { DataContext = activityShell };
+                AppServices activityServices = CreateServices(() => activityView is null ? null : TopLevel.GetTopLevel(activityView));
+                MainViewModel activityShell = new(activityServices);
+                StartOnce startOnce = new(activityShell.StartAsync);
+                BackgroundCoordinator? background = activityServices.Background is null ? null : new(activityServices, startOnce.RunAsync);
+
+                activityLifetime.MainViewFactory = () =>
+                {
+                    _ = startOnce.RunAsync(CancellationToken.None);
+                    background?.EnsureRunning();
+                    return activityView = new MainView { DataContext = activityShell };
+                };
                 if (TryGetFeature(typeof(IActivatableLifetime)) is IActivatableLifetime activatable)
                 {
                     activatable.Deactivated += (_, e) => OnActivation(activityShell, e, false);
-                    activatable.Activated += (_, e) => OnActivation(activityShell, e, true);
+                    activatable.Activated += (_, e) =>
+                    {
+                        OnActivation(activityShell, e, true);
+                        if (e.Kind == ActivationKind.Background)
+                        {
+                            background?.EnsureRunning();
+                        }
+                    };
                 }
 
-                _ = activityShell.StartAsync(CancellationToken.None);
+                if (background is null)
+                {
+                    _ = startOnce.RunAsync(CancellationToken.None);
+                }
+
                 break;
 
             case IClassicDesktopStyleApplicationLifetime desktopLifetime:
@@ -93,7 +113,10 @@ public partial class App : Avalonia.Application
             new AvaloniaUiThread(),
             topLevelServices,
             topLevelServices,
-            platform.QrScanner ?? NoQrScanner.Instance);
+            platform.QrScanner ?? NoQrScanner.Instance)
+        {
+            Background = platform.Background,
+        };
         if (platform.PassphraseSetChanged is { } passphraseSetChanged)
         {
             services.PassphraseSetChanged += (_, set) => passphraseSetChanged(set);

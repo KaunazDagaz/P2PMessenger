@@ -41,6 +41,8 @@ public sealed class AppPlatform
 
     public IQrScanner? QrScanner { get; }
 
+    public BackgroundPorts? Background { get; init; }
+
     public ILocalData CreateLocalData() =>
         DataFolder is { Length: > 0 } folder
             ? new DatabaseLocalData(Path.Combine(folder, DatabaseLocalData.FileName), KeyProtector)

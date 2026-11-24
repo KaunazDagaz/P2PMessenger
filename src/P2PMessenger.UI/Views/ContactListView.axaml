@@ -15,6 +15,11 @@
                     Content="{x:Static res:UiText.ContactListPassphrase}"
                     Command="{Binding PassphraseCommand}"
                     IsVisible="{Binding OffersPassphrase}" />
+            <Button x:Name="BackgroundButton"
+                    Margin="0,0,8,8"
+                    Content="{x:Static res:UiText.ContactListBackground}"
+                    Command="{Binding BackgroundCommand}"
+                    IsVisible="{Binding OffersBackground}" />
             <Button x:Name="DeleteAllDataButton"
                     Margin="0,0,8,8"
                     Content="{x:Static res:UiText.ContactListDeleteAllData}"
