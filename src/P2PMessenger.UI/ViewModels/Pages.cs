@@ -40,7 +40,7 @@ public sealed class Pages
     public PassphraseViewModel Passphrase() => new(services);
 
     public ContactListViewModel ContactList() =>
-        new(Messenger, services.UiThread, navigation, this, services.SupportsPassphrase && services.Mode == LocalDataMode.Saved, services.Background is not null);
+        new(Messenger, services.UiThread, navigation, this, services.SupportsPassphrase && services.Mode == LocalDataMode.Saved, services.Background is not null, services.SetTorAsync);
 
     public BackgroundViewModel Background(bool firstRun) =>
         new(services.Background ?? throw new InvalidOperationException("This platform has no background service."), services.QuitAsync, navigation, firstRun);

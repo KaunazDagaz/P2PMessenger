@@ -661,6 +661,105 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Internet route unavailable: the app cannot reach the Tor network. Tor may be blocked here, or the internet does not work. Nearby messaging continues..
+        /// </summary>
+        public static string ContactListTorCannotReach {
+            get {
+                return ResourceManager.GetString("ContactListTorCannotReach", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Internet route unavailable: the date or time on this device is wrong, so Tor cannot connect. Set the correct date and time; nearby messaging continues..
+        /// </summary>
+        public static string ContactListTorClockWrong {
+            get {
+                return ResourceManager.GetString("ContactListTorClockWrong", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Connected to Tor..
+        /// </summary>
+        public static string ContactListTorConnected {
+            get {
+                return ResourceManager.GetString("ContactListTorConnected", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Internet route unavailable: Tor could not start on this device. The app tries again shortly; nearby messaging continues..
+        /// </summary>
+        public static string ContactListTorFailed {
+            get {
+                return ResourceManager.GetString("ContactListTorFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Internet route unavailable: this device has no network connection. Nearby messaging continues..
+        /// </summary>
+        public static string ContactListTorNoNetwork {
+            get {
+                return ResourceManager.GetString("ContactListTorNoNetwork", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Internet route unavailable: Tor is not part of this build. Nearby messaging continues..
+        /// </summary>
+        public static string ContactListTorNotInBuild {
+            get {
+                return ResourceManager.GetString("ContactListTorNotInBuild", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Internet route off: Tor is turned off on this device. Nearby messaging continues..
+        /// </summary>
+        public static string ContactListTorOff {
+            get {
+                return ResourceManager.GetString("ContactListTorOff", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Connecting to Tor ({0} %). Nearby messaging works meanwhile..
+        /// </summary>
+        public static string ContactListTorStartingFormat {
+            get {
+                return ResourceManager.GetString("ContactListTorStartingFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Internet route unavailable: Tor stopped. The app starts it again shortly; nearby messaging continues..
+        /// </summary>
+        public static string ContactListTorStopped {
+            get {
+                return ResourceManager.GetString("ContactListTorStopped", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Turn off Tor.
+        /// </summary>
+        public static string ContactListTurnTorOff {
+            get {
+                return ResourceManager.GetString("ContactListTurnTorOff", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Turn on Tor.
+        /// </summary>
+        public static string ContactListTurnTorOn {
+            get {
+                return ResourceManager.GetString("ContactListTurnTorOn", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Not reachable now.
         /// </summary>
         public static string ContactNotReachable {
@@ -981,6 +1080,24 @@ namespace P2PMessenger.UI.Resources {
         public static string CreateIdentityTitle {
             get {
                 return ResourceManager.GetString("CreateIdentityTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Use Tor for the internet route.
+        /// </summary>
+        public static string CreateIdentityUseTor {
+            get {
+                return ResourceManager.GetString("CreateIdentityUseTor", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Others on the same network can see that a device uses Tor. You can turn it off or on later on the contact list..
+        /// </summary>
+        public static string CreateIdentityUseTorHint {
+            get {
+                return ResourceManager.GetString("CreateIdentityUseTorHint", resourceCulture);
             }
         }
         
@@ -1422,6 +1539,15 @@ namespace P2PMessenger.UI.Resources {
         public static string NetworkTitle {
             get {
                 return ResourceManager.GetString("NetworkTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Tor: {0}, {1} %, problem: {2}, onion service published: {3}, onion target: {4}..
+        /// </summary>
+        public static string NetworkTorFormat {
+            get {
+                return ResourceManager.GetString("NetworkTorFormat", resourceCulture);
             }
         }
         

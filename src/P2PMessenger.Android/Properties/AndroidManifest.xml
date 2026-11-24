@@ -9,7 +9,7 @@
   <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
   <uses-feature android:name="android.hardware.camera.any" android:required="false" />
-  <application android:label="P2PMessenger" android:icon="@drawable/Icon" android:allowBackup="false" android:dataExtractionRules="@xml/data_extraction_rules">
+  <application android:label="P2PMessenger" android:icon="@drawable/Icon" android:allowBackup="false" android:dataExtractionRules="@xml/data_extraction_rules" android:extractNativeLibs="true">
     <receiver android:name="androidx.profileinstaller.ProfileInstallReceiver" tools:node="remove" />
     <service android:name="io.github.kaunazdagaz.p2pmessenger.MessengerService" android:exported="false" android:foregroundServiceType="connectedDevice" />
     <receiver android:name="io.github.kaunazdagaz.p2pmessenger.BootReceiver" android:exported="false">

@@ -33,6 +33,9 @@ public sealed partial class CreateIdentityViewModel : PageViewModel
     [ObservableProperty]
     private string? errorMessage;
 
+    [ObservableProperty]
+    private bool useTor = true;
+
     public CreateIdentityViewModel(AppServices services, INavigationService navigation, Pages pages, Func<LocalDataProblem, PageViewModel> problemPage)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -45,11 +48,14 @@ public sealed partial class CreateIdentityViewModel : PageViewModel
         this.pages = pages;
         this.problemPage = problemPage;
         OffersPassphrase = services.SupportsPassphrase && services.Protection != LocalDataProtection.Passphrase && services.Mode is null or LocalDataMode.Saved;
+        OffersTor = services.OffersTor;
     }
 
     public override string Title => UiText.CreateIdentityTitle;
 
     public bool OffersPassphrase { get; }
+
+    public bool OffersTor { get; }
 
     public bool IsSkippingPassphrase => OffersPassphrase && string.IsNullOrEmpty(Passphrase);
 
@@ -91,6 +97,11 @@ public sealed partial class CreateIdentityViewModel : PageViewModel
                     ? UiText.CreateIdentityAlreadyCreated
                     : UiText.CreateIdentityInvalidName;
                 return;
+            }
+
+            if (OffersTor)
+            {
+                services.TorSettings.UseTor = UseTor;
             }
 
             await services.StartMessengerAsync(result.Identity, cancellationToken);

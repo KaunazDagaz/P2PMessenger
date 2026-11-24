@@ -5,6 +5,7 @@ using P2PMessenger.Application.Connections;
 using P2PMessenger.Application.Contacts;
 using P2PMessenger.Application.Delivery;
 using P2PMessenger.Application.Identity;
+using P2PMessenger.Application.Internet;
 using P2PMessenger.Core.Crypto;
 using P2PMessenger.Core.Messages;
 
@@ -22,6 +23,7 @@ public sealed class Messenger : IAsyncDisposable
         Contacts = contacts;
         Chats = chats;
         Connections = connections;
+        InternetRoute = InternetRoute.Off(connections);
         this.outbox = outbox;
         this.timeProvider = timeProvider;
     }
@@ -33,6 +35,8 @@ public sealed class Messenger : IAsyncDisposable
     public ChatLog Chats { get; }
 
     public ConnectionService Connections { get; }
+
+    public InternetRoute InternetRoute { get; private set; }
 
     public static async Task<Messenger> StartAsync(OwnIdentity identity, MessengerSetup setup, CancellationToken cancellationToken)
     {
@@ -60,6 +64,11 @@ public sealed class Messenger : IAsyncDisposable
             if (setup.Discovery is { } discovery)
             {
                 connections.StartDiscovery(discovery);
+            }
+
+            if (setup.Tor is { } tor)
+            {
+                messenger.InternetRoute = await InternetRoute.StartAsync(tor, identity.Keys, connections, setup.Loggers, setup.TimeProvider).ConfigureAwait(false);
             }
         }
         catch
@@ -130,6 +139,7 @@ public sealed class Messenger : IAsyncDisposable
             return;
         }
 
+        await InternetRoute.DisposeAsync().ConfigureAwait(false);
         await outbox.DisposeAsync().ConfigureAwait(false);
         await Connections.DisposeAsync().ConfigureAwait(false);
         Chats.Dispose();

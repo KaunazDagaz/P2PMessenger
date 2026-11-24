@@ -11,6 +11,7 @@
     <Compile Include="..\..\src\P2PMessenger.Android\Background\BackgroundState.cs" Link="Head\Background\BackgroundState.cs" />
     <Compile Include="..\..\src\P2PMessenger.Android\Background\HeartbeatReading.cs" Link="Head\Background\HeartbeatReading.cs" />
     <Compile Include="..\..\src\P2PMessenger.Android\Background\LockScreenNotice.cs" Link="Head\Background\LockScreenNotice.cs" />
+    <Compile Include="..\..\src\P2PMessenger.Android\Tor\AndroidTor.cs" Link="Head\Tor\AndroidTor.cs" />
   </ItemGroup>
 
   <ItemGroup>

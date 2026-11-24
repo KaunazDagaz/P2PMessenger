@@ -76,6 +76,8 @@ public sealed class KeySet : IDisposable
         return true;
     }
 
+    public bool TryExportOnionServiceKey(Span<byte> destination) => OnionServiceKey.TryExpandFrom(OnionKeyPair, destination);
+
     public bool TryExport(Span<byte> destination, out int written)
     {
         written = 0;

@@ -9,6 +9,7 @@
             <TextBlock Text="{x:Static res:UiText.NetworkIntro}" TextWrapping="Wrap" />
             <TextBlock x:Name="ListeningText" Text="{Binding ListeningText}" FontWeight="SemiBold" Margin="0,8,0,0" TextWrapping="Wrap" />
             <TextBlock x:Name="DiscoveryText" Text="{Binding DiscoveryText}" FontWeight="SemiBold" TextWrapping="Wrap" />
+            <TextBlock x:Name="TorText" Text="{Binding TorText}" FontWeight="SemiBold" TextWrapping="Wrap" />
             <TextBlock Text="{x:Static res:UiText.NetworkAddressesLabel}" FontWeight="SemiBold" Margin="0,8,0,0" />
             <SelectableTextBlock x:Name="AddressesText" Text="{Binding AddressesText}" FontFamily="monospace" />
             <TextBlock Text="{x:Static res:UiText.NetworkContactsLabel}" FontWeight="SemiBold" Margin="0,8,0,0" />

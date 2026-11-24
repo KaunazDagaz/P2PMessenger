@@ -12,6 +12,18 @@
     <PackageReference Include="Tmds.DBus.Protocol" />
   </ItemGroup>
 
+  <PropertyGroup Label="Tor">
+    <TorBundlePlatform Condition="'$(RuntimeIdentifier)' == 'win-x64'">windows-x86_64</TorBundlePlatform>
+    <TorBundlePlatform Condition="'$(RuntimeIdentifier)' == 'linux-x64'">linux-x86_64</TorBundlePlatform>
+    <TorBundlePlatform Condition="'$(TorBundlePlatform)' == '' and '$(RuntimeIdentifier)' == '' and $([MSBuild]::IsOSPlatform('Windows'))">windows-x86_64</TorBundlePlatform>
+    <TorBundlePlatform Condition="'$(TorBundlePlatform)' == '' and '$(RuntimeIdentifier)' == '' and $([MSBuild]::IsOSPlatform('Linux'))">linux-x86_64</TorBundlePlatform>
+    <TorBundleFolder>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', 'tools', 'tor', '$(TorBundlePlatform)', 'tor'))</TorBundleFolder>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(TorBundlePlatform)' != '' and Exists('$(TorBundleFolder)')">
+    <None Include="$(TorBundleFolder)**" LinkBase="tor" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\P2PMessenger.UI\P2PMessenger.UI.csproj" />
   </ItemGroup>
