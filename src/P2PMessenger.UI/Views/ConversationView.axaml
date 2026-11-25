@@ -37,6 +37,10 @@
                             Content="{x:Static res:UiText.CommonCancel}"
                             Command="{Binding CancelDeleteChatCommand}" />
                 </WrapPanel>
+                <ProgressBar x:Name="DeleteChatBusyBar"
+                             IsIndeterminate="True"
+                             IsVisible="{Binding IsDeletingChat}"
+                             AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
             </StackPanel>
         </Border>
         <Border x:Name="DeletedPanel"
@@ -83,6 +87,10 @@
             </StackPanel>
         </Border>
         <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="0,8,0,0">
+            <ProgressBar x:Name="BusyBar"
+                         IsIndeterminate="True"
+                         IsVisible="{Binding IsBusy}"
+                         AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
             <TextBlock x:Name="ErrorText"
                        Text="{Binding ErrorMessage}"
                        IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
@@ -171,6 +179,10 @@
                                                         Content="{x:Static res:UiText.CommonCancel}"
                                                         Command="{Binding CancelDeleteCommand}" />
                                             </WrapPanel>
+                                            <ProgressBar Name="DeleteMessageBusyBar"
+                                                         IsIndeterminate="True"
+                                                         IsVisible="{Binding IsDeleting}"
+                                                         AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
                                         </StackPanel>
                                     </StackPanel>
                                 </StackPanel>

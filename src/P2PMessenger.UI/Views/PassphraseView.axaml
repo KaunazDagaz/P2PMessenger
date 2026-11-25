@@ -41,6 +41,10 @@
                         Command="{Binding RemoveCommand}" />
             </StackPanel>
             <TextBlock x:Name="BusyText" Text="{x:Static res:UiText.PassphraseSaving}" IsVisible="{Binding IsBusy}" />
+            <ProgressBar x:Name="BusyBar"
+                         IsIndeterminate="True"
+                         IsVisible="{Binding IsBusy}"
+                         AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
             <TextBlock x:Name="StatusText"
                        Text="{Binding StatusMessage}"
                        IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"

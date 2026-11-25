@@ -319,6 +319,15 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Something went wrong, so the last action may not have finished. Try it again; if it keeps failing, restart the app..
+        /// </summary>
+        public static string AppUnexpectedError {
+            get {
+                return ResourceManager.GetString("AppUnexpectedError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Allow running in the background.
         /// </summary>
         public static string BackgroundBatteryAllow {
@@ -544,6 +553,15 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Working….
+        /// </summary>
+        public static string CommonWorking {
+            get {
+                return ResourceManager.GetString("CommonWorking", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to {0} is added. The app checked their key, not who they are..
         /// </summary>
         public static string ContactAddedNoticeFormat {
@@ -634,6 +652,15 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to No contact matches your search..
+        /// </summary>
+        public static string ContactListNoMatches {
+            get {
+                return ResourceManager.GetString("ContactListNoMatches", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to This device has no Wi-Fi and no internet. Nearby contacts can be reached if one person shares a hotspot from a phone and the others join it..
         /// </summary>
         public static string ContactListNoNetwork {
@@ -648,6 +675,24 @@ namespace P2PMessenger.UI.Resources {
         public static string ContactListPassphrase {
             get {
                 return ResourceManager.GetString("ContactListPassphrase", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Clear.
+        /// </summary>
+        public static string ContactListSearchClear {
+            get {
+                return ResourceManager.GetString("ContactListSearchClear", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Search contacts.
+        /// </summary>
+        public static string ContactListSearchLabel {
+            get {
+                return ResourceManager.GetString("ContactListSearchLabel", resourceCulture);
             }
         }
         

@@ -53,11 +53,34 @@
                        Text="{Binding InternetRouteText}"
                        TextWrapping="Wrap" />
         </DockPanel>
+        <ProgressBar x:Name="SwitchTorBusyBar"
+                     DockPanel.Dock="Top"
+                     Margin="0,0,0,12"
+                     IsIndeterminate="True"
+                     IsVisible="{Binding IsSwitchingTor}"
+                     AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
         <TextBlock x:Name="EmptyText"
                    DockPanel.Dock="Top"
                    Text="{x:Static res:UiText.ContactListEmpty}"
                    TextWrapping="Wrap"
                    IsVisible="{Binding IsEmpty}" />
+        <DockPanel x:Name="SearchPanel" DockPanel.Dock="Top" Margin="0,0,0,12" IsVisible="{Binding HasContacts}">
+            <Button x:Name="ClearSearchButton"
+                    DockPanel.Dock="Right"
+                    Margin="8,0,0,0"
+                    Content="{x:Static res:UiText.ContactListSearchClear}"
+                    Command="{Binding ClearSearchCommand}"
+                    IsVisible="{Binding HasSearchText}" />
+            <TextBox x:Name="SearchBox"
+                     Text="{Binding SearchText}"
+                     PlaceholderText="{x:Static res:UiText.ContactListSearchLabel}"
+                     AutomationProperties.Name="{x:Static res:UiText.ContactListSearchLabel}" />
+        </DockPanel>
+        <TextBlock x:Name="NoMatchesText"
+                   DockPanel.Dock="Top"
+                   Text="{x:Static res:UiText.ContactListNoMatches}"
+                   TextWrapping="Wrap"
+                   IsVisible="{Binding HasNoMatches}" />
         <ScrollViewer>
             <ItemsControl x:Name="ContactItems" ItemsSource="{Binding Contacts}">
                 <ItemsControl.ItemTemplate>

@@ -2,7 +2,6 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using P2PMessenger.Application;
 using P2PMessenger.Application.Background;
 using P2PMessenger.Application.Connections;
@@ -17,6 +16,7 @@ namespace P2PMessenger.UI;
 public partial class App : Avalonia.Application
 {
     private readonly AppPlatform platform;
+    private readonly ILoggerFactory loggers;
     private MainView? activityView;
 
     public App()
@@ -28,6 +28,7 @@ public partial class App : Avalonia.Application
     {
         ArgumentNullException.ThrowIfNull(platform);
         this.platform = platform;
+        loggers = CreateLoggers();
     }
 
     public override void Initialize()
@@ -42,6 +43,7 @@ public partial class App : Avalonia.Application
             case IActivityApplicationLifetime activityLifetime:
                 AppServices activityServices = CreateServices(() => activityView is null ? null : TopLevel.GetTopLevel(activityView));
                 MainViewModel activityShell = new(activityServices);
+                InstallErrorHandler(activityShell);
                 StartOnce startOnce = new(activityShell.StartAsync);
                 BackgroundCoordinator? background = activityServices.Background is null ? null : new(activityServices, startOnce.RunAsync);
 
@@ -74,6 +76,7 @@ public partial class App : Avalonia.Application
             case IClassicDesktopStyleApplicationLifetime desktopLifetime:
                 AppServices desktopServices = CreateServices(() => desktopLifetime.MainWindow);
                 MainViewModel desktopShell = new(desktopServices);
+                InstallErrorHandler(desktopShell);
                 MainWindow window = new() { DataContext = desktopShell };
                 window.Deactivated += (_, _) => desktopShell.EnterBackground();
                 window.Activated += (_, _) => desktopShell.EnterForeground();
@@ -103,15 +106,17 @@ public partial class App : Avalonia.Application
         }
     }
 
-    private static ILoggerFactory CreateLoggers() =>
-        BuildInfo.IsDebug ? new TraceLoggerFactory(LogLevel.Information) : NullLoggerFactory.Instance;
+    private static TraceLoggerFactory CreateLoggers() => new(BuildInfo.IsDebug ? LogLevel.Information : LogLevel.Error);
+
+    private void InstallErrorHandler(MainViewModel shell) =>
+        new GlobalErrorHandler(loggers.CreateLogger<GlobalErrorHandler>(), new AvaloniaUiThread(), shell.ShowUnexpectedError).Install();
 
     private AppServices CreateServices(Func<TopLevel?> topLevel)
     {
         TopLevelServices topLevelServices = new(topLevel);
         AppServices services = new(
             platform.CreateLocalData(),
-            MessengerSetup.InMemory() with { Loggers = CreateLoggers(), Discovery = DiscoverySetup.LocalNetwork(platform.LocalInterfaces), Tor = platform.Tor },
+            MessengerSetup.InMemory() with { Loggers = loggers, Discovery = DiscoverySetup.LocalNetwork(platform.LocalInterfaces), Tor = platform.Tor },
             new AvaloniaUiThread(),
             topLevelServices,
             topLevelServices,

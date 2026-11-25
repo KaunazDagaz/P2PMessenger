@@ -172,6 +172,105 @@ public sealed class ContactListViewTests
         harness.Messenger.Identity.Dispose();
     }
 
+    [AvaloniaFact]
+    [Trait("Story", "US-11")]
+    public async Task ContactList_NoContacts_HasNoSearchBox()
+    {
+        await using var harness = await UiHarness.StartAsync("Alice");
+        var page = Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage);
+        var view = new ContactListView { DataContext = page };
+
+        harness.Show(view);
+
+        Assert.False(UiHarness.Find<DockPanel>(view, "SearchPanel").IsVisible);
+        Assert.False(UiHarness.Find<TextBlock>(view, "NoMatchesText").IsVisible);
+        harness.Messenger.Identity.Dispose();
+    }
+
+    [AvaloniaFact]
+    [Trait("Story", "US-11")]
+    public async Task ContactList_TypingInTheSearchBox_ShowsOnlyTheNamesThatContainItIgnoringCase()
+    {
+        await using var harness = await UiHarness.StartAsync("Alice");
+        var page = Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage);
+        var view = new ContactListView { DataContext = page };
+        harness.Show(view);
+        using var bob = KeySet.Create();
+        using var bobby = KeySet.Create();
+        using var carol = KeySet.Create();
+        await harness.AddContactAsync(bob, "Bob");
+        await harness.AddContactAsync(bobby, "Bobby");
+        await harness.AddContactAsync(carol, "Carol");
+        Assert.True(UiHarness.Find<DockPanel>(view, "SearchPanel").IsVisible);
+        Assert.Equal(["Bob", "Bobby", "Carol"], page.Contacts.Select(static contact => contact.Name));
+
+        UiHarness.Find<TextBox>(view, "SearchBox").Text = "BO";
+        UiHarness.Flush();
+
+        Assert.Equal("BO", page.SearchText);
+        Assert.Equal(["Bob", "Bobby"], page.Contacts.Select(static contact => contact.Name));
+        Assert.DoesNotContain("Carol", UiHarness.Texts(view));
+        Assert.True(UiHarness.Find<Button>(view, "ClearSearchButton").IsVisible);
+        Assert.False(UiHarness.Find<TextBlock>(view, "NoMatchesText").IsVisible);
+
+        UiHarness.Find<TextBox>(view, "SearchBox").Text = " arol ";
+        UiHarness.Flush();
+
+        Assert.Equal(["Carol"], page.Contacts.Select(static contact => contact.Name));
+        harness.Messenger.Identity.Dispose();
+    }
+
+    [AvaloniaFact]
+    [Trait("Story", "US-11")]
+    public async Task ContactList_SearchWithNoMatch_SaysSoAndClearBringsEveryoneBack()
+    {
+        await using var harness = await UiHarness.StartAsync("Alice");
+        var page = Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage);
+        var view = new ContactListView { DataContext = page };
+        harness.Show(view);
+        using var bob = KeySet.Create();
+        await harness.AddContactAsync(bob, "Bob");
+
+        page.SearchText = "zzz";
+        UiHarness.Flush();
+
+        Assert.Empty(page.Contacts);
+        Assert.True(UiHarness.Find<TextBlock>(view, "NoMatchesText").IsVisible);
+        Assert.Equal(UiText.ContactListNoMatches, UiHarness.Find<TextBlock>(view, "NoMatchesText").Text);
+        Assert.False(UiHarness.Find<TextBlock>(view, "EmptyText").IsVisible);
+        Assert.True(UiHarness.Find<DockPanel>(view, "SearchPanel").IsVisible);
+
+        page.ClearSearchCommand.Execute(null);
+        UiHarness.Flush();
+
+        Assert.Equal(string.Empty, UiHarness.Find<TextBox>(view, "SearchBox").Text);
+        Assert.Equal(["Bob"], page.Contacts.Select(static contact => contact.Name));
+        Assert.False(UiHarness.Find<TextBlock>(view, "NoMatchesText").IsVisible);
+        Assert.False(UiHarness.Find<Button>(view, "ClearSearchButton").IsVisible);
+        harness.Messenger.Identity.Dispose();
+    }
+
+    [AvaloniaFact]
+    [Trait("Story", "US-11")]
+    public async Task ContactList_ContactAddedWhileSearching_IsShownOnlyIfItMatches()
+    {
+        await using var harness = await UiHarness.StartAsync("Alice");
+        var page = Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage);
+        var view = new ContactListView { DataContext = page };
+        harness.Show(view);
+        using var bob = KeySet.Create();
+        using var carol = KeySet.Create();
+        using var bobby = KeySet.Create();
+        await harness.AddContactAsync(bob, "Bob");
+        page.SearchText = "bo";
+
+        await harness.AddContactAsync(carol, "Carol");
+        await harness.AddContactAsync(bobby, "Bobby");
+
+        Assert.Equal(["Bob", "Bobby"], page.Contacts.Select(static contact => contact.Name));
+        harness.Messenger.Identity.Dispose();
+    }
+
     private static TextMessage Text(long sequence, string text)
     {
         Assert.True(TextMessage.TryCreate(MessageId.Create(), sequence, DateTimeOffset.UnixEpoch.AddDays(20000), text, out var message));

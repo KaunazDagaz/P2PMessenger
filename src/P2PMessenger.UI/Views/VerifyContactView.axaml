@@ -17,6 +17,10 @@
                 <Button x:Name="NoMatchButton" Margin="0,0,8,8" Content="{x:Static res:UiText.VerifyNoMatch}" Command="{Binding NoMatchCommand}" />
             </WrapPanel>
             <Button x:Name="UncheckButton" Content="{x:Static res:UiText.VerifyUncheck}" Command="{Binding UncheckCommand}" IsVisible="{Binding IsChecked}" />
+            <ProgressBar x:Name="BusyBar"
+                         IsIndeterminate="True"
+                         IsVisible="{Binding IsBusy}"
+                         AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
             <TextBlock x:Name="MismatchText"
                        Text="{Binding MismatchText}"
                        IsVisible="{Binding MismatchText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"

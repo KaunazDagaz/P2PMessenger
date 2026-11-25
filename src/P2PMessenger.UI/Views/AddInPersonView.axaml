@@ -21,6 +21,10 @@
                     Margin="0,8,0,0"
                     Content="{x:Static res:UiText.InPersonScan}"
                     Command="{Binding ScanCommand}" />
+            <ProgressBar x:Name="BusyBar"
+                         IsIndeterminate="True"
+                         IsVisible="{Binding IsBusy}"
+                         AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
             <TextBlock x:Name="ErrorText"
                        Text="{Binding ErrorMessage}"
                        IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"

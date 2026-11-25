@@ -13,6 +13,10 @@
                     Command="{Binding TryAgainCommand}"
                     IsDefault="True" />
             <TextBlock x:Name="BusyText" Text="{x:Static res:UiText.StorageOpening}" IsVisible="{Binding IsBusy}" />
+            <ProgressBar x:Name="BusyBar"
+                         IsIndeterminate="True"
+                         IsVisible="{Binding IsBusy}"
+                         AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
             <Panel IsVisible="{Binding OffersDeleteAll}">
                 <v:DeleteAllDataPanel x:Name="DeleteAllPanel" DataContext="{Binding DeleteAll}" />
             </Panel>
