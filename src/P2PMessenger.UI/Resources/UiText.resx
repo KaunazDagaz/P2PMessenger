@@ -117,6 +117,9 @@
   <data name="ContactReachableNearby" xml:space="preserve">
     <value>Reachable nearby</value>
   </data>
+  <data name="ContactReachableOverTor" xml:space="preserve">
+    <value>Reachable over Tor</value>
+  </data>
   <data name="ContactNotReachable" xml:space="preserve">
     <value>Not reachable now</value>
   </data>
@@ -244,7 +247,7 @@
     <value>Your contacts changed meanwhile. Check the code again.</value>
   </data>
   <data name="ConversationWaitingFormat" xml:space="preserve">
-    <value>Waiting for the first connection with {0}. They become a contact when their app proves that it holds the key in their code. They must add your code too, and both devices must be on the same network.</value>
+    <value>Waiting for the first connection with {0}. They become a contact when their app proves that it holds the key in their code. They must add your code too, and both devices must be on the same network or both connected to Tor.</value>
   </data>
   <data name="ConversationKeyNotComparedFormat" xml:space="preserve">
     <value>You have not compared keys with {0}. Their code came as text, a file or an image, which can be swapped on the way.</value>
@@ -359,6 +362,33 @@
   </data>
   <data name="NetworkNotHeard" xml:space="preserve">
     <value>Not heard</value>
+  </data>
+  <data name="NetworkTorNotUsed" xml:space="preserve">
+    <value>Over Tor: not tried, because the internet route is not available.</value>
+  </data>
+  <data name="NetworkTorConnected" xml:space="preserve">
+    <value>Over Tor: connected.</value>
+  </data>
+  <data name="NetworkTorIdle" xml:space="preserve">
+    <value>Over Tor: no attempt yet.</value>
+  </data>
+  <data name="NetworkTorConnecting" xml:space="preserve">
+    <value>Over Tor: connecting.</value>
+  </data>
+  <data name="NetworkTorNotFound" xml:space="preserve">
+    <value>Over Tor: their onion service was not found. Their app may not be connected to Tor.</value>
+  </data>
+  <data name="NetworkTorNoAnswer" xml:space="preserve">
+    <value>Over Tor: their onion service did not answer.</value>
+  </data>
+  <data name="NetworkTorTimedOut" xml:space="preserve">
+    <value>Over Tor: the last attempt timed out.</value>
+  </data>
+  <data name="NetworkTorRefused" xml:space="preserve">
+    <value>Over Tor: their app did not accept the connection.</value>
+  </data>
+  <data name="NetworkTorFailed" xml:space="preserve">
+    <value>Over Tor: the last attempt failed.</value>
   </data>
   <data name="DialConnecting" xml:space="preserve">
     <value>Connecting…</value>
@@ -622,10 +652,10 @@
     <value>Scan their code</value>
   </data>
   <data name="InPersonAddedFormat" xml:space="preserve">
-    <value>{0} is added, with the key checked by you. Now let {0} scan your code. Your apps connect when both of you have scanned and you are on the same network.</value>
+    <value>{0} is added, with the key checked by you. Now let {0} scan your code. Your apps connect when both of you have scanned and you are on the same network or both connected to Tor.</value>
   </data>
   <data name="InPersonKeysAcceptedFormat" xml:space="preserve">
-    <value>The new connection keys of {0} are accepted, with the key checked by you. Now let {0} scan your code. Your apps connect when both of you have scanned and you are on the same network.</value>
+    <value>The new connection keys of {0} are accepted, with the key checked by you. Now let {0} scan your code. Your apps connect when both of you have scanned and you are on the same network or both connected to Tor.</value>
   </data>
   <data name="InPersonAlreadyCheckedFormat" xml:space="preserve">
     <value>{0} is already a contact, and the key you scanned matches the one you have. It is now marked as checked by you.</value>
@@ -679,7 +709,7 @@
     <value>To keep receiving messages while the phone is idle, allow P2PMessenger to run in the background and to show notifications. You can change this later on the Background page.</value>
   </data>
   <data name="BackgroundIntro" xml:space="preserve">
-    <value>P2PMessenger keeps running while the screen is off, with a notification that stays while it runs, so that messages from contacts nearby reach this phone.</value>
+    <value>P2PMessenger keeps running while the screen is off, with a notification that stays while it runs, so that messages from your contacts reach this phone.</value>
   </data>
   <data name="BackgroundBatteryExempt" xml:space="preserve">
     <value>Battery optimisation is off for P2PMessenger, so Android lets it run while the phone is idle.</value>
@@ -739,7 +769,7 @@
     <value>P2PMessenger is running</value>
   </data>
   <data name="NotificationServiceText" xml:space="preserve">
-    <value>Receiving messages from contacts nearby.</value>
+    <value>Receiving messages from your contacts.</value>
   </data>
   <data name="NotificationQuit" xml:space="preserve">
     <value>Quit</value>

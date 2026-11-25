@@ -4,4 +4,5 @@ public enum Reachability
 {
     NotReachable = 0,
     Nearby = 1,
+    Tor = 2,
 }

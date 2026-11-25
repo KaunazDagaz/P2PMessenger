@@ -75,6 +75,26 @@ public sealed class ContactListViewTests
 
     [AvaloniaFact]
     [Trait("Story", "US-07")]
+    [Trait("Story", "US-09")]
+    public async Task ContactList_ContactConnectedOverTor_ShowsReachableOverTor()
+    {
+        await using var harness = await UiHarness.StartAsync("Alice");
+        await using var tor = new FakeTorRoute();
+        var page = Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage);
+        var view = new ContactListView { DataContext = page };
+        harness.Show(view);
+
+        var bob = await harness.ConnectPeerOverTorAsync("Bob", tor);
+        await UiHarness.WaitUntilAsync(() => UiHarness.Texts(view).Contains(UiText.ContactReachableOverTor));
+
+        Assert.DoesNotContain(UiText.ContactReachableNearby, UiHarness.Texts(view));
+        await UiHarness.StopPeerAsync(bob);
+        await UiHarness.WaitUntilAsync(() => UiHarness.Texts(view).Contains(UiText.ContactNotReachable));
+        harness.Messenger.Identity.Dispose();
+    }
+
+    [AvaloniaFact]
+    [Trait("Story", "US-07")]
     public async Task ContactList_NoWiFiAndNoInternet_SaysThatOnePersonCanShareAHotspot()
     {
         await using var harness = await UiHarness.StartAsync("Alice", NetworkSnapshot.None);

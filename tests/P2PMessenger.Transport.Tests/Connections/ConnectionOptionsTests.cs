@@ -17,6 +17,25 @@ public sealed class ConnectionOptionsTests
         Assert.True(options.HintTimeout < options.HandshakeTimeout);
     }
 
+    [Fact]
+    [Trait("Story", "US-09")]
+    public void Defaults_TorRoute_HasItsOwnLongerTimes()
+    {
+        var options = new ConnectionOptions();
+
+        Assert.Equal(TimeSpan.FromSeconds(30), options.TorDialTimeout);
+        Assert.Equal(TimeSpan.FromSeconds(10), options.TorHintTimeout);
+        Assert.Equal(TimeSpan.FromSeconds(20), options.TorHandshakeTimeout);
+        Assert.Equal(TimeSpan.FromSeconds(5), options.TorRetryDelayMin);
+        Assert.Equal(TimeSpan.FromSeconds(60), options.TorRetryDelayMax);
+        Assert.Equal(options.DialTimeout, options.DialTimeoutFor(ConnectionRoute.Nearby));
+        Assert.Equal(options.HintTimeout, options.HintTimeoutFor(ConnectionRoute.Nearby));
+        Assert.Equal(options.HandshakeTimeout, options.HandshakeTimeoutFor(ConnectionRoute.Nearby));
+        Assert.Equal(options.TorDialTimeout, options.DialTimeoutFor(ConnectionRoute.Tor));
+        Assert.Equal(options.TorHintTimeout, options.HintTimeoutFor(ConnectionRoute.Tor));
+        Assert.Equal(options.TorHandshakeTimeout, options.HandshakeTimeoutFor(ConnectionRoute.Tor));
+    }
+
     [Theory]
     [InlineData("dial")]
     [InlineData("hint")]
@@ -25,6 +44,11 @@ public sealed class ConnectionOptionsTests
     [InlineData("idle")]
     [InlineData("window")]
     [InlineData("reconnect")]
+    [InlineData("torDial")]
+    [InlineData("torHint")]
+    [InlineData("torHandshake")]
+    [InlineData("torRetry")]
+    [InlineData("torRetryMax")]
     [InlineData("pending")]
     [InlineData("burst")]
     [InlineData("rate")]
@@ -58,6 +82,11 @@ public sealed class ConnectionOptionsTests
         "idle" => new ConnectionOptions { KeepAliveInterval = TimeSpan.FromSeconds(30), IdleTimeout = TimeSpan.FromSeconds(30) },
         "window" => new ConnectionOptions { SimultaneousOpenWindow = TimeSpan.Zero },
         "reconnect" => new ConnectionOptions { ReconnectDelayMin = TimeSpan.FromSeconds(5), ReconnectDelayMax = TimeSpan.FromSeconds(1) },
+        "torDial" => new ConnectionOptions { TorDialTimeout = TimeSpan.Zero },
+        "torHint" => new ConnectionOptions { TorHintTimeout = TimeSpan.FromSeconds(-1) },
+        "torHandshake" => new ConnectionOptions { TorHandshakeTimeout = TimeSpan.FromDays(2) },
+        "torRetry" => new ConnectionOptions { TorRetryDelayMin = TimeSpan.Zero },
+        "torRetryMax" => new ConnectionOptions { TorRetryDelayMin = TimeSpan.FromSeconds(10), TorRetryDelayMax = TimeSpan.FromSeconds(5) },
         "pending" => new ConnectionOptions { Admission = new AdmissionLimits { MaxPendingConnections = 0 } },
         "burst" => new ConnectionOptions { Admission = new AdmissionLimits { HandshakeBurstPerSource = -1 } },
         "rate" => new ConnectionOptions { Admission = new AdmissionLimits { HandshakesPerSecond = double.NaN } },

@@ -200,6 +200,9 @@ internal sealed class TorControlClient : IAsyncDisposable
         throw new TorControlException("ADD_ONION returned no valid ServiceID.");
     }
 
+    public Task SetNetworkDisabledAsync(bool disabled, CancellationToken cancellationToken) =>
+        SendCheckedAsync(disabled ? "SETCONF DisableNetwork=1" : "SETCONF DisableNetwork=0", cancellationToken);
+
     public Task ShutdownAsync(CancellationToken cancellationToken) =>
         SendCheckedAsync("SIGNAL SHUTDOWN", cancellationToken);
 

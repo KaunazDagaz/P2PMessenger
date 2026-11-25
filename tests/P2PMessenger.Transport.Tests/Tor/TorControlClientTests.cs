@@ -130,6 +130,21 @@ public sealed class TorControlClientTests : IDisposable
     }
 
     [Fact]
+    public async Task SetNetworkDisabled_SendsTheSetting()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var tor = Start();
+        await using var client = await ConnectAsync(tor);
+
+        await client.SetNetworkDisabledAsync(true, cancellationToken);
+        Assert.True(tor.NetworkDisabled);
+        await client.SetNetworkDisabledAsync(false, cancellationToken);
+
+        Assert.False(tor.NetworkDisabled);
+        Assert.Equal(["SETCONF DisableNetwork=1", "SETCONF DisableNetwork=0"], tor.Commands);
+    }
+
+    [Fact]
     public async Task RefusedCommand_ThrowsAndTheNextCommandStillWorks()
     {
         var cancellationToken = TestContext.Current.CancellationToken;

@@ -22,7 +22,23 @@ public sealed record ConnectionOptions
 
     public TimeSpan ReconnectDelayMax { get; init; } = TimeSpan.FromSeconds(10);
 
+    public TimeSpan TorDialTimeout { get; init; } = TimeSpan.FromSeconds(30);
+
+    public TimeSpan TorHintTimeout { get; init; } = TimeSpan.FromSeconds(10);
+
+    public TimeSpan TorHandshakeTimeout { get; init; } = TimeSpan.FromSeconds(20);
+
+    public TimeSpan TorRetryDelayMin { get; init; } = TimeSpan.FromSeconds(5);
+
+    public TimeSpan TorRetryDelayMax { get; init; } = TimeSpan.FromSeconds(60);
+
     public AdmissionLimits Admission { get; init; } = new();
+
+    internal TimeSpan DialTimeoutFor(ConnectionRoute route) => route == ConnectionRoute.Tor ? TorDialTimeout : DialTimeout;
+
+    internal TimeSpan HintTimeoutFor(ConnectionRoute route) => route == ConnectionRoute.Tor ? TorHintTimeout : HintTimeout;
+
+    internal TimeSpan HandshakeTimeoutFor(ConnectionRoute route) => route == ConnectionRoute.Tor ? TorHandshakeTimeout : HandshakeTimeout;
 
     internal string? FindProblem()
     {
@@ -37,6 +53,11 @@ public sealed record ConnectionOptions
             SimultaneousOpenWindow,
             ReconnectDelayMin,
             ReconnectDelayMax,
+            TorDialTimeout,
+            TorHintTimeout,
+            TorHandshakeTimeout,
+            TorRetryDelayMin,
+            TorRetryDelayMax,
         ];
 
         if (Array.Exists(times, static time => time <= TimeSpan.Zero || time > LongestTime))
@@ -52,6 +73,11 @@ public sealed record ConnectionOptions
         if (ReconnectDelayMax < ReconnectDelayMin)
         {
             return "The longest reconnect delay must not be shorter than the shortest one.";
+        }
+
+        if (TorRetryDelayMax < TorRetryDelayMin)
+        {
+            return "The longest delay between Tor attempts must not be shorter than the shortest one.";
         }
 
         return Admission is null ? "The admission limits are missing." : Admission.FindProblem();

@@ -4,6 +4,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using P2PMessenger.Application;
 using P2PMessenger.Application.Background;
+using P2PMessenger.Application.Connections;
 using P2PMessenger.Application.Contacts;
 using P2PMessenger.Application.Identity;
 using P2PMessenger.Application.Internet;
@@ -171,6 +172,27 @@ internal sealed class UiHarness : IAsyncDisposable
             Messenger.Contacts.TryGet(peer.Identity.Keys.IdentityKey, out Contact? contact)
             && contact.IsAdded
             && Messenger.Connections.IsConnected(peer.Identity.Keys.IdentityKey));
+        return peer;
+    }
+
+    public async Task<Messenger> ConnectPeerOverTorAsync(string name, FakeTorRoute tor)
+    {
+        Assert.True(DisplayName.TryCreate(name, out DisplayName? displayName));
+        MessengerSetup setup = MessengerSetup.InMemory() with
+        {
+            ListenAddress = IPAddress.Loopback,
+            ListenPort = 0,
+            Connection = Fast,
+        };
+        Messenger peer = await Messenger.StartAsync(new OwnIdentity(KeySet.Create(), displayName), setup, CancellationToken.None);
+        tor.Join(Messenger);
+        tor.Join(peer);
+        Assert.True((await peer.Contacts.AddAsync(peer.Contacts.Check(Messenger.Identity.CodeText), CancellationToken.None)).IsSaved);
+        Assert.True((await Messenger.Contacts.AddAsync(Messenger.Contacts.Check(peer.Identity.CodeText), CancellationToken.None)).IsSaved);
+        await WaitUntilAsync(() =>
+            Messenger.Contacts.TryGet(peer.Identity.Keys.IdentityKey, out Contact? contact)
+            && contact.IsAdded
+            && Messenger.Connections.ReachabilityOf(peer.Identity.Keys.IdentityKey) == Reachability.Tor);
         return peer;
     }
 

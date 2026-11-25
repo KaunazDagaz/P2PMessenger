@@ -131,7 +131,7 @@ public sealed class TcpConnectionListener : IAsyncDisposable
             return;
         }
 
-        await manager.AcceptAsync(stream, source, cancellationToken).ConfigureAwait(false);
+        await manager.AcceptAsync(stream, source, ConnectionRoute.Nearby, cancellationToken).ConfigureAwait(false);
     }
 
     private void Track(Task handler)

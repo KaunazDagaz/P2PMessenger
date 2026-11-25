@@ -1,6 +1,9 @@
 using P2PMessenger.Core.Identity;
 using P2PMessenger.Core.Messages;
 using P2PMessenger.Core.Sessions;
+using P2PMessenger.Tests.Shared;
+using P2PMessenger.Transport.Connections;
+using P2PMessenger.Transport.Tor;
 using static P2PMessenger.Integration.Tests.Connections.TestContacts;
 
 namespace P2PMessenger.Integration.Tests.Connections;
@@ -42,6 +45,46 @@ public sealed class LoggingTests
         var entries = log.Entries;
         var forbidden = Forbidden(secret, alice.Keys, bob.Keys, stranger);
         foreach (var entry in entries)
+        {
+            Assert.Null(entry.Exception);
+            foreach (var text in entry.Values.Append(entry.Message))
+            {
+                foreach (var value in forbidden)
+                {
+                    Assert.DoesNotContain(value, text, StringComparison.OrdinalIgnoreCase);
+                }
+            }
+        }
+    }
+
+    [Fact(Timeout = 30_000)]
+    [Trait("Story", "US-09")]
+    public async Task Logs_OfConnectionsThroughTor_NameTheRouteAndTheReplyButNoOnionAddress()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var log = new LogCapture();
+        await using var alice = TestPeer.Start(log: log);
+        await using var bob = TestPeer.Start(log: log);
+        await using var carol = TestPeer.Start(log: log);
+        var bobForAlice = alice.Know(bob);
+        var carolForAlice = alice.Know(carol);
+        bob.Know(alice);
+        await using var onion = OnionListener.Start(bob.Manager, null, new CapturingLogger<OnionListener>(log));
+        await using var proxy = new FakeSocksProxy();
+        proxy.Route(bob.Keys.OnionAddress, onion.Target);
+
+        var tor = await alice.Manager.ConnectAsync(bobForAlice, new OnionDialer(proxy.Endpoint, bob.Keys.OnionAddress, new CapturingLogger<OnionDialer>(log)), cancellationToken);
+        var missing = await alice.Manager.ConnectAsync(carolForAlice, new OnionDialer(proxy.Endpoint, carol.Keys.OnionAddress, new CapturingLogger<OnionDialer>(log)), cancellationToken);
+
+        Assert.True(tor.IsConnected);
+        Assert.False(missing.IsConnected);
+        Assert.Contains(log.Entries, static entry => entry.EventId.Name == "OnionDialFailed" && entry.Message.Contains(nameof(SocksFailure.OnionDescriptorNotFound), StringComparison.Ordinal));
+        Assert.True(await Raw.EventuallyAsync(() => log.Entries.Count(static entry => entry.EventId.Name == "Established" && entry.Message.Contains(nameof(ConnectionRoute.Tor), StringComparison.Ordinal)) == 2, TimeSpan.FromSeconds(5), cancellationToken));
+        var forbidden = Forbidden("no secret here", alice.Keys, bob.Keys, carol.Keys);
+        forbidden.Add(bob.Keys.OnionAddress.Label);
+        forbidden.Add(carol.Keys.OnionAddress.Label);
+        forbidden.Add(".onion");
+        foreach (var entry in log.Entries)
         {
             Assert.Null(entry.Exception);
             foreach (var text in entry.Values.Append(entry.Message))

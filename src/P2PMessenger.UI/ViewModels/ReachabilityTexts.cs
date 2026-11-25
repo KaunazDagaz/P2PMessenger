@@ -15,6 +15,13 @@ internal static class ReachabilityTexts
             return UiText.ContactWaiting;
         }
 
-        return reachability == Reachability.Nearby ? UiText.ContactReachableNearby : UiText.ContactNotReachable;
+        return Route(reachability) ?? UiText.ContactNotReachable;
     }
+
+    public static string? Route(Reachability reachability) => reachability switch
+    {
+        Reachability.Nearby => UiText.ContactReachableNearby,
+        Reachability.Tor => UiText.ContactReachableOverTor,
+        _ => null,
+    };
 }

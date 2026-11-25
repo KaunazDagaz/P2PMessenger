@@ -18,6 +18,9 @@ public sealed partial class NetworkContactViewModel : ViewModelBase
     [ObservableProperty]
     private string heardText = string.Empty;
 
+    [ObservableProperty]
+    private string torText = string.Empty;
+
     public NetworkContactViewModel(Messenger messenger, Contact contact)
     {
         ArgumentNullException.ThrowIfNull(messenger);
@@ -36,9 +39,10 @@ public sealed partial class NetworkContactViewModel : ViewModelBase
     {
         ConnectionService connections = messenger.Connections;
         Reachability reachability = connections.ReachabilityOf(contact.IdentityKey);
-        StatusText = reachability == Reachability.Nearby
-            ? UiText.ContactReachableNearby
-            : DialTexts.Failure(connections.DialStatusOf(contact.IdentityKey)) ?? ReachabilityTexts.Status(contact, reachability);
+        StatusText = ReachabilityTexts.Route(reachability)
+            ?? DialTexts.Failure(connections.DialStatusOf(contact.IdentityKey))
+            ?? ReachabilityTexts.Status(contact, reachability);
+        TorText = TorDialTexts.Attempt(connections.UsesTor, reachability, connections.TorStatusOf(contact.IdentityKey));
         HeardText = connections.TryGetHeardEndpoint(contact.IdentityKey, out IPEndPoint? endpoint)
             ? Formats.With(Formats.Heard, endpoint)
             : UiText.NetworkNotHeard;

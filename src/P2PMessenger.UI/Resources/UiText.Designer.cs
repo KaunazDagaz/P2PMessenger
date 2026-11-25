@@ -373,7 +373,7 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to P2PMessenger keeps running while the screen is off, with a notification that stays while it runs, so that messages from contacts nearby reach this phone..
+        ///   Looks up a localized string similar to P2PMessenger keeps running while the screen is off, with a notification that stays while it runs, so that messages from your contacts reach this phone..
         /// </summary>
         public static string BackgroundIntro {
             get {
@@ -778,6 +778,15 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Reachable over Tor.
+        /// </summary>
+        public static string ContactReachableOverTor {
+            get {
+                return ResourceManager.GetString("ContactReachableOverTor", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to {0} new.
         /// </summary>
         public static string ContactUnreadFormat {
@@ -958,7 +967,7 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Waiting for the first connection with {0}. They become a contact when their app proves that it holds the key in their code. They must add your code too, and both devices must be on the same network..
+        ///   Looks up a localized string similar to Waiting for the first connection with {0}. They become a contact when their app proves that it holds the key in their code. They must add your code too, and both devices must be on the same network or both connected to Tor..
         /// </summary>
         public static string ConversationWaitingFormat {
             get {
@@ -1282,7 +1291,7 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to {0} is added, with the key checked by you. Now let {0} scan your code. Your apps connect when both of you have scanned and you are on the same network..
+        ///   Looks up a localized string similar to {0} is added, with the key checked by you. Now let {0} scan your code. Your apps connect when both of you have scanned and you are on the same network or both connected to Tor..
         /// </summary>
         public static string InPersonAddedFormat {
             get {
@@ -1336,7 +1345,7 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The new connection keys of {0} are accepted, with the key checked by you. Now let {0} scan your code. Your apps connect when both of you have scanned and you are on the same network..
+        ///   Looks up a localized string similar to The new connection keys of {0} are accepted, with the key checked by you. Now let {0} scan your code. Your apps connect when both of you have scanned and you are on the same network or both connected to Tor..
         /// </summary>
         public static string InPersonKeysAcceptedFormat {
             get {
@@ -1543,11 +1552,92 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Over Tor: connected..
+        /// </summary>
+        public static string NetworkTorConnected {
+            get {
+                return ResourceManager.GetString("NetworkTorConnected", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Over Tor: connecting..
+        /// </summary>
+        public static string NetworkTorConnecting {
+            get {
+                return ResourceManager.GetString("NetworkTorConnecting", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Over Tor: the last attempt failed..
+        /// </summary>
+        public static string NetworkTorFailed {
+            get {
+                return ResourceManager.GetString("NetworkTorFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Tor: {0}, {1} %, problem: {2}, onion service published: {3}, onion target: {4}..
         /// </summary>
         public static string NetworkTorFormat {
             get {
                 return ResourceManager.GetString("NetworkTorFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Over Tor: no attempt yet..
+        /// </summary>
+        public static string NetworkTorIdle {
+            get {
+                return ResourceManager.GetString("NetworkTorIdle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Over Tor: their onion service did not answer..
+        /// </summary>
+        public static string NetworkTorNoAnswer {
+            get {
+                return ResourceManager.GetString("NetworkTorNoAnswer", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Over Tor: their onion service was not found. Their app may not be connected to Tor..
+        /// </summary>
+        public static string NetworkTorNotFound {
+            get {
+                return ResourceManager.GetString("NetworkTorNotFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Over Tor: not tried, because the internet route is not available..
+        /// </summary>
+        public static string NetworkTorNotUsed {
+            get {
+                return ResourceManager.GetString("NetworkTorNotUsed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Over Tor: their app did not accept the connection..
+        /// </summary>
+        public static string NetworkTorRefused {
+            get {
+                return ResourceManager.GetString("NetworkTorRefused", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Over Tor: the last attempt timed out..
+        /// </summary>
+        public static string NetworkTorTimedOut {
+            get {
+                return ResourceManager.GetString("NetworkTorTimedOut", resourceCulture);
             }
         }
         
@@ -1597,7 +1687,7 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Receiving messages from contacts nearby..
+        ///   Looks up a localized string similar to Receiving messages from your contacts..
         /// </summary>
         public static string NotificationServiceText {
             get {
