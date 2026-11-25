@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using P2PMessenger.Application.Chats;
 using P2PMessenger.Application.Contacts;
 using P2PMessenger.Application.Identity;
+using P2PMessenger.Core;
 using P2PMessenger.Core.Crypto;
 using P2PMessenger.Core.Messages;
 using P2PMessenger.Core.Sessions;
@@ -29,6 +30,7 @@ public sealed class ConnectionService : IAsyncDisposable
     private readonly ConnectionOptions options;
     private readonly TimeProvider timeProvider;
     private readonly ILoggerFactory loggers;
+    private readonly IFailureSink? failures;
     private readonly KnownContacts known = new();
     private readonly ConnectionManager manager;
     private readonly Lock gate = new();
@@ -48,7 +50,8 @@ public sealed class ConnectionService : IAsyncDisposable
         ChatLog chats,
         ConnectionOptions options,
         TimeProvider timeProvider,
-        ILoggerFactory loggers)
+        ILoggerFactory loggers,
+        IFailureSink? failures = null)
     {
         this.own = own;
         this.contacts = contacts;
@@ -56,7 +59,8 @@ public sealed class ConnectionService : IAsyncDisposable
         this.options = options;
         this.timeProvider = timeProvider;
         this.loggers = loggers;
-        manager = new ConnectionManager(own.Keys, known, new Observer(this), options, timeProvider, loggers.CreateLogger<ConnectionManager>());
+        this.failures = failures;
+        manager = new ConnectionManager(own.Keys, known, new Observer(this), options, timeProvider, loggers.CreateLogger<ConnectionManager>(), failures);
         tor = new TorConnections(manager, options, timeProvider, loggers.CreateLogger<OnionDialer>(), contactKey => RaiseChanged(contactKey));
 
         contacts.Changed += OnContactChanged;
@@ -285,7 +289,8 @@ public sealed class ConnectionService : IAsyncDisposable
                 new DiscoveryObserver(this),
                 setup.Options,
                 timeProvider,
-                loggers.CreateLogger<LocalNetworkDiscovery>());
+                loggers.CreateLogger<LocalNetworkDiscovery>(),
+                failures);
         }
         catch
         {

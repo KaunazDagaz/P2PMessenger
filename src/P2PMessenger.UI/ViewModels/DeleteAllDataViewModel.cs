@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using P2PMessenger.Core;
 using P2PMessenger.UI.Resources;
 
 namespace P2PMessenger.UI.ViewModels;
@@ -72,8 +73,9 @@ public sealed partial class DeleteAllDataViewModel : ViewModelBase
         {
             await deleteAll(cancellationToken);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
+        catch (Exception exception) when (Failures.IsFailure(exception))
         {
+            ReportFailure(exception);
             ErrorMessage = UiText.DeleteAllDataFailed;
         }
         finally

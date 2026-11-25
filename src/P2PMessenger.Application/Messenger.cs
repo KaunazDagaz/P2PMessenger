@@ -54,9 +54,9 @@ public sealed class Messenger : IAsyncDisposable
 
         ContactBook contactBook = new(identity, setup.ContactStore, contacts);
         ChatLog chatLog = new(setup.ChatStore, setup.SeenMessageIds, setup.TimeProvider, messages, sentSequences);
-        ConnectionService connections = new(identity, contactBook, chatLog, setup.Connection, setup.TimeProvider, setup.Loggers);
+        ConnectionService connections = new(identity, contactBook, chatLog, setup.Connection, setup.TimeProvider, setup.Loggers, setup.Failures);
         IWakeUpScheduler scheduler = setup.WakeUps ?? new TimerWakeUpScheduler(setup.TimeProvider);
-        Outbox outbox = new(chatLog, connections, scheduler, setup.Delivery, setup.TimeProvider, setup.Loggers.CreateLogger<Outbox>());
+        Outbox outbox = new(chatLog, connections, scheduler, setup.Delivery, setup.TimeProvider, setup.Loggers.CreateLogger<Outbox>(), setup.Failures);
         Messenger messenger = new(identity, contactBook, chatLog, connections, outbox, setup.TimeProvider);
         try
         {

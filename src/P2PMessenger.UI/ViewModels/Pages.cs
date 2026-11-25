@@ -28,32 +28,40 @@ public sealed class Pages
 
     private Messenger Messenger => services.Messenger ?? throw new InvalidOperationException("The messenger has not started yet.");
 
-    public StorageProblemViewModel StorageProblem(LocalDataProblem problem) => new(problem, restart, new DeleteAllDataViewModel(deleteAll, UiText.DeleteAllDataIntroProblem));
+    public StorageProblemViewModel StorageProblem(LocalDataProblem problem) =>
+        Own(new StorageProblemViewModel(problem, restart, Own(new DeleteAllDataViewModel(deleteAll, UiText.DeleteAllDataIntroProblem))));
 
     public UnlockViewModel Unlock(bool atStart, Func<string, CancellationToken, Task<bool>> unlock) =>
-        new(atStart, unlock, new DeleteAllDataViewModel(deleteAll, UiText.DeleteAllDataIntroUnlock));
+        Own(new UnlockViewModel(atStart, unlock, Own(new DeleteAllDataViewModel(deleteAll, UiText.DeleteAllDataIntroUnlock))));
 
-    public DeleteAllDataPageViewModel DeleteAllData() => new(new DeleteAllDataViewModel(deleteAll, null, true, navigation.GoBack));
+    public DeleteAllDataPageViewModel DeleteAllData() => Own(new DeleteAllDataPageViewModel(Own(new DeleteAllDataViewModel(deleteAll, null, true, navigation.GoBack))));
 
-    public CreateIdentityViewModel CreateIdentity() => new(services, navigation, this, StorageProblem);
+    public CreateIdentityViewModel CreateIdentity() => Own(new CreateIdentityViewModel(services, navigation, this, StorageProblem));
 
-    public PassphraseViewModel Passphrase() => new(services);
+    public PassphraseViewModel Passphrase() => Own(new PassphraseViewModel(services));
 
     public ContactListViewModel ContactList() =>
-        new(Messenger, services.UiThread, navigation, this, services.SupportsPassphrase && services.Mode == LocalDataMode.Saved, services.Background is not null, services.SetTorAsync);
+        Own(new ContactListViewModel(Messenger, services.UiThread, navigation, this, services.SupportsPassphrase && services.Mode == LocalDataMode.Saved, services.Background is not null, services.SetTorAsync));
 
     public BackgroundViewModel Background(bool firstRun) =>
-        new(services.Background ?? throw new InvalidOperationException("This platform has no background service."), services.QuitAsync, navigation, firstRun);
+        Own(new BackgroundViewModel(services.Background ?? throw new InvalidOperationException("This platform has no background service."), services.QuitAsync, navigation, firstRun));
 
-    public ProfileViewModel Profile() => new(Messenger, services.Clipboard, services.CodeFiles);
+    public ProfileViewModel Profile() => Own(new ProfileViewModel(Messenger, services.Clipboard, services.CodeFiles));
 
-    public AddContactViewModel AddContact() => new(Messenger, services.CodeFiles, navigation, this);
+    public AddContactViewModel AddContact() => Own(new AddContactViewModel(Messenger, services.CodeFiles, navigation, this));
 
-    public AddInPersonViewModel AddInPerson() => new(Messenger, services.QrScanner, services.UiThread, navigation, this);
+    public AddInPersonViewModel AddInPerson() => Own(new AddInPersonViewModel(Messenger, services.QrScanner, services.UiThread, navigation, this));
 
-    public ConversationViewModel Conversation(Contact contact) => new(Messenger, contact.IdentityKey, services.UiThread, navigation, this);
+    public ConversationViewModel Conversation(Contact contact) => Own(new ConversationViewModel(Messenger, contact.IdentityKey, services.UiThread, navigation, this));
 
-    public VerifyContactViewModel VerifyContact(Contact contact) => new(Messenger, contact.IdentityKey, services.UiThread);
+    public VerifyContactViewModel VerifyContact(Contact contact) => Own(new VerifyContactViewModel(Messenger, contact.IdentityKey, services.UiThread));
 
-    public NetworkViewModel Network() => new(Messenger, services.UiThread);
+    public NetworkViewModel Network() => Own(new NetworkViewModel(Messenger, services.UiThread));
+
+    private T Own<T>(T viewModel)
+        where T : ViewModelBase
+    {
+        viewModel.FailureLog = services.FailureLog;
+        return viewModel;
+    }
 }

@@ -2,6 +2,8 @@ using System.Net;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using P2PMessenger.Application;
 using P2PMessenger.Application.Background;
 using P2PMessenger.Application.Connections;
@@ -60,7 +62,10 @@ internal sealed class UiHarness : IAsyncDisposable
     public static UiHarness Create(ILocalData localData, NetworkSnapshot? network, BackgroundPorts? background) =>
         Create(localData, network, background, null, null);
 
-    public static UiHarness Create(ILocalData localData, NetworkSnapshot? network, BackgroundPorts? background, TorSetup? tor, ISettingsStore? settings)
+    public static UiHarness Create(ILocalData localData, NetworkSnapshot? network, BackgroundPorts? background, TorSetup? tor, ISettingsStore? settings) =>
+        Create(localData, network, background, tor, settings, null);
+
+    public static UiHarness Create(ILocalData localData, NetworkSnapshot? network, BackgroundPorts? background, TorSetup? tor, ISettingsStore? settings, ILoggerFactory? loggers)
     {
         FakePlatform platform = new();
         LoopbackDiscovery hub = new();
@@ -77,6 +82,7 @@ internal sealed class UiHarness : IAsyncDisposable
             Connection = Fast,
             Discovery = node.Setup,
             Tor = tor,
+            Loggers = loggers ?? NullLoggerFactory.Instance,
         };
         AppServices services = new(localData, setup, new AvaloniaUiThread(), platform, platform, platform)
         {
@@ -88,9 +94,11 @@ internal sealed class UiHarness : IAsyncDisposable
 
     public static Task<UiHarness> StartAsync(string name) => StartAsync(name, null);
 
-    public static async Task<UiHarness> StartAsync(string name, NetworkSnapshot? network)
+    public static Task<UiHarness> StartAsync(string name, NetworkSnapshot? network) => StartAsync(name, network, null);
+
+    public static async Task<UiHarness> StartAsync(string name, NetworkSnapshot? network, ILoggerFactory? loggers)
     {
-        UiHarness harness = Create(new InMemoryLocalData(), network);
+        UiHarness harness = Create(new InMemoryLocalData(), network, null, null, null, loggers);
         Assert.True((await harness.Services.OpenLocalDataAsync(CancellationToken.None)).IsOpen);
         CreateIdentityResult created = await harness.Services.Identities.CreateAsync(name, CancellationToken.None);
         Assert.True(created.IsCreated);

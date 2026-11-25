@@ -1,5 +1,6 @@
 using P2PMessenger.Application.Background;
 using P2PMessenger.Application.LocalData;
+using P2PMessenger.Core;
 
 namespace P2PMessenger.UI.Services;
 
@@ -110,7 +111,7 @@ public sealed class BackgroundCoordinator : IDisposable
         {
             await startApp(CancellationToken.None).ConfigureAwait(false);
         }
-        catch (Exception exception) when (exception is not OutOfMemoryException)
+        catch (Exception exception) when (Failures.IsRecoverable(exception))
         {
             ports.Service.StopRunning();
             return;

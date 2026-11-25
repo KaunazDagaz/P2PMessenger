@@ -1,3 +1,4 @@
+using P2PMessenger.Core;
 using P2PMessenger.UI.Qr;
 
 namespace P2PMessenger.Desktop.Camera;
@@ -45,7 +46,7 @@ public sealed class CameraScanSession : IAsyncDisposable
             {
                 device = await cameras.OpenAsync(entry, chosen, OnFrame, cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
+            catch (Exception exception) when (Failures.IsFailure(exception))
             {
                 device = null;
                 continue;
@@ -109,7 +110,7 @@ public sealed class CameraScanSession : IAsyncDisposable
             {
                 return decodeJpeg(image);
             }
-            catch (Exception exception) when (exception is not OutOfMemoryException)
+            catch (Exception exception) when (Failures.IsRecoverable(exception))
             {
                 return null;
             }
@@ -130,7 +131,7 @@ public sealed class CameraScanSession : IAsyncDisposable
         {
             await running.DisposeAsync().ConfigureAwait(false);
         }
-        catch (Exception exception) when (exception is not OutOfMemoryException)
+        catch (Exception exception) when (Failures.IsRecoverable(exception))
         {
             _ = exception;
         }

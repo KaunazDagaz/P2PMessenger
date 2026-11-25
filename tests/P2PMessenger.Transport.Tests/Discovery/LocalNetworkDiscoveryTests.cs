@@ -1,7 +1,9 @@
 using System.Net;
 using System.Net.Sockets;
 using Microsoft.Extensions.Logging.Abstractions;
+using P2PMessenger.Core;
 using P2PMessenger.Core.Discovery;
+using P2PMessenger.Tests.Shared;
 using P2PMessenger.Transport.Discovery;
 
 namespace P2PMessenger.Transport.Tests.Discovery;
@@ -381,6 +383,36 @@ public sealed class LocalNetworkDiscoveryTests
 
         Assert.Equal(Wifi, Assert.Single(discovery.Network!.Interfaces));
         Assert.Contains(logger.Entries, static entry => entry.Id.Name == "DiscoveryUnexpected" && entry.Message.Contains(nameof(InvalidOperationException), StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task RefreshInterfaces_SourceFailsWithASink_ReportsToTheSinkInsteadOfLoggingLocally()
+    {
+        using var peers = new DiscoveryPeers(1);
+        var logger = new ListLogger<LocalNetworkDiscovery>();
+        var sink = new RecordingFailureSink();
+        var source = new FakeInterfaces
+        {
+            Snapshot = NetworkSnapshot.Create([Wifi], hasOtherNetwork: false),
+            Failure = new InvalidOperationException("The platform list failed."),
+        };
+        var discovery = new LocalNetworkDiscovery(
+            new FakeContacts { Current = peers.ContactsOfOwn },
+            source,
+            new FakeLink(),
+            new RecordingDiscoveryObserver(),
+            new DiscoveryOptions(),
+            new ManualTimeProvider(),
+            logger,
+            sink);
+        await using var disposing = discovery;
+
+        Assert.False(discovery.RefreshInterfaces());
+
+        var report = Assert.Single(sink.Reports);
+        Assert.Equal(FailureSource.Discovery, report.Source);
+        Assert.IsType<InvalidOperationException>(report.Exception);
+        Assert.DoesNotContain(logger.Entries, static entry => entry.Id.Name == "DiscoveryUnexpected");
     }
 
     [Fact(Timeout = 30_000)]

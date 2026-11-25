@@ -6,6 +6,7 @@ using P2PMessenger.Application.Connections;
 using P2PMessenger.Application.Contacts;
 using P2PMessenger.Application.Delivery;
 using P2PMessenger.Application.Internet;
+using P2PMessenger.Core;
 using P2PMessenger.Core.Messages;
 using P2PMessenger.Transport.Connections;
 
@@ -37,6 +38,7 @@ public sealed record MessengerSetup
 
     public ILoggerFactory Loggers { get; init; } = NullLoggerFactory.Instance;
 
+    public IFailureSink? Failures { get; init; }
     public static MessengerSetup InMemory()
     {
         InMemorySeenMessageIds seen = new();

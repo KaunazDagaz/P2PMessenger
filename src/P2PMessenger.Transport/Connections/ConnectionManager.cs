@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
+using P2PMessenger.Core;
 using P2PMessenger.Core.Crypto;
 using P2PMessenger.Core.Identity;
 using P2PMessenger.Core.Messages;
@@ -33,7 +34,8 @@ public sealed class ConnectionManager : IAsyncDisposable
         IConnectionObserver observer,
         ConnectionOptions options,
         TimeProvider timeProvider,
-        ILogger<ConnectionManager> logger)
+        ILogger<ConnectionManager> logger,
+        IFailureSink? failures = null)
     {
         ArgumentNullException.ThrowIfNull(own);
         ArgumentNullException.ThrowIfNull(contacts);
@@ -54,6 +56,7 @@ public sealed class ConnectionManager : IAsyncDisposable
         Options = options;
         TimeProvider = timeProvider;
         Logger = logger;
+        FailureSink = failures;
         admission = new AdmissionControl(options.Admission, timeProvider);
         shutdownToken = shutdown.Token;
     }
@@ -65,6 +68,8 @@ public sealed class ConnectionManager : IAsyncDisposable
     internal TimeProvider TimeProvider { get; }
 
     internal ILogger Logger { get; }
+
+    internal IFailureSink? FailureSink { get; }
 
     internal CancellationToken ShutdownToken => shutdownToken;
 
@@ -206,7 +211,7 @@ public sealed class ConnectionManager : IAsyncDisposable
         {
             outcome = await RespondWithinTimeoutAsync(stream, route, cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception exception) when (exception is not OutOfMemoryException)
+        catch (Exception exception) when (Failures.IsRecoverable(exception))
         {
             ReportUnexpected(number, exception);
             outcome = ResponderOutcome.Refused(HandshakeRefusal.Closed);
@@ -293,7 +298,7 @@ public sealed class ConnectionManager : IAsyncDisposable
         {
             result = await DialOnceAsync(number, contact, dialer).ConfigureAwait(false);
         }
-        catch (Exception exception) when (exception is not OutOfMemoryException)
+        catch (Exception exception) when (Failures.IsRecoverable(exception))
         {
             ReportUnexpected(number, exception);
             result = ConnectResult.Failed(ConnectFailure.Refused);
@@ -526,7 +531,13 @@ public sealed class ConnectionManager : IAsyncDisposable
 
     private void ReportUnexpected(long number, Exception exception)
     {
-        string exceptionType = exception.GetType().Name;
+        if (FailureSink is not null)
+        {
+            FailureSink.Report(FailureSource.Connections, exception);
+            return;
+        }
+
+        string exceptionType = Failures.TypeName(exception);
         Logger.Unexpected(number, exceptionType);
     }
 

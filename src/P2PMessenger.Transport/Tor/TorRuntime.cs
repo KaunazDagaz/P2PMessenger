@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
+using P2PMessenger.Core;
 using P2PMessenger.Core.Identity;
 using P2PMessenger.Transport.Logging;
 
@@ -465,7 +466,7 @@ public sealed class TorRuntime : IAsyncDisposable
         }
         catch (Exception exception) when (exception is TorControlException or IOException or SocketException or ObjectDisposedException)
         {
-            string exceptionType = exception.GetType().Name;
+            string exceptionType = Failures.TypeName(exception);
             logger.TorNetworkChangeFailed(exceptionType);
             return null;
         }

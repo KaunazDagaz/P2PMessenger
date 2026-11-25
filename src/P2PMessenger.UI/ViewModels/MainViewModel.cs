@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using P2PMessenger.Application.Contacts;
 using P2PMessenger.Application.Identity;
 using P2PMessenger.Application.LocalData;
+using P2PMessenger.Core;
 using P2PMessenger.UI.Resources;
 using P2PMessenger.UI.Services;
 
@@ -50,6 +51,7 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
     {
         ArgumentNullException.ThrowIfNull(services);
         this.services = services;
+        FailureLog = services.FailureLog;
         Pages = new Pages(services, this, StartAsync, DeleteAllDataAsync);
         services.MessengerStarted += OnMessengerStarted;
         services.StoresOpened += OnStoresOpened;
@@ -81,8 +83,9 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
         {
             await ShowAsync(await services.OpenLocalDataAsync(cancellationToken), cancellationToken);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
+        catch (Exception exception) when (Failures.IsFailure(exception))
         {
+            ReportFailure(exception);
             ErrorMessage = UiText.AppStartFailed;
         }
         finally

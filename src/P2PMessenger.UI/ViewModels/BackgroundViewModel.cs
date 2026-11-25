@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using P2PMessenger.Core;
 using P2PMessenger.UI.Resources;
 using P2PMessenger.UI.Services;
 
@@ -93,8 +94,9 @@ public sealed partial class BackgroundViewModel : PageViewModel
             IsExempt = exempt || ports.Battery.IsExempt;
             BatteryRefused = !IsExempt;
         }
-        catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
+        catch (Exception exception) when (Failures.IsFailure(exception))
         {
+            ReportFailure(exception);
             IsExempt = ports.Battery.IsExempt;
             BatteryRefused = !IsExempt;
         }
@@ -128,8 +130,9 @@ public sealed partial class BackgroundViewModel : PageViewModel
             bool allowed = await ports.Notifier.RequestPermissionAsync(cancellationToken);
             NotificationsAllowed = allowed || ports.Notifier.IsAllowed;
         }
-        catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
+        catch (Exception exception) when (Failures.IsFailure(exception))
         {
+            ReportFailure(exception);
             NotificationsAllowed = ports.Notifier.IsAllowed;
         }
         finally
@@ -161,8 +164,9 @@ public sealed partial class BackgroundViewModel : PageViewModel
         {
             await quit();
         }
-        catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
+        catch (Exception exception) when (Failures.IsFailure(exception))
         {
+            ReportFailure(exception);
             IsQuitting = false;
             ErrorMessage = UiText.BackgroundQuitFailed;
         }

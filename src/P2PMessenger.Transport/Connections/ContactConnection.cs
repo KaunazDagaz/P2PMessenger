@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Sockets;
 using System.Threading.Channels;
+using P2PMessenger.Core;
 using P2PMessenger.Core.Messages;
 using P2PMessenger.Core.Sessions;
 using P2PMessenger.Transport.Logging;
@@ -123,7 +124,7 @@ public sealed class ContactConnection : IDisposable
         {
             Close(ConnectionCloseReason.ShutDown);
         }
-        catch (Exception exception) when (exception is not OutOfMemoryException)
+        catch (Exception exception) when (Failures.IsRecoverable(exception))
         {
             ReportObserverFailure(exception);
             Close(ConnectionCloseReason.ObserverFailed);
@@ -143,7 +144,7 @@ public sealed class ContactConnection : IDisposable
             {
                 await observer.DisconnectedAsync(this, shutdown).ConfigureAwait(false);
             }
-            catch (Exception exception) when (exception is not OutOfMemoryException)
+            catch (Exception exception) when (Failures.IsRecoverable(exception))
             {
                 ReportObserverFailure(exception);
             }
@@ -302,8 +303,14 @@ public sealed class ContactConnection : IDisposable
 
     private void ReportObserverFailure(Exception exception)
     {
+        if (manager.FailureSink is { } sink)
+        {
+            sink.Report(FailureSource.Connections, exception);
+            return;
+        }
+
         long number = Number;
-        string exceptionType = exception.GetType().Name;
+        string exceptionType = Failures.TypeName(exception);
         manager.Logger.ObserverFailed(number, exceptionType);
     }
 

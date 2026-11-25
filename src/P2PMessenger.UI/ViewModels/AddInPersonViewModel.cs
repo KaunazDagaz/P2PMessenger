@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using P2PMessenger.Application;
 using P2PMessenger.Application.Contacts;
+using P2PMessenger.Core;
 using P2PMessenger.Core.Crypto;
 using P2PMessenger.UI.Qr;
 using P2PMessenger.UI.Resources;
@@ -128,8 +129,9 @@ public sealed partial class AddInPersonViewModel : PageViewModel
                     break;
             }
         }
-        catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
+        catch (Exception exception) when (Failures.IsFailure(exception))
         {
+            ReportFailure(exception);
             Offer(UiText.InPersonCameraFailed);
         }
         finally

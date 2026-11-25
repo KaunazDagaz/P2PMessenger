@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using P2PMessenger.Application.Identity;
 using P2PMessenger.Application.LocalData;
+using P2PMessenger.Core;
 using P2PMessenger.Core.Identity;
 using P2PMessenger.UI.Resources;
 using P2PMessenger.UI.Services;
@@ -107,8 +108,9 @@ public sealed partial class CreateIdentityViewModel : PageViewModel
             await services.StartMessengerAsync(result.Identity, cancellationToken);
             navigation.ResetTo(pages.ContactList());
         }
-        catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
+        catch (Exception exception) when (Failures.IsFailure(exception))
         {
+            ReportFailure(exception);
             ErrorMessage = UiText.CreateIdentityFailed;
         }
         finally

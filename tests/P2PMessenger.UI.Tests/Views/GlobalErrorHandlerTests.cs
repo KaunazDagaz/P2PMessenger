@@ -3,6 +3,8 @@ using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using P2PMessenger.Application.Errors;
+using P2PMessenger.Core;
 using P2PMessenger.UI.Resources;
 using P2PMessenger.UI.Services;
 using P2PMessenger.UI.ViewModels;
@@ -22,7 +24,7 @@ public sealed class GlobalErrorHandlerTests
         var handler = new GlobalErrorHandler(log, new AvaloniaUiThread(), harness.Shell.ShowUnexpectedError);
         Assert.False(UiHarness.Find<Border>(view, "ErrorNoticePanel").IsVisible);
 
-        Assert.True(handler.Handle(new InvalidOperationException("Bob P2PM1-SECRET"), ErrorOrigin.UiThread));
+        Assert.True(handler.Handle(new InvalidOperationException("Bob P2PM1-SECRET"), FailureSource.UiThread));
         UiHarness.Flush();
 
         Assert.True(UiHarness.Find<Border>(view, "ErrorNoticePanel").IsVisible);
@@ -30,7 +32,7 @@ public sealed class GlobalErrorHandlerTests
         var entry = Assert.Single(log.Entries);
         Assert.Equal(LogLevel.Error, entry.Level);
         Assert.Contains("System.InvalidOperationException", entry.Message, StringComparison.Ordinal);
-        Assert.Contains(nameof(ErrorOrigin.UiThread), entry.Message, StringComparison.Ordinal);
+        Assert.Contains(nameof(FailureSource.UiThread), entry.Message, StringComparison.Ordinal);
         Assert.DoesNotContain("SECRET", entry.Message, StringComparison.Ordinal);
         Assert.Null(entry.Exception);
 
@@ -48,7 +50,7 @@ public sealed class GlobalErrorHandlerTests
         var log = new CapturingLogger();
         var handler = new GlobalErrorHandler(log, new AvaloniaUiThread(), harness.Shell.ShowUnexpectedError);
 
-        Assert.True(handler.Handle(new AggregateException(new TimeoutException("Bob")), ErrorOrigin.BackgroundTask));
+        Assert.True(handler.Handle(new AggregateException(new TimeoutException("Bob")), FailureSource.BackgroundTask));
         UiHarness.Flush();
 
         var entry = Assert.Single(log.Entries);
@@ -65,7 +67,7 @@ public sealed class GlobalErrorHandlerTests
         var log = new CapturingLogger();
         var handler = new GlobalErrorHandler(log, new AvaloniaUiThread(), harness.Shell.ShowUnexpectedError);
 
-        Assert.True(handler.Handle(new InvalidOperationException(), ErrorOrigin.AppDomain));
+        Assert.True(handler.Handle(new InvalidOperationException(), FailureSource.AppDomain));
         UiHarness.Flush();
 
         Assert.Single(log.Entries);
@@ -81,7 +83,7 @@ public sealed class GlobalErrorHandlerTests
         var log = new CapturingLogger();
         var handler = new GlobalErrorHandler(log, new AvaloniaUiThread(), harness.Shell.ShowUnexpectedError);
 
-        Assert.False(handler.Handle(new OutOfMemoryException(), ErrorOrigin.UiThread));
+        Assert.False(handler.Handle(new OutOfMemoryException(), FailureSource.UiThread));
         UiHarness.Flush();
 
         Assert.Empty(log.Entries);
@@ -96,10 +98,10 @@ public sealed class GlobalErrorHandlerTests
         var log = new CapturingLogger();
         var handler = new GlobalErrorHandler(log, new AvaloniaUiThread(), harness.Shell.ShowUnexpectedError);
         var exception = new InvalidOperationException("Bob");
-        Assert.True(handler.Handle(exception, ErrorOrigin.UiThread));
+        Assert.True(handler.Handle(exception, FailureSource.UiThread));
         harness.Shell.DismissErrorNoticeCommand.Execute(null);
 
-        Assert.True(handler.Handle(new AggregateException(exception), ErrorOrigin.BackgroundTask));
+        Assert.True(handler.Handle(new AggregateException(exception), FailureSource.BackgroundTask));
         UiHarness.Flush();
 
         Assert.Single(log.Entries);
@@ -141,10 +143,65 @@ public sealed class GlobalErrorHandlerTests
 
         var entry = Assert.Single(log.Entries);
         Assert.Contains("System.InvalidOperationException", entry.Message, StringComparison.Ordinal);
-        Assert.Contains(nameof(ErrorOrigin.UiThread), entry.Message, StringComparison.Ordinal);
+        Assert.Contains(nameof(FailureSource.UiThread), entry.Message, StringComparison.Ordinal);
         Assert.DoesNotContain("SECRET", entry.Message, StringComparison.Ordinal);
         Assert.Null(harness.Shell.ErrorNotice);
         Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage);
+        harness.Messenger.Identity.Dispose();
+    }
+
+    [AvaloniaTheory]
+    [InlineData(FailureSource.Connections)]
+    [InlineData(FailureSource.Discovery)]
+    [InlineData(FailureSource.Delivery)]
+    [InlineData(FailureSource.AppDomain)]
+    public async Task Handle_FailureReportedByAComponentOrTheEndOfTheApp_IsLoggedWithoutANotice(FailureSource source)
+    {
+        await using var harness = await UiHarness.StartAsync("Alice");
+        var log = new CapturingLogger();
+        var failures = new GlobalFailureHandler(log);
+        var handler = new GlobalErrorHandler(failures, new AvaloniaUiThread(), harness.Shell.ShowUnexpectedError);
+
+        ((IFailureSink)failures).Report(source, new InvalidOperationException("Bob P2PM1-SECRET"));
+        UiHarness.Flush();
+
+        Assert.Null(harness.Shell.ErrorNotice);
+        var entry = Assert.Single(log.Entries);
+        Assert.Contains(source.ToString(), entry.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("SECRET", entry.Message, StringComparison.Ordinal);
+        Assert.NotNull(handler);
+        harness.Messenger.Identity.Dispose();
+    }
+
+    [AvaloniaFact]
+    public async Task Handle_FailureReportedToTheBackEndHandler_ShowsTheNoticeThroughTheAdapterForABackgroundTask()
+    {
+        await using var harness = await UiHarness.StartAsync("Alice");
+        var failures = new GlobalFailureHandler(new CapturingLogger());
+        var handler = new GlobalErrorHandler(failures, new AvaloniaUiThread(), harness.Shell.ShowUnexpectedError);
+        Assert.Null(harness.Shell.ErrorNotice);
+
+        ((IFailureSink)failures).Report(FailureSource.BackgroundTask, new InvalidOperationException("Bob"));
+        UiHarness.Flush();
+
+        Assert.NotNull(harness.Shell.ErrorNotice);
+        Assert.Equal(1, failures.Count);
+        Assert.NotNull(handler);
+        harness.Messenger.Identity.Dispose();
+    }
+
+    [AvaloniaFact]
+    public async Task Install_InstallsTheBackEndHandlerToo_SoTheAdapterAndTheBackEndShareOneCount()
+    {
+        await using var harness = await UiHarness.StartAsync("Alice");
+        var failures = new GlobalFailureHandler(new CapturingLogger());
+        var handler = new GlobalErrorHandler(failures, new AvaloniaUiThread(), harness.Shell.ShowUnexpectedError);
+
+        Assert.True(handler.Handle(new InvalidOperationException("Bob"), FailureSource.UiThread));
+        ((IFailureSink)failures).Report(FailureSource.Delivery, new IOException());
+        UiHarness.Flush();
+
+        Assert.Equal(2, failures.Count);
         harness.Messenger.Identity.Dispose();
     }
 
