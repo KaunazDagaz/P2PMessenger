@@ -58,6 +58,32 @@ public sealed class NetworkViewTests
     }
 
     [AvaloniaFact]
+    [Trait("Story", "US-07")]
+    [Trait("Story", "US-09")]
+    public async Task Network_ContactConnectedOverTor_SaysSoAndBeforeTorSaysThatTorIsNotTried()
+    {
+        await using var harness = await UiHarness.StartAsync("Alice");
+        await using var tor = new FakeTorRoute();
+        using var carol = KeySet.Create();
+        await harness.AddContactAsync(carol, "Carol");
+        var page = harness.Shell.Pages.Network();
+        harness.Shell.Push(page);
+        harness.Show(new NetworkView { DataContext = page });
+        Assert.Equal(UiText.NetworkTorNotUsed, Assert.Single(page.Contacts).TorText);
+
+        var bob = await harness.ConnectPeerOverTorAsync("Bob", tor);
+        await UiHarness.WaitUntilAsync(() => page.Contacts.Count == 2);
+        var bobItem = page.Contacts.Single(static contact => contact.Name == "Bob");
+        var carolItem = page.Contacts.Single(static contact => contact.Name == "Carol");
+        await UiHarness.WaitUntilAsync(() => bobItem.StatusText == UiText.ContactReachableOverTor && bobItem.TorText == UiText.NetworkTorConnected);
+        await UiHarness.WaitUntilAsync(() => carolItem.TorText == UiText.NetworkTorNotFound);
+
+        Assert.Equal(UiText.ContactWaiting, carolItem.StatusText);
+        await UiHarness.StopPeerAsync(bob);
+        harness.Messenger.Identity.Dispose();
+    }
+
+    [AvaloniaFact]
     public async Task Network_PortTaken_SaysThatTheDeviceIsNotListening()
     {
         await using var harness = await UiHarness.StartAsync("Alice");

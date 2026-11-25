@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.Extensions.Logging;
 using P2PMessenger.Application.Connections;
 using P2PMessenger.Core.Identity;
@@ -16,6 +17,7 @@ public sealed class InternetRoute : IAsyncDisposable
     private readonly Lock gate = new();
     private OnionListener? listener;
     private TorRuntime? runtime;
+    private NetworkWatch? watch;
     private bool enabled;
     private InternetRouteStatus status;
     private int disposed;
@@ -159,26 +161,37 @@ public sealed class InternetRoute : IAsyncDisposable
         }
 
         launched.StatusChanged += OnTorChanged;
+        NetworkWatch watching = new(started.NetworkSettleDelay, timeProvider, launched.NetworkChanged);
         lock (gate)
         {
             listener = opened;
             runtime = launched;
+            watch = watching;
             enabled = true;
         }
+
+        watching.Observe(connections.Network);
     }
 
     private async Task StopTorAsync()
     {
         TorRuntime? stopping;
         OnionListener? closing;
+        NetworkWatch? watching;
         lock (gate)
         {
             stopping = runtime;
             closing = listener;
+            watching = watch;
             runtime = null;
             listener = null;
+            watch = null;
             enabled = false;
         }
+
+        watching?.Dispose();
+
+        connections.UseTorProxy(null);
 
         if (stopping is not null)
         {
@@ -209,16 +222,33 @@ public sealed class InternetRoute : IAsyncDisposable
 
     private void OnTorChanged(object? sender, EventArgs e) => Refresh();
 
-    private void OnConnectionsChanged(object? sender, ConnectionChangedEventArgs e) => Refresh();
+    private void OnConnectionsChanged(object? sender, ConnectionChangedEventArgs e)
+    {
+        NetworkWatch? watching;
+        lock (gate)
+        {
+            watching = watch;
+        }
+
+        watching?.Observe(connections.Network);
+        Refresh();
+    }
 
     private void Refresh()
     {
         bool changed;
+        IPEndPoint? proxy;
         lock (gate)
         {
             InternetRouteStatus next = Compute();
             changed = next != status;
             status = next;
+            proxy = next.IsAvailable ? runtime?.SocksEndpoint : null;
+        }
+
+        if (setup is not null && Volatile.Read(ref disposed) == 0)
+        {
+            connections.UseTorProxy(proxy);
         }
 
         if (changed)

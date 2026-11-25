@@ -192,6 +192,100 @@ public sealed class TorRuntimeTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task NetworkChanged_ANetwork_TorDropsAndRebuildsItsConnectionsAndTheNewSocksPortIsRead()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        starter.Configure = tor => tor.ServiceId = keys.OnionAddress.Label;
+        await using var runtime = Start();
+        var changes = 0;
+        runtime.StatusChanged += (_, _) => Interlocked.Increment(ref changes);
+        var tor = await AddedAsync(cancellationToken);
+        Assert.Equal(new IPEndPoint(IPAddress.Loopback, 39050), runtime.SocksEndpoint);
+
+        runtime.NetworkChanged(hasAnyNetwork: true);
+
+        Assert.True(await Eventually.TrueAsync(() => Equals(runtime.SocksEndpoint, new IPEndPoint(IPAddress.Loopback, 39051)), cancellationToken));
+        Assert.Equal(["SETCONF DisableNetwork=1", "SETCONF DisableNetwork=0", "GETINFO net/listeners/socks"], AfterOnion(tor));
+        Assert.False(tor.NetworkDisabled);
+        Assert.True(changes >= 1);
+        Assert.Equal(1, starter.StartCount);
+        Assert.Equal(1, runtime.ControlledCount);
+    }
+
+    [Fact]
+    public async Task NetworkChanged_NoNetwork_PausesTorUntilANetworkReturns()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        starter.Configure = tor => tor.ServiceId = keys.OnionAddress.Label;
+        await using var runtime = Start();
+        var tor = await AddedAsync(cancellationToken);
+
+        runtime.NetworkChanged(hasAnyNetwork: false);
+
+        Assert.True(await Eventually.TrueAsync(() => runtime.SocksEndpoint is null && tor.NetworkDisabled, cancellationToken));
+        Assert.Equal(["SETCONF DisableNetwork=1"], AfterOnion(tor));
+
+        runtime.NetworkChanged(hasAnyNetwork: false);
+        runtime.NetworkChanged(hasAnyNetwork: true);
+
+        Assert.True(await Eventually.TrueAsync(() => runtime.SocksEndpoint is not null, cancellationToken));
+        Assert.Equal(["SETCONF DisableNetwork=1", "SETCONF DisableNetwork=0", "GETINFO net/listeners/socks"], AfterOnion(tor));
+        Assert.Equal(new IPEndPoint(IPAddress.Loopback, 39051), runtime.SocksEndpoint);
+    }
+
+    [Fact]
+    public async Task NetworkChanged_NoNetworkWhenTorStartsAgain_TheNewTorStartsPaused()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        starter.Configure = tor => tor.ServiceId = keys.OnionAddress.Label;
+        await using var runtime = Start(static options => options with { RestartDelay = TimeSpan.FromMilliseconds(300) });
+        var first = await AddedAsync(cancellationToken);
+        runtime.NetworkChanged(hasAnyNetwork: false);
+        Assert.True(await Eventually.TrueAsync(() => first.NetworkDisabled, cancellationToken));
+
+        first.Exit();
+        var second = await starter.NextStartAsync(cancellationToken);
+
+        Assert.True(await Eventually.TrueAsync(() => second.NetworkDisabled, cancellationToken));
+        Assert.Equal(["SETCONF DisableNetwork=1"], AfterOnion(second));
+        Assert.True(await Eventually.TrueAsync(() => runtime.SocksEndpoint is null && runtime.ControlledCount == 2, cancellationToken));
+    }
+
+    [Fact]
+    public async Task NetworkChanged_TorRefusesTheSetting_StopsTorAndStartsItAgain()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        starter.Configure = tor =>
+        {
+            tor.ServiceId = keys.OnionAddress.Label;
+            tor.RefuseCommand = "SETCONF";
+        };
+        await using var runtime = Start(static options => options with { RestartDelay = TimeSpan.FromMilliseconds(300) });
+        var first = await AddedAsync(cancellationToken);
+
+        runtime.NetworkChanged(hasAnyNetwork: true);
+
+        Assert.True(await Eventually.TrueAsync(() => first.HasExited, cancellationToken));
+        Assert.True(await Eventually.TrueAsync(() => starter.StartCount >= 2, cancellationToken));
+    }
+
+    [Fact]
+    public async Task NetworkChanged_TorStartedWithItsNetworkOff_IsIgnored()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        starter.Configure = tor => tor.ServiceId = keys.OnionAddress.Label;
+        await using var runtime = Start(static options => options with { DisableNetwork = true });
+        var tor = await AddedAsync(cancellationToken);
+
+        runtime.NetworkChanged(hasAnyNetwork: false);
+        runtime.NetworkChanged(hasAnyNetwork: true);
+        await Task.Delay(300, cancellationToken);
+
+        Assert.Empty(AfterOnion(tor));
+        Assert.Equal(new IPEndPoint(IPAddress.Loopback, 39050), runtime.SocksEndpoint);
+    }
+
+    [Fact]
     public async Task Dispose_AsksTorToShutDown()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
@@ -286,6 +380,9 @@ public sealed class TorRuntimeTests : IAsyncDisposable
 
     private TorRuntime Start(Func<TorOptions, TorOptions>? change = null) =>
         TorRuntime.Start(change is null ? Options() : change(Options()), keys, Target(), NullLogger.Instance, TimeProvider.System, starter);
+
+    private static List<string> AfterOnion(FakeTor tor) =>
+        [.. tor.Commands.SkipWhile(static command => !command.StartsWith("ADD_ONION", StringComparison.Ordinal)).Skip(1).Where(static command => command != "SIGNAL SHUTDOWN")];
 
     private async Task<FakeTor> AddedAsync(CancellationToken cancellationToken)
     {

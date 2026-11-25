@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
+using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 using P2PMessenger.Core.Identity;
 using P2PMessenger.Transport.Logging;
@@ -26,12 +27,14 @@ public sealed class TorRuntime : IAsyncDisposable
     private readonly Lock gate = new();
     private readonly TorHealth health;
     private readonly ITimer healthTimer;
+    private readonly Channel<bool> networkChanges = Channel.CreateBounded<bool>(new BoundedChannelOptions(1) { FullMode = BoundedChannelFullMode.DropOldest });
     private TorStatus status = TorStatus.Starting(0);
     private TorProblem? fixedProblem;
     private IPEndPoint? socksEndpoint;
     private Task loop = Task.CompletedTask;
     private int controlled;
     private int disposed;
+    private bool networkAvailable = true;
 
     private TorRuntime(TorOptions options, KeySet keys, OnionTarget target, ITorProcessStarter starter, ILogger logger, TimeProvider timeProvider)
     {
@@ -70,6 +73,16 @@ public sealed class TorRuntime : IAsyncDisposable
     }
 
     internal int ControlledCount => Volatile.Read(ref controlled);
+
+    public void NetworkChanged(bool hasAnyNetwork)
+    {
+        if (Volatile.Read(ref disposed) != 0 || options.DisableNetwork)
+        {
+            return;
+        }
+
+        networkChanges.Writer.TryWrite(hasAnyNetwork);
+    }
 
     public static TorRuntime Start(TorOptions options, KeySet keys, OnionTarget target, ILogger<TorRuntime> logger, TimeProvider timeProvider) =>
         Start(options, keys, target, logger, timeProvider, SystemTorProcessStarter.Instance);
@@ -249,6 +262,11 @@ public sealed class TorRuntime : IAsyncDisposable
 
     private async Task<TorProblem> RunOnceAsync(int attempt, CancellationToken cancellationToken)
     {
+        while (networkChanges.Reader.TryRead(out bool latest))
+        {
+            networkAvailable = latest;
+        }
+
         lock (gate)
         {
             health.Restart();
@@ -326,7 +344,25 @@ public sealed class TorRuntime : IAsyncDisposable
 
             Task exited = process.WaitForExitAsync(CancellationToken.None);
             Task stopped = Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
-            await Task.WhenAny(exited, control.Closed, stopped).ConfigureAwait(false);
+            using (CancellationTokenSource running = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+            {
+                bool? paused = networkAvailable ? false : await ApplyNetworkAsync(control, false, false, cancellationToken).ConfigureAwait(false);
+                while (paused is { } wasPaused)
+                {
+                    Task<bool> changed = networkChanges.Reader.WaitToReadAsync(running.Token).AsTask();
+                    Task done = await Task.WhenAny(exited, control.Closed, stopped, changed).ConfigureAwait(false);
+                    if (done != changed || !changed.IsCompletedSuccessfully || !networkChanges.Reader.TryRead(out bool available))
+                    {
+                        break;
+                    }
+
+                    networkAvailable = available;
+                    paused = await ApplyNetworkAsync(control, available, wasPaused, cancellationToken).ConfigureAwait(false);
+                }
+
+                await running.CancelAsync().ConfigureAwait(false);
+            }
+
             await StopAsync(process, control).ConfigureAwait(false);
             if (cancellationToken.IsCancellationRequested)
             {
@@ -383,6 +419,55 @@ public sealed class TorRuntime : IAsyncDisposable
         if (!string.Equals(serviceId, keys.OnionAddress.Label, StringComparison.Ordinal))
         {
             throw new TorStartException(TorStartFailure.OnionService);
+        }
+    }
+
+    private async Task<bool?> ApplyNetworkAsync(TorControlClient control, bool available, bool paused, CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (!available)
+            {
+                if (!paused)
+                {
+                    await control.SetNetworkDisabledAsync(true, cancellationToken).ConfigureAwait(false);
+                    logger.TorNetworkPaused();
+                }
+
+                lock (gate)
+                {
+                    socksEndpoint = null;
+                }
+
+                StatusChanged?.Invoke(this, EventArgs.Empty);
+                return true;
+            }
+
+            if (!paused)
+            {
+                await control.SetNetworkDisabledAsync(true, cancellationToken).ConfigureAwait(false);
+            }
+
+            await control.SetNetworkDisabledAsync(false, cancellationToken).ConfigureAwait(false);
+            IPEndPoint? socks = ParseSocksListener(await control.GetInfoAsync("net/listeners/socks", cancellationToken).ConfigureAwait(false));
+            lock (gate)
+            {
+                socksEndpoint = socks;
+            }
+
+            logger.TorNetworkRenewed();
+            StatusChanged?.Invoke(this, EventArgs.Empty);
+            return false;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return paused;
+        }
+        catch (Exception exception) when (exception is TorControlException or IOException or SocketException or ObjectDisposedException)
+        {
+            string exceptionType = exception.GetType().Name;
+            logger.TorNetworkChangeFailed(exceptionType);
+            return null;
         }
     }
 

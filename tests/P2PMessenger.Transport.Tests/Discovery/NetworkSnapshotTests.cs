@@ -28,6 +28,18 @@ public sealed class NetworkSnapshotTests
         Assert.Equal("wlan0", local.Name);
         Assert.True(snapshot.HasOtherNetwork);
         Assert.True(snapshot.HasAnyNetwork);
+        Assert.Equal(["ccmni0", "eth1", "eth2", "rmnet_data1", "tun0", "v4-rmnet1", "wg0"], snapshot.OtherNetworks);
+    }
+
+    [Fact]
+    public void Create_OtherNetworksByName_AreSortedOnceAndCountAsAnotherNetwork()
+    {
+        var snapshot = NetworkSnapshot.Create([], hasOtherNetwork: false, ["Mobile", "VPN", "Mobile"]);
+
+        Assert.Empty(snapshot.Interfaces);
+        Assert.Equal(["Mobile", "VPN"], snapshot.OtherNetworks);
+        Assert.True(snapshot.HasOtherNetwork);
+        Assert.True(snapshot.HasAnyNetwork);
     }
 
     [Fact]
@@ -64,6 +76,18 @@ public sealed class NetworkSnapshotTests
         Assert.True(NetworkSnapshot.Create([wlan], false).IsSameAs(NetworkSnapshot.Create([wlan], false)));
         Assert.False(NetworkSnapshot.Create([wlan], false).IsSameAs(NetworkSnapshot.Create([wlan], true)));
         Assert.False(NetworkSnapshot.Create([wlan], false).IsSameAs(NetworkSnapshot.None));
+    }
+
+    [Fact]
+    [Trait("Story", "US-09")]
+    public void IsSameAs_AnotherNetworkComesOrGoesNextToTheMobileData_IsAChange()
+    {
+        LocalInterface mobile = new("rmnet_data0", 4, IPAddress.Parse("100.76.12.9"), 30, false);
+        LocalInterface vpn = new("tun0", 7, IPAddress.Parse("10.8.0.2"), 24, false);
+        LocalInterface newMobileAddress = new("rmnet_data0", 4, IPAddress.Parse("100.76.40.1"), 30, false);
+
+        Assert.False(NetworkSnapshot.Create([mobile], false).IsSameAs(NetworkSnapshot.Create([mobile, vpn], false)));
+        Assert.True(NetworkSnapshot.Create([mobile], false).IsSameAs(NetworkSnapshot.Create([newMobileAddress], false)));
     }
 
     [Fact]

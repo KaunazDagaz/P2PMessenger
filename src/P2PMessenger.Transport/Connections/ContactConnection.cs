@@ -22,9 +22,10 @@ public sealed class ContactConnection : IDisposable
     private int closeReason;
     private int framesSinceTick;
 
-    internal ContactConnection(long number, Stream stream, SecureSession session, SessionMessage? firstMessage, ConnectionManager manager)
+    internal ContactConnection(long number, Stream stream, SecureSession session, SessionMessage? firstMessage, ConnectionRoute route, ConnectionManager manager)
     {
         Number = number;
+        Route = route;
         this.stream = stream;
         this.session = session;
         this.firstMessage = firstMessage;
@@ -43,6 +44,8 @@ public sealed class ContactConnection : IDisposable
     public SessionContact Contact { get; }
 
     public bool IsInitiator { get; }
+
+    public ConnectionRoute Route { get; }
 
     public bool IsClosed => Volatile.Read(ref closeReason) != (int)ConnectionCloseReason.None;
 

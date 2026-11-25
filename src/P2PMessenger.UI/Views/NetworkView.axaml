@@ -22,6 +22,7 @@
                             <TextBlock Text="{Binding Fingerprint}" FontFamily="monospace" FontSize="12" />
                             <TextBlock Text="{Binding HeardText}" FontFamily="monospace" />
                             <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding TorText}" TextWrapping="Wrap" />
                         </StackPanel>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>

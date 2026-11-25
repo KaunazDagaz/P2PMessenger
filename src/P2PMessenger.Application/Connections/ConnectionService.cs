@@ -36,6 +36,7 @@ public sealed class ConnectionService : IAsyncDisposable
     private readonly List<SessionContact> retired = [];
     private readonly Dictionary<Ed25519PublicKey, NearbyPeer> nearby = [];
     private readonly List<Dialer> finishedDialers = [];
+    private readonly TorConnections tor;
     private TcpConnectionListener? listener;
     private LocalNetworkDiscovery? discovery;
     private TimeSpan heardLifetime = new DiscoveryOptions().HeardLifetime;
@@ -56,6 +57,7 @@ public sealed class ConnectionService : IAsyncDisposable
         this.timeProvider = timeProvider;
         this.loggers = loggers;
         manager = new ConnectionManager(own.Keys, known, new Observer(this), options, timeProvider, loggers.CreateLogger<ConnectionManager>());
+        tor = new TorConnections(manager, options, timeProvider, loggers.CreateLogger<OnionDialer>(), contactKey => RaiseChanged(contactKey));
 
         contacts.Changed += OnContactChanged;
         foreach (Contact contact in contacts.All)
@@ -103,10 +105,23 @@ public sealed class ConnectionService : IAsyncDisposable
         }
     }
 
+    public bool UsesTor => tor.Proxy is not null;
+
+    internal IPEndPoint? TorProxy => tor.Proxy;
+
     public bool IsConnected(Ed25519PublicKey contactKey) => manager.TryGetConnection(contactKey, out _);
 
-    public Reachability ReachabilityOf(Ed25519PublicKey contactKey) =>
-        IsConnected(contactKey) ? Reachability.Nearby : Reachability.NotReachable;
+    public Reachability ReachabilityOf(Ed25519PublicKey contactKey)
+    {
+        if (!manager.TryGetConnection(contactKey, out ContactConnection? connection))
+        {
+            return Reachability.NotReachable;
+        }
+
+        return connection.Route == ConnectionRoute.Tor ? Reachability.Tor : Reachability.Nearby;
+    }
+
+    public TorDialStatus TorStatusOf(Ed25519PublicKey contactKey) => tor.StatusOf(contactKey);
 
     public bool IsHeard(Ed25519PublicKey contactKey) => TryGetHeardEndpoint(contactKey, out _);
 
@@ -219,6 +234,8 @@ public sealed class ConnectionService : IAsyncDisposable
             await stoppingDiscovery.DisposeAsync().ConfigureAwait(false);
         }
 
+        await tor.DisposeAsync().ConfigureAwait(false);
+
         foreach (Dialer dialer in activeDialers)
         {
             dialer.Cancel();
@@ -250,6 +267,8 @@ public sealed class ConnectionService : IAsyncDisposable
 
     internal OnionListener StartOnionListener(string? socketPath) =>
         OnionListener.Start(manager, socketPath, loggers.CreateLogger<OnionListener>());
+
+    internal void UseTorProxy(IPEndPoint? proxy) => tor.UseProxy(proxy);
 
     internal void StartDiscovery(DiscoverySetup setup)
     {
@@ -293,14 +312,6 @@ public sealed class ConnectionService : IAsyncDisposable
 
     internal bool TryGetConnection(Ed25519PublicKey contactKey, [NotNullWhen(true)] out ContactConnection? connection) =>
         manager.TryGetConnection(contactKey, out connection);
-
-    private static TimeSpan Jittered(TimeSpan delay) => delay * (0.8 + (RandomNumberGenerator.GetInt32(0, 401) / 1000.0));
-
-    private static TimeSpan Doubled(TimeSpan delay, TimeSpan longest)
-    {
-        TimeSpan doubled = delay * 2;
-        return doubled < longest ? doubled : longest;
-    }
 
     private static DialStatus StatusOf(ConnectFailure failure) => failure switch
     {
@@ -373,6 +384,8 @@ public sealed class ConnectionService : IAsyncDisposable
 
             sessionContacts[contact.IdentityKey] = sessionContact;
         }
+
+        tor.Know(sessionContact, contact.Code.OnionAddress);
     }
 
     private void Replace(Contact contact)
@@ -383,6 +396,7 @@ public sealed class ConnectionService : IAsyncDisposable
         }
 
         Dialer? previous = null;
+        bool kept;
         lock (gate)
         {
             if (disposed)
@@ -397,7 +411,8 @@ public sealed class ConnectionService : IAsyncDisposable
             }
 
             sessionContacts.Remove(contact.IdentityKey);
-            if (known.TryAdd(sessionContact))
+            kept = known.TryAdd(sessionContact);
+            if (kept)
             {
                 sessionContacts[contact.IdentityKey] = sessionContact;
             }
@@ -413,6 +428,11 @@ public sealed class ConnectionService : IAsyncDisposable
         }
 
         previous?.Retire();
+        if (kept)
+        {
+            tor.Know(sessionContact, contact.Code.OnionAddress);
+        }
+
         if (manager.TryGetConnection(contact.IdentityKey, out ContactConnection? connection))
         {
             connection.Close();
@@ -504,7 +524,7 @@ public sealed class ConnectionService : IAsyncDisposable
                     SetStatus(contactKey, dialer, DialStatus.None);
                     await current.Completion.WaitAsync(stop).ConfigureAwait(false);
                     delay = options.ReconnectDelayMin;
-                    await Task.Delay(Jittered(delay), timeProvider, stop).ConfigureAwait(false);
+                    await Task.Delay(Delays.Jittered(delay), timeProvider, stop).ConfigureAwait(false);
                     continue;
                 }
 
@@ -529,8 +549,8 @@ public sealed class ConnectionService : IAsyncDisposable
                 }
 
                 SetStatus(contactKey, dialer, StatusOf(result.Failure));
-                await Task.Delay(Jittered(delay), timeProvider, stop).ConfigureAwait(false);
-                delay = Doubled(delay, options.ReconnectDelayMax);
+                await Task.Delay(Delays.Jittered(delay), timeProvider, stop).ConfigureAwait(false);
+                delay = Delays.Doubled(delay, options.ReconnectDelayMax);
             }
         }
         catch (OperationCanceledException)

@@ -8,6 +8,8 @@ internal sealed class CountingDialer(IDialer inner, int failuresFirst = 0) : IDi
 
     public int Calls => Volatile.Read(ref calls);
 
+    public ConnectionRoute Route => inner.Route;
+
     public ValueTask<Stream?> DialAsync(CancellationToken cancellationToken)
     {
         var call = Interlocked.Increment(ref calls);

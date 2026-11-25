@@ -23,8 +23,8 @@ internal static partial class TransportLog
     [LoggerMessage(EventId = 5, Level = LogLevel.Debug, Message = "Outbound connection {Number} failed: {Failure}")]
     public static partial void DialFailed(this ILogger logger, long number, ConnectFailure failure);
 
-    [LoggerMessage(EventId = 6, Level = LogLevel.Debug, Message = "Connection {Number} ({Direction}) established in {Milliseconds} ms")]
-    public static partial void Established(this ILogger logger, long number, ConnectionDirection direction, long milliseconds);
+    [LoggerMessage(EventId = 6, Level = LogLevel.Debug, Message = "Connection {Number} ({Direction}, {Route}) established in {Milliseconds} ms")]
+    public static partial void Established(this ILogger logger, long number, ConnectionDirection direction, ConnectionRoute route, long milliseconds);
 
     [LoggerMessage(EventId = 7, Level = LogLevel.Debug, Message = "Connection {Number} was not kept, because another session with the same contact is preferred")]
     public static partial void NotKept(this ILogger logger, long number);
@@ -82,4 +82,16 @@ internal static partial class TransportLog
 
     [LoggerMessage(EventId = 25, Level = LogLevel.Warning, Message = "The onion socket could not be opened ({Error}); a loopback port is used instead")]
     public static partial void OnionSocketUnavailable(this ILogger logger, SocketError error);
+
+    [LoggerMessage(EventId = 26, Level = LogLevel.Debug, Message = "A connection through tor failed: {Failure}")]
+    public static partial void OnionDialFailed(this ILogger logger, SocksFailure failure);
+
+    [LoggerMessage(EventId = 27, Level = LogLevel.Information, Message = "No network: tor is paused until a network returns")]
+    public static partial void TorNetworkPaused(this ILogger logger);
+
+    [LoggerMessage(EventId = 28, Level = LogLevel.Information, Message = "The network changed: tor dropped its connections and builds new ones; its SOCKS port was read again")]
+    public static partial void TorNetworkRenewed(this ILogger logger);
+
+    [LoggerMessage(EventId = 29, Level = LogLevel.Warning, Message = "tor did not take the network change ({ExceptionType})")]
+    public static partial void TorNetworkChangeFailed(this ILogger logger, string exceptionType);
 }

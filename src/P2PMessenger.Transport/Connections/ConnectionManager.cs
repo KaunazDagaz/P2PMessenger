@@ -22,7 +22,7 @@ public sealed class ConnectionManager : IAsyncDisposable
     private readonly Lock gate = new();
     private readonly Dictionary<Ed25519PublicKey, ContactConnection> current = [];
     private readonly HashSet<ContactConnection> live = [];
-    private readonly Dictionary<Ed25519PublicKey, Task<ConnectResult>> dials = [];
+    private readonly Dictionary<(Ed25519PublicKey Key, ConnectionRoute Route), Task<ConnectResult>> dials = [];
     private readonly Dictionary<Ed25519PublicKey, Keeper> keepers = [];
     private long lastNumber;
     private bool disposed;
@@ -109,6 +109,7 @@ public sealed class ConnectionManager : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(contact);
         ArgumentNullException.ThrowIfNull(dialer);
 
+        ConnectionRoute route = dialer.Route;
         Task<ConnectResult>? dial;
         TaskCompletionSource<ConnectResult>? started = null;
         lock (gate)
@@ -118,16 +119,18 @@ public sealed class ConnectionManager : IAsyncDisposable
                 return Task.FromResult(ConnectResult.Failed(ConnectFailure.ShutDown));
             }
 
-            if (current.TryGetValue(contact.IdentityKey, out ContactConnection? existing) && !existing.IsClosed)
+            if (current.TryGetValue(contact.IdentityKey, out ContactConnection? existing)
+                && !existing.IsClosed
+                && (existing.Route == route || existing.Route == ConnectionRoute.Tor))
             {
                 return Task.FromResult(ConnectResult.Connected(existing));
             }
 
-            if (!dials.TryGetValue(contact.IdentityKey, out dial))
+            if (!dials.TryGetValue((contact.IdentityKey, route), out dial))
             {
                 started = new TaskCompletionSource<ConnectResult>(TaskCreationOptions.RunContinuationsAsynchronously);
                 dial = started.Task;
-                dials.Add(contact.IdentityKey, dial);
+                dials.Add((contact.IdentityKey, route), dial);
             }
         }
 
@@ -179,7 +182,7 @@ public sealed class ConnectionManager : IAsyncDisposable
         return true;
     }
 
-    public async Task AcceptAsync(Stream stream, IPAddress? source, CancellationToken cancellationToken)
+    public async Task AcceptAsync(Stream stream, IPAddress? source, ConnectionRoute route, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(stream);
 
@@ -201,7 +204,7 @@ public sealed class ConnectionManager : IAsyncDisposable
         ResponderOutcome outcome;
         try
         {
-            outcome = await RespondWithinTimeoutAsync(stream, cancellationToken).ConfigureAwait(false);
+            outcome = await RespondWithinTimeoutAsync(stream, route, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
@@ -221,7 +224,7 @@ public sealed class ConnectionManager : IAsyncDisposable
             return;
         }
 
-        ContactConnection connection = new(number, stream, outcome.Session, outcome.FirstMessage, this);
+        ContactConnection connection = new(number, stream, outcome.Session, outcome.FirstMessage, route, this);
         _ = Adopt(connection, ConnectionDirection.Inbound, ElapsedMilliseconds(started));
     }
 
@@ -302,17 +305,18 @@ public sealed class ConnectionManager : IAsyncDisposable
             Logger.DialFailed(number, failure);
         }
 
-        ForgetDial(contact.IdentityKey, completion.Task);
+        ForgetDial(contact.IdentityKey, dialer.Route, completion.Task);
         completion.TrySetResult(result);
     }
 
     private async Task<ConnectResult> DialOnceAsync(long number, SessionContact contact, IDialer dialer)
     {
         long started = TimeProvider.GetTimestamp();
+        ConnectionRoute route = dialer.Route;
         Stream? stream;
         using (CancellationTokenSource dialing = CancellationTokenSource.CreateLinkedTokenSource(shutdownToken))
         {
-            dialing.CancelAfter(Options.DialTimeout);
+            dialing.CancelAfter(Options.DialTimeoutFor(route));
             try
             {
                 stream = await dialer.DialAsync(dialing.Token).ConfigureAwait(false);
@@ -332,7 +336,7 @@ public sealed class ConnectionManager : IAsyncDisposable
         ConnectFailure failure = ConnectFailure.Refused;
         using (CancellationTokenSource handshaking = CancellationTokenSource.CreateLinkedTokenSource(shutdownToken))
         {
-            handshaking.CancelAfter(Options.HandshakeTimeout);
+            handshaking.CancelAfter(Options.HandshakeTimeoutFor(route));
             try
             {
                 session = await Handshakes.InitiateAsync(stream, own, contact, handshaking.Token).ConfigureAwait(false);
@@ -359,18 +363,18 @@ public sealed class ConnectionManager : IAsyncDisposable
             return ConnectResult.Failed(failure);
         }
 
-        ContactConnection connection = new(number, stream, session, null, this);
+        ContactConnection connection = new(number, stream, session, null, route, this);
         ContactConnection? kept = Adopt(connection, ConnectionDirection.Outbound, ElapsedMilliseconds(started));
         return kept is null ? ConnectResult.Failed(ConnectFailure.ShutDown) : ConnectResult.Connected(kept);
     }
 
-    private async Task<ResponderOutcome> RespondWithinTimeoutAsync(Stream stream, CancellationToken cancellationToken)
+    private async Task<ResponderOutcome> RespondWithinTimeoutAsync(Stream stream, ConnectionRoute route, CancellationToken cancellationToken)
     {
         using CancellationTokenSource handshaking = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, shutdownToken);
-        handshaking.CancelAfter(Options.HandshakeTimeout);
+        handshaking.CancelAfter(Options.HandshakeTimeoutFor(route));
         try
         {
-            return await Handshakes.RespondAsync(stream, own, contacts.Current, Options.HintTimeout, handshaking.Token).ConfigureAwait(false);
+            return await Handshakes.RespondAsync(stream, own, contacts.Current, Options.HintTimeoutFor(route), handshaking.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -424,7 +428,8 @@ public sealed class ConnectionManager : IAsyncDisposable
         long number = candidate.Number;
         if (TryRegister(candidate, out ContactConnection? kept, out ContactConnection? replaced))
         {
-            Logger.Established(number, direction, milliseconds);
+            ConnectionRoute route = candidate.Route;
+            Logger.Established(number, direction, route, milliseconds);
             candidate.Start();
             replaced?.Close(ConnectionCloseReason.Replaced);
             return candidate;
@@ -476,20 +481,22 @@ public sealed class ConnectionManager : IAsyncDisposable
         bool ownStaticKeyIsLower = own.StaticKey.Bytes.SequenceCompareTo(candidate.Contact.StaticKey.Bytes) < 0;
         TimeSpan existingAge = TimeProvider.GetElapsedTime(existing.EstablishedAt);
         return SessionPreference.NewReplacesExisting(
+            existing.Route,
             existing.IsInitiator,
             existingAge,
+            candidate.Route,
             candidate.IsInitiator,
             ownStaticKeyIsLower,
             Options.SimultaneousOpenWindow);
     }
 
-    private void ForgetDial(Ed25519PublicKey identityKey, Task<ConnectResult> dial)
+    private void ForgetDial(Ed25519PublicKey identityKey, ConnectionRoute route, Task<ConnectResult> dial)
     {
         lock (gate)
         {
-            if (dials.TryGetValue(identityKey, out Task<ConnectResult>? current) && ReferenceEquals(current, dial))
+            if (dials.TryGetValue((identityKey, route), out Task<ConnectResult>? current) && ReferenceEquals(current, dial))
             {
-                dials.Remove(identityKey);
+                dials.Remove((identityKey, route));
             }
         }
     }

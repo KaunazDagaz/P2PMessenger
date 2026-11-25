@@ -196,6 +196,8 @@ public sealed class OnionListenerTests : IDisposable
 
     private sealed class UnixDialer(string path) : IDialer
     {
+        public ConnectionRoute Route => ConnectionRoute.Tor;
+
         public async ValueTask<Stream?> DialAsync(CancellationToken cancellationToken)
         {
             var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
@@ -214,6 +216,8 @@ public sealed class OnionListenerTests : IDisposable
 
     private sealed class OnionDialer(OnionTarget target) : IDialer
     {
+        public ConnectionRoute Route => ConnectionRoute.Tor;
+
         public ValueTask<Stream?> DialAsync(CancellationToken cancellationToken) =>
             target.SocketPath is { } path
                 ? new UnixDialer(path).DialAsync(cancellationToken)

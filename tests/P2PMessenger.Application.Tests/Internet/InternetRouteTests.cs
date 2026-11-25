@@ -83,6 +83,40 @@ public sealed class InternetRouteTests : IDisposable
     }
 
     [Fact]
+    [Trait("Story", "US-09")]
+    public async Task TorNotConnected_GivesTheConnectionsNoProxyAndTurningTorOffTakesItAway()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var setup = BogusTor() with { RestartDelay = TimeSpan.FromSeconds(30) };
+        await using var messenger = await StartAsync(setup, cancellationToken);
+        await TestMessengers.WaitUntilAsync(() => messenger.InternetRoute.Status.Problem == InternetRouteProblem.TorFailed, cancellationToken);
+        Assert.False(messenger.Connections.UsesTor);
+
+        messenger.Connections.UseTorProxy(new IPEndPoint(IPAddress.Loopback, 9050));
+        Assert.True(messenger.Connections.UsesTor);
+        await messenger.InternetRoute.SetEnabledAsync(false, cancellationToken);
+
+        Assert.False(messenger.Connections.UsesTor);
+        messenger.Identity.Dispose();
+    }
+
+    [Fact]
+    [Trait("Story", "US-09")]
+    public async Task Dispose_TakesTheProxyAwayFromTheConnections()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var setup = BogusTor() with { RestartDelay = TimeSpan.FromSeconds(30) };
+        await using var messenger = await StartAsync(setup, cancellationToken);
+        await TestMessengers.WaitUntilAsync(() => messenger.InternetRoute.Status.Problem == InternetRouteProblem.TorFailed, cancellationToken);
+        messenger.Connections.UseTorProxy(new IPEndPoint(IPAddress.Loopback, 9050));
+
+        await messenger.InternetRoute.DisposeAsync();
+
+        Assert.False(messenger.Connections.UsesTor);
+        messenger.Identity.Dispose();
+    }
+
+    [Fact]
     public async Task SetEnabled_TorNotInTheBuild_StaysNotInTheBuild()
     {
         var cancellationToken = TestContext.Current.CancellationToken;

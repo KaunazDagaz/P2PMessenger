@@ -6,4 +6,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\P2PMessenger.Transport\P2PMessenger.Transport.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Shared\FakeSocksProxy.cs" Link="Shared\FakeSocksProxy.cs" />
+  </ItemGroup>
 </Project>

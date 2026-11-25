@@ -14,6 +14,8 @@ public sealed class TcpDialer : IDialer
         this.remote = remote;
     }
 
+    public ConnectionRoute Route => ConnectionRoute.Nearby;
+
     public async ValueTask<Stream?> DialAsync(CancellationToken cancellationToken)
     {
         Socket socket = new(remote.AddressFamily, SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };

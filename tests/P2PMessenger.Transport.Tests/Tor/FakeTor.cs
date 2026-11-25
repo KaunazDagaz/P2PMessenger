@@ -17,6 +17,8 @@ internal sealed class FakeTor : IAsyncDisposable
     private readonly TaskCompletionSource exited = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private Stream? client;
     private Task serving = Task.CompletedTask;
+    private int socksPort = 39050;
+    private volatile bool networkDisabled;
 
     public FakeTor(string cookieFile, byte[] cookie)
     {
@@ -42,6 +44,10 @@ internal sealed class FakeTor : IAsyncDisposable
     public bool Silent { get; set; }
 
     public bool ExitOnShutdown { get; set; } = true;
+
+    public int SocksPort => Volatile.Read(ref socksPort);
+
+    public bool NetworkDisabled => networkDisabled;
 
     public IPEndPoint Endpoint => (IPEndPoint)listener.LocalEndpoint;
 
@@ -143,7 +149,22 @@ internal sealed class FakeTor : IAsyncDisposable
                     await WriteAsync(stream, $"250-status/bootstrap-phase={BootstrapPhase}\r\n250 OK\r\n");
                     break;
                 case "GETINFO" when command.EndsWith("net/listeners/socks", StringComparison.Ordinal):
-                    await WriteAsync(stream, "250-net/listeners/socks=\"127.0.0.1:39050\"\r\n250 OK\r\n");
+                    await WriteAsync(stream, networkDisabled
+                        ? "250-net/listeners/socks=\r\n250 OK\r\n"
+                        : string.Create(CultureInfo.InvariantCulture, $"250-net/listeners/socks=\"127.0.0.1:{SocksPort}\"\r\n250 OK\r\n"));
+                    break;
+                case "SETCONF" when command == "SETCONF DisableNetwork=1":
+                    networkDisabled = true;
+                    await WriteAsync(stream, "250 OK\r\n");
+                    break;
+                case "SETCONF" when command == "SETCONF DisableNetwork=0":
+                    if (networkDisabled)
+                    {
+                        networkDisabled = false;
+                        Interlocked.Increment(ref socksPort);
+                    }
+
+                    await WriteAsync(stream, "250 OK\r\n");
                     break;
                 case "ADD_ONION":
                     await WriteAsync(stream, ServiceId is null ? "250 OK\r\n" : string.Create(CultureInfo.InvariantCulture, $"250-ServiceID={ServiceId}\r\n250 OK\r\n"));

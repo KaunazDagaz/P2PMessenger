@@ -18,7 +18,7 @@ public sealed class SystemInterfaceSource : ILocalInterfaceSource
         }
 
         List<LocalInterface> candidates = [];
-        bool hasOtherNetwork = false;
+        List<string> otherNetworks = [];
         foreach (NetworkInterface adapter in adapters)
         {
             if (adapter.OperationalStatus != OperationalStatus.Up || adapter.NetworkInterfaceType == NetworkInterfaceType.Loopback)
@@ -51,7 +51,10 @@ public sealed class SystemInterfaceSource : ILocalInterfaceSource
                 LocalInterface candidate = new(adapter.Name, index, unicast.Address, PrefixOf(unicast), adapter.SupportsMulticast);
                 if (notLocal)
                 {
-                    hasOtherNetwork |= !System.Net.IPAddress.IsLoopback(unicast.Address);
+                    if (!System.Net.IPAddress.IsLoopback(unicast.Address))
+                    {
+                        otherNetworks.Add(adapter.Name);
+                    }
                 }
                 else
                 {
@@ -60,7 +63,7 @@ public sealed class SystemInterfaceSource : ILocalInterfaceSource
             }
         }
 
-        return NetworkSnapshot.Create(candidates, hasOtherNetwork);
+        return NetworkSnapshot.Create(candidates, hasOtherNetwork: false, otherNetworks);
     }
 
     private static int IndexOf(IPInterfaceProperties properties)

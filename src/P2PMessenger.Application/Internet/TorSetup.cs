@@ -16,6 +16,8 @@ public sealed record TorSetup
 
     public TimeSpan RestartDelay { get; init; } = TimeSpan.FromSeconds(30);
 
+    public TimeSpan NetworkSettleDelay { get; init; } = TimeSpan.FromSeconds(2);
+
     public bool IsInBuild => ExecutablePath is { Length: > 0 } path && Path.IsPathFullyQualified(path) && File.Exists(path);
 
     public string SocketPath => Path.Combine(DataFolder, SocketFileName);

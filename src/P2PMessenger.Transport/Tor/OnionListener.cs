@@ -203,7 +203,7 @@ public sealed class OnionListener : IAsyncDisposable
             return;
         }
 
-        await manager.AcceptAsync(stream, null, cancellationToken).ConfigureAwait(false);
+        await manager.AcceptAsync(stream, null, ConnectionRoute.Tor, cancellationToken).ConfigureAwait(false);
     }
 
     private void Track(Task handler)

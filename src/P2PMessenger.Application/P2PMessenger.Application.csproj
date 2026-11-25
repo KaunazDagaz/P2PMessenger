@@ -11,5 +11,6 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="P2PMessenger.Application.Tests" />
+    <InternalsVisibleTo Include="P2PMessenger.UI.Tests" />
   </ItemGroup>
 </Project>
