@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using P2PMessenger.Application;
+using P2PMessenger.Core;
 using P2PMessenger.UI.Qr;
 using P2PMessenger.UI.Resources;
 using P2PMessenger.UI.Services;
@@ -64,8 +65,9 @@ public sealed partial class ProfileViewModel : PageViewModel
                 ErrorMessage = UiText.ProfileCopyFailed;
             }
         }
-        catch (Exception exception) when (exception is not OutOfMemoryException)
+        catch (Exception exception) when (Failures.IsRecoverable(exception))
         {
+            ReportFailure(exception);
             ErrorMessage = UiText.ProfileCopyFailed;
         }
         finally
@@ -102,8 +104,9 @@ public sealed partial class ProfileViewModel : PageViewModel
                     break;
             }
         }
-        catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
+        catch (Exception exception) when (Failures.IsFailure(exception))
         {
+            ReportFailure(exception);
             ErrorMessage = UiText.ProfileSaveFailed;
         }
         finally

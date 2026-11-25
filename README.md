@@ -19,6 +19,7 @@ Bachelor diploma project "Secure Decentralized P2P Messenger with End-to-End Enc
 | `src/P2PMessenger.Android` | Android head, with the Android Keystore as its key store |
 | `tests/` | One test project per layer and one for each head, integration tests and headless UI tests |
 | `tools/` | `get-tor.ps1`, which downloads the pinned Tor Expert Bundles into `tools/tor` (not committed; see [Tor](#tor)) |
+| `API.md` | The description of the API: the wire protocol between two apps and the application interface used by the screens (see [Back-end](#back-end)) |
 
 Dependency rules: `Core` references no other project and uses no I/O or platform API; `Transport` and `Storage` reference `Core`; `Application` references `Core`, `Transport` and `Storage`; `UI` references `Application`; the two heads reference `UI`. The architecture tests in `P2PMessenger.Integration.Tests` and `P2PMessenger.Core.Tests` enforce them.
 
@@ -39,6 +40,77 @@ The client is an Avalonia application written in C# with the MVVM pattern. One c
 | What is not built yet | [Planned](src/P2PMessenger.UI/README.md#planned) |
 
 To try the client, run `dotnet run --project src/P2PMessenger.Desktop` and follow [Trying the app](#trying-the-app).
+
+## Back-end
+
+The app has no server, so it has no HTTP service. The back-end is four .NET 10 libraries that run inside every app, `P2PMessenger.Core`, `P2PMessenger.Transport`, `P2PMessenger.Storage` and `P2PMessenger.Application`; the screens call them in the same process. The criterion's exception for software that needs no server framework applies, and the four things it asks to implement directly (logging, error handling, serialization and data binding, authorization and authentication) are rows of the table below. The interfaces of the back-end are described in [`API.md`](API.md): the wire protocol between two apps and the application interface that the screens use. The database is described in [Database](#database).
+
+| Requirement | Here | Status |
+| --- | --- | --- |
+| A modern framework | .NET 10 and C# 14, with Microsoft.Extensions.Logging. Avalonia is used for the screens only. There is no server framework because there is no server | Done (the exception above) |
+| A database | SQLite with 13 `STRICT` tables in 3NF, primary and foreign keys, `CHECK` constraints and numbered migrations. See [Database](#database) and [`src/P2PMessenger.Storage/README.md`](src/P2PMessenger.Storage/README.md) | Done |
+| An ORM | Not used. `src/P2PMessenger.Storage/Repositories` use Microsoft.Data.Sqlite with parameterised SQL, because every name, key, text and time is encrypted per record and lookups go through keyed MAC columns. See [Choices that differ from the criterion](#choices-that-differ-from-the-criterion) | Not used |
+| Layered architecture | Presentation: `P2PMessenger.UI` and the two heads. Business logic: `P2PMessenger.Application`, `P2PMessenger.Core` and `P2PMessenger.Transport`. Data access: `P2PMessenger.Storage`. The dependency rules of [Repository layout](#repository-layout) are enforced by the architecture tests in `tests/P2PMessenger.Integration.Tests/Architecture` and `tests/P2PMessenger.Core.Tests/Architecture` | Done |
+| SOLID | Each class has one job. Everything that differs between platforms or routes sits behind an interface and is injected through constructors: for example `IKeyProtector` (DPAPI, Secret Service, Android Keystore) and `IDialer` (`TcpDialer`, `OnionDialer`), listed in [`API.md`](API.md#94-what-each-platform-implements). Layers depend only on the layers below them, which the architecture tests check | Done |
+| A described API | [`API.md`](API.md): the wire protocol with byte layouts and reference vectors, and the application interface with its result values. There is no HTTP API, so no OpenAPI | Done |
+| Global error handling | `GlobalFailureHandler` in `src/P2PMessenger.Application/Errors`, a back-end handler that does not depend on the UI. It hooks the failed tasks that nobody observed and the exceptions that end the process (`Install`), and the connections, the discovery and the delivery report to it (`IFailureSink`, given as `MessengerSetup.Failures`) the unexpected failures that they catch in their background work, instead of each logging its own. For each exception it logs the type once (an exception reported again is ignored, out-of-memory is left to end the process), counts it and raises `FailureReported`. The front-end only adds its own source, the UI thread's dispatcher, and turns the event into a notice (`GlobalErrorHandler` in `src/P2PMessenger.UI/Services`). Around it: expected failures are returned as typed results (`SendResult`, `CodeCheck`, `AddContactResult`, `LocalDataResult`), one predicate, `Failures` in `src/P2PMessenger.Core`, decides which exceptions are failures in place of the same filter in every `catch`, and an error that a command catches shows its message and is logged (page, operation and exception type) by `FailureLog`. Tests: `GlobalFailureHandlerTests`, `FailureReportingTests`, `FailuresTests`, `GlobalErrorHandlerTests`, `CommandFailureLogTests`. See [Error handling](src/P2PMessenger.UI/README.md#error-handling) and [`API.md`](API.md#92-services) | Done |
+| Structured logging | `ILogger` with source-generated messages that have event IDs and named parameters (`src/P2PMessenger.Transport/Logging/TransportLog.cs`, 29 messages; the outbox; `GlobalFailureHandler`; `FailureLog`). The app writes them as JSON lines to a rolling log file, see [Logs](#logs). Logs never hold keys, names, texts or addresses: `LoggingTests` and `LogFileTests` check this | Done |
+| Authentication and authorization | Mutual authentication with a Noise KK handshake (`src/P2PMessenger.Core/Noise`, `Sessions`). A caller that is not a contact is refused before anything reaches the user, and limits stop flooding (`src/P2PMessenger.Transport/Admission`, `Connections/KnownContacts.cs`) | Done |
+| Serialization and data binding | Binary formats with strict parsers that return a refusal and never throw (`src/P2PMessenger.Core/Contacts`, `Messages`, `Sessions`, `Discovery`), described in [`API.md`](API.md); compiled Avalonia bindings in the UI | Done |
+| Input validation | Contact codes, names, texts and passphrases pass strict rules (`ContactCode`, `DisplayName`, `TextMessage`, `PassphrasePolicy`); every single-bit change of a contact code is refused (tested); every SQL statement is parameterised | Done |
+| Hashing and secrets | BLAKE2b, HKDF-SHA-256, SHA3-256 and Argon2id, all through libsodium (NSec); no MD5 or SHA-1. Private keys are made on the device and stored encrypted under a key that the platform's key store wraps. The repository holds no keys, passwords or signing keystores (`.gitignore`) | Done |
+| Configuration | Ports, timeouts and limits are named option classes (`ConnectionOptions`, `DiscoveryOptions`, `TorOptions`, `DeliveryOptions`, `AdmissionLimits`) with defaults in code. A client app has no deployment environment to read them from; the user's own settings are kept in the app's settings file or preferences | Done |
+| Dependencies | No paid libraries. `dotnet list package --vulnerable --include-transitive` finds nothing and fails CI when it does; Dependabot proposes updates every week. See [Continuous integration](#continuous-integration) | Done |
+| Version control | Git, with the history of every step from the first commit, merged through pull requests | Done |
+| Production deployment | A GitHub Release with a Windows build, a Linux build and an APK. Until then, the CI run on `main` keeps the desktop builds and the Debug APK as artifacts | Planned, see [Planned](#planned) |
+| Unit tests with at least 70 % coverage | See [Tests and coverage](#tests-and-coverage) | Done |
+
+### Logs
+
+The app writes its log to the `logs` folder inside its data folder: `%LOCALAPPDATA%\P2PMessenger\logs` on Windows, `~/.local/share/P2PMessenger/logs` on Linux (the folder given with `--data` replaces the data folder on both), and `no_backup/P2PMessenger/logs` in the app's folder on Android, which Android does not back up. The current file is `p2pmessenger.log`. At 1 MiB it becomes `p2pmessenger.1.log`, then `p2pmessenger.2.log`, and the oldest is deleted, so the log never takes more than 3 MiB. Each line is one JSON object, for example:
+
+```
+{"time":"2026-11-25T12:30:05.123Z","level":"Error","category":"P2PMessenger.Application.Errors.GlobalFailureHandler","eventId":1,"event":"UnexpectedFailure","template":"Unexpected failure of type {ExceptionType} in {Source}","message":"Unexpected failure of type System.IO.IOException in Connections","fields":{"ExceptionType":"System.IO.IOException","Source":"Connections"}}
+```
+
+`template` and `fields` hold the message as a template and its named parameters, which is what a tool filters on, and `message` is the same text for a person. An exception object, when a log call passes one, adds `"exception"` with its type name. To read the log:
+
+```
+Get-Content "$env:LOCALAPPDATA\P2PMessenger\logs\p2pmessenger.log" | ForEach-Object { $_ | ConvertFrom-Json } | Where-Object level -eq Error
+jq 'select(.level == "Error")' ~/.local/share/P2PMessenger/logs/p2pmessenger.log
+adb exec-out run-as io.github.kaunazdagaz.p2pmessenger cat no_backup/P2PMessenger/logs/p2pmessenger.log
+```
+
+- **What is logged.** Information and above, in Debug and Release builds: the listening ports, the start and state of Tor and its onion service, network changes, warnings (a port that cannot be opened, tor that could not start or stopped), unexpected failures, unhandled errors and the errors that commands catch. What happens between contacts (connections opening and closing, refusals of callers) is logged only at the Debug level, which the file does not take. The .NET trace output, which a debugger or logcat shows, still gets Information in Debug builds and only errors in Release builds.
+- **What never gets in.** Only plain values are written: numbers, booleans, names of enumeration values and strings of at most 256 characters; any other value is written as its type name, and an exception only as its type name, never its message or its stack. The formatter of a log call is never called, so a name, key, address or text cannot get in through a message. `LogFileTests` runs two apps that chat and checks the whole file for the names, texts, keys and addresses involved.
+- **Failures.** A log call never throws. When the file cannot be written (full disk, no permission) the line is dropped and writing is tried again after 30 seconds.
+- **Delete all data** does not delete the log, which holds no names, keys, texts or addresses.
+
+### Tests and coverage
+
+Each test project writes its own Cobertura report, and the integration and UI tests also run the lower layers, so the coverage of the back-end is the merge of all reports. To measure it, from the repository root (delete `TestResults` first, because reports of earlier runs stay there and would be merged too):
+
+```
+dotnet test --solution P2PMessenger.Desktop.slnf --configuration Release --results-directory TestResults
+dotnet tool install --global dotnet-reportgenerator-globaltool
+reportgenerator "-reports:TestResults/*.xml" "-targetdir:TestResults/coverage" "-reporttypes:TextSummary;Html" "-assemblyfilters:+P2PMessenger.Core;+P2PMessenger.Transport;+P2PMessenger.Storage;+P2PMessenger.Application;-*.Tests"
+```
+
+`TestResults/coverage/Summary.txt` gives the totals and `TestResults/coverage/index.html` the report by class and file. On 2026-11-25, on Windows, 1,799 tests ran and none failed; 20 were skipped, because they need Linux, a Secret Service or a real tor. The merged line coverage of the four assemblies that hold the business logic was 93.0 % (branch coverage 86.7 %): `P2PMessenger.Core` 95.2 %, `P2PMessenger.Storage` 94.8 %, `P2PMessenger.Application` 94.2 % and `P2PMessenger.Transport` 90.2 %. The platform code of the two heads is checked on the platforms themselves (see [Build, test and run](#build-test-and-run)).
+
+### Choices that differ from the criterion
+
+- **No ORM.** Every name, key, text and time is encrypted per record and found through keyed MAC columns, so the repositories map the rows themselves with parameterised SQL.
+- **No JSON.** The two apps exchange binary Noise frames padded to fixed sizes (see [`API.md`](API.md)), so the format of the data between them is not JSON; the app's own settings are plain text.
+- **No OpenAPI, REST or HTTP status codes.** There is no HTTP interface; [`API.md`](API.md) is the description of the API.
+- **The Noise handshake is our own implementation** of the published Noise specification (revision 34) on libsodium's primitives through NSec, checked against the published test vectors of cacophony and snow. No primitive is home-made.
+- **No comments in the source code.** What a comment would explain is in the READMEs and in [`API.md`](API.md); only comments that a tool generated stay as it wrote them.
+
+### Planned
+
+| What | When | Why |
+| --- | --- | --- |
+| A GitHub Release with a Windows build, a Linux build and an APK | When the MVP is reached, and in any case before the review (2026-12-02) | Production deployment: a build that anyone can download and run |
 
 ## Prerequisites
 
@@ -63,7 +135,7 @@ dotnet list P2PMessenger.Desktop.slnf package --vulnerable --include-transitive
 ```
 
 - Warnings are errors, and code style, unnecessary usings included, is checked on build (`Directory.Build.props`, `.editorconfig`). Missing XML documentation is not reported. A failed download of vulnerability data (NU1900) stays a warning, so building offline works.
-- The tests run on Microsoft Testing Platform (`global.json`). Every `dotnet test` run also writes a Cobertura coverage report into the `TestResults` folder next to each test assembly (`tests/Directory.Build.props`).
+- The tests run on Microsoft Testing Platform (`global.json`). Every `dotnet test` run also writes one Cobertura coverage report for each test project, into a `TestResults` folder in the test assembly's output folder, or into the folder given by `--results-directory` (`tests/Directory.Build.props`). Reports of earlier runs stay there, so delete the folder before a run whose reports you want to merge (see [Tests and coverage](#tests-and-coverage)).
 - Coverage instrumentation rewrites `P2PMessenger.Core.dll` next to the test assembly while the tests run, so the Core architecture test reads the copy that `P2PMessenger.Core.Tests.csproj` puts in the `architecture` subfolder on build.
 - A test project that runs no tests ends with exit code 8, and then `dotnet test` fails; a new test project without tests needs `--ignore-exit-code 8` in its project file until its first test.
 - The integration tests and the UI tests open TCP connections on the loopback interface. The storage, application and integration tests create databases in the temporary folder and delete them afterwards.

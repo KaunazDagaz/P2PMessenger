@@ -9,5 +9,6 @@
 
   <ItemGroup>
     <Compile Include="..\Shared\FakeSocksProxy.cs" Link="Shared\FakeSocksProxy.cs" />
+    <Compile Include="..\Shared\RecordingFailureSink.cs" Link="Shared\RecordingFailureSink.cs" />
   </ItemGroup>
 </Project>

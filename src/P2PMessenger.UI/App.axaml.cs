@@ -5,8 +5,8 @@ using Microsoft.Extensions.Logging;
 using P2PMessenger.Application;
 using P2PMessenger.Application.Background;
 using P2PMessenger.Application.Connections;
+using P2PMessenger.Application.Errors;
 using P2PMessenger.Application.Internet;
-using P2PMessenger.Application.Logging;
 using P2PMessenger.UI.Services;
 using P2PMessenger.UI.ViewModels;
 using P2PMessenger.UI.Views;
@@ -17,6 +17,7 @@ public partial class App : Avalonia.Application
 {
     private readonly AppPlatform platform;
     private readonly ILoggerFactory loggers;
+    private readonly GlobalFailureHandler failures;
     private MainView? activityView;
 
     public App()
@@ -28,7 +29,8 @@ public partial class App : Avalonia.Application
     {
         ArgumentNullException.ThrowIfNull(platform);
         this.platform = platform;
-        loggers = CreateLoggers();
+        loggers = AppLoggers.Create(platform, BuildInfo.IsDebug);
+        failures = new GlobalFailureHandler(loggers.CreateLogger<GlobalFailureHandler>());
     }
 
     public override void Initialize()
@@ -81,7 +83,11 @@ public partial class App : Avalonia.Application
                 window.Deactivated += (_, _) => desktopShell.EnterBackground();
                 window.Activated += (_, _) => desktopShell.EnterForeground();
                 desktopLifetime.MainWindow = window;
-                desktopLifetime.Exit += (_, _) => desktopServices.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                desktopLifetime.Exit += (_, _) =>
+                {
+                    desktopServices.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                    loggers.Dispose();
+                };
                 _ = desktopShell.StartAsync(CancellationToken.None);
                 break;
         }
@@ -106,17 +112,15 @@ public partial class App : Avalonia.Application
         }
     }
 
-    private static TraceLoggerFactory CreateLoggers() => new(BuildInfo.IsDebug ? LogLevel.Information : LogLevel.Error);
-
     private void InstallErrorHandler(MainViewModel shell) =>
-        new GlobalErrorHandler(loggers.CreateLogger<GlobalErrorHandler>(), new AvaloniaUiThread(), shell.ShowUnexpectedError).Install();
+        new GlobalErrorHandler(failures, new AvaloniaUiThread(), shell.ShowUnexpectedError).Install();
 
     private AppServices CreateServices(Func<TopLevel?> topLevel)
     {
         TopLevelServices topLevelServices = new(topLevel);
         AppServices services = new(
             platform.CreateLocalData(),
-            MessengerSetup.InMemory() with { Loggers = loggers, Discovery = DiscoverySetup.LocalNetwork(platform.LocalInterfaces), Tor = platform.Tor },
+            MessengerSetup.InMemory() with { Loggers = loggers, Failures = failures, Discovery = DiscoverySetup.LocalNetwork(platform.LocalInterfaces), Tor = platform.Tor },
             new AvaloniaUiThread(),
             topLevelServices,
             topLevelServices,

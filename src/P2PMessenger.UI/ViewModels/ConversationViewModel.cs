@@ -5,6 +5,7 @@ using P2PMessenger.Application;
 using P2PMessenger.Application.Chats;
 using P2PMessenger.Application.Connections;
 using P2PMessenger.Application.Contacts;
+using P2PMessenger.Core;
 using P2PMessenger.Core.Crypto;
 using P2PMessenger.Core.Messages;
 using P2PMessenger.UI.Resources;
@@ -191,8 +192,9 @@ public sealed partial class ConversationViewModel : PageViewModel
             IsConfirmingDeleteChat = false;
             RefreshMessages();
         }
-        catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
+        catch (Exception exception) when (Failures.IsFailure(exception))
         {
+            ReportFailure(exception);
             ErrorMessage = UiText.ConversationDeleteChatFailed;
         }
         finally
@@ -236,8 +238,9 @@ public sealed partial class ConversationViewModel : PageViewModel
 
             RefreshMessages();
         }
-        catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
+        catch (Exception exception) when (Failures.IsFailure(exception))
         {
+            ReportFailure(exception);
             ErrorMessage = UiText.ConversationMessageDeleteFailed;
         }
     }

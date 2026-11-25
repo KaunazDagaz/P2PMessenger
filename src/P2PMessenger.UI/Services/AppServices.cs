@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using P2PMessenger.Application;
 using P2PMessenger.Application.Background;
 using P2PMessenger.Application.Identity;
@@ -49,6 +50,7 @@ public sealed class AppServices : IAsyncDisposable
         Clipboard = clipboard;
         CodeFiles = codeFiles;
         QrScanner = qrScanner;
+        FailureLog = new FailureLog(setup.Loggers.CreateLogger<FailureLog>());
         Lock = new AppLock(localData, setup.TimeProvider);
     }
 
@@ -96,6 +98,7 @@ public sealed class AppServices : IAsyncDisposable
 
     public Messenger? Messenger { get; private set; }
 
+    public FailureLog FailureLog { get; }
     public async Task<LocalDataResult> OpenLocalDataAsync(CancellationToken cancellationToken) =>
         Adopt(await localData.OpenAsync(cancellationToken).ConfigureAwait(false));
 

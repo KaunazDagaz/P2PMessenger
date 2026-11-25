@@ -1,6 +1,7 @@
 using System.Net;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using P2PMessenger.Core;
 using P2PMessenger.Core.Identity;
 using P2PMessenger.Core.Sessions;
 using P2PMessenger.Transport.Connections;
@@ -12,10 +13,10 @@ internal sealed class TestPeer : IAsyncDisposable
 {
     private readonly List<SessionContact> owned = [];
 
-    private TestPeer(KeySet keys, ConnectionOptions options, LogCapture? log)
+    private TestPeer(KeySet keys, ConnectionOptions options, LogCapture? log, IFailureSink? failures)
     {
         Keys = keys;
-        Manager = new ConnectionManager(keys, Contacts, Observer, options, TimeProvider.System, LoggerFor<ConnectionManager>(log));
+        Manager = new ConnectionManager(keys, Contacts, Observer, options, TimeProvider.System, LoggerFor<ConnectionManager>(log), failures);
         Listener = TcpConnectionListener.Start(Manager, new IPEndPoint(IPAddress.Loopback, 0), LoggerFor<TcpConnectionListener>(log));
     }
 
@@ -31,8 +32,8 @@ internal sealed class TestPeer : IAsyncDisposable
 
     public IPEndPoint Endpoint => Listener.LocalEndpoint;
 
-    public static TestPeer Start(ConnectionOptions? options = null, LogCapture? log = null) =>
-        new(KeySet.Create(), options ?? TestOptions.Fast, log);
+    public static TestPeer Start(ConnectionOptions? options = null, LogCapture? log = null, IFailureSink? failures = null) =>
+        new(KeySet.Create(), options ?? TestOptions.Fast, log, failures);
 
     public SessionContact Know(KeySet other)
     {

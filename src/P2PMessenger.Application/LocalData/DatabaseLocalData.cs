@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using P2PMessenger.Application.Chats;
 using P2PMessenger.Application.Contacts;
 using P2PMessenger.Application.Identity;
+using P2PMessenger.Core;
 using P2PMessenger.Storage;
 using P2PMessenger.Storage.Protection;
 using P2PMessenger.Storage.Repositories;
@@ -367,7 +368,7 @@ public sealed class DatabaseLocalData : ILocalData
         {
             return await open.ReadDataKeyAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
+        catch (Exception exception) when (Failures.IsFailure(exception))
         {
             return null;
         }
@@ -379,7 +380,7 @@ public sealed class DatabaseLocalData : ILocalData
         {
             await open.EraseAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
+        catch (Exception exception) when (Failures.IsFailure(exception))
         {
             return;
         }
@@ -734,7 +735,7 @@ public sealed class DatabaseLocalData : ILocalData
         {
             await keyStore.ForgetAsync(held, CancellationToken.None).ConfigureAwait(false);
         }
-        catch (Exception exception) when (exception is not OutOfMemoryException)
+        catch (Exception exception) when (Failures.IsRecoverable(exception))
         {
             return;
         }

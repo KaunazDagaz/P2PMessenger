@@ -7,6 +7,7 @@ namespace P2PMessenger.UI.Services;
 
 public sealed class AppPlatform
 {
+    public const string LogFolderName = "logs";
     public AppPlatform(string? dataFolder, IKeyProtector? keyProtector)
         : this(dataFolder, keyProtector, null)
     {
@@ -34,6 +35,8 @@ public sealed class AppPlatform
     public static AppPlatform WithoutKeyStore { get; } = new(null, null);
 
     public string? DataFolder { get; }
+
+    public string? LogFolder => DataFolder is { Length: > 0 } folder ? Path.Combine(folder, LogFolderName) : null;
 
     public IKeyProtector? KeyProtector { get; }
 

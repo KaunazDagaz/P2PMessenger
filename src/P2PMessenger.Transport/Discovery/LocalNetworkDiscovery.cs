@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
+using P2PMessenger.Core;
 using P2PMessenger.Core.Discovery;
 using P2PMessenger.Core.Sessions;
 using P2PMessenger.Transport.Admission;
@@ -22,6 +23,7 @@ public sealed class LocalNetworkDiscovery : IAsyncDisposable
     private readonly DiscoveryOptions options;
     private readonly TimeProvider timeProvider;
     private readonly ILogger logger;
+    private readonly IFailureSink? failureSink;
     private readonly Lock gate = new();
     private readonly RecentNonces ownNonces;
     private readonly RecentNonces seenNonces;
@@ -50,7 +52,8 @@ public sealed class LocalNetworkDiscovery : IAsyncDisposable
         IDiscoveryObserver observer,
         DiscoveryOptions options,
         TimeProvider timeProvider,
-        ILogger<LocalNetworkDiscovery> logger)
+        ILogger<LocalNetworkDiscovery> logger,
+        IFailureSink? failures = null)
     {
         ArgumentNullException.ThrowIfNull(contacts);
         ArgumentNullException.ThrowIfNull(interfaces);
@@ -73,6 +76,7 @@ public sealed class LocalNetworkDiscovery : IAsyncDisposable
         this.options = options;
         this.timeProvider = timeProvider;
         this.logger = logger;
+        failureSink = failures;
         long frequency = timeProvider.TimestampFrequency;
         ownNonces = new RecentNonces(options.NonceMemory, frequency, NonceCapacity);
         seenNonces = new RecentNonces(options.NonceMemory, frequency, NonceCapacity);
@@ -213,7 +217,7 @@ public sealed class LocalNetworkDiscovery : IAsyncDisposable
         {
             snapshot = interfaces.Read();
         }
-        catch (Exception exception) when (exception is not OutOfMemoryException)
+        catch (Exception exception) when (Failures.IsRecoverable(exception))
         {
             ReportUnexpected(exception);
             return false;
@@ -447,7 +451,7 @@ public sealed class LocalNetworkDiscovery : IAsyncDisposable
         {
             return;
         }
-        catch (Exception exception) when (exception is not OutOfMemoryException)
+        catch (Exception exception) when (Failures.IsRecoverable(exception))
         {
             ReportUnexpected(exception);
         }
@@ -530,7 +534,7 @@ public sealed class LocalNetworkDiscovery : IAsyncDisposable
             {
                 return;
             }
-            catch (Exception exception) when (exception is not OutOfMemoryException)
+            catch (Exception exception) when (Failures.IsRecoverable(exception))
             {
                 ReportUnexpected(exception);
                 return;
@@ -545,7 +549,7 @@ public sealed class LocalNetworkDiscovery : IAsyncDisposable
             {
                 OnDatagram(buffer.AsSpan(0, Math.Min(datagram.Length, buffer.Length)), datagram.Source!);
             }
-            catch (Exception exception) when (exception is not OutOfMemoryException)
+            catch (Exception exception) when (Failures.IsRecoverable(exception))
             {
                 ReportUnexpected(exception);
             }
@@ -564,7 +568,7 @@ public sealed class LocalNetworkDiscovery : IAsyncDisposable
             {
                 return;
             }
-            catch (Exception exception) when (exception is not OutOfMemoryException)
+            catch (Exception exception) when (Failures.IsRecoverable(exception))
             {
                 ReportUnexpected(exception);
             }
@@ -603,7 +607,13 @@ public sealed class LocalNetworkDiscovery : IAsyncDisposable
 
     private void ReportUnexpected(Exception exception)
     {
-        string exceptionType = exception.GetType().Name;
+        if (failureSink is not null)
+        {
+            failureSink.Report(FailureSource.Discovery, exception);
+            return;
+        }
+
+        string exceptionType = Failures.TypeName(exception);
         logger.DiscoveryUnexpected(exceptionType);
     }
 }

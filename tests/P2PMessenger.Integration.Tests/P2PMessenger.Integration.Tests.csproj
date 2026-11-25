@@ -10,5 +10,6 @@
   <ItemGroup>
     <Compile Include="..\Shared\LoopbackDiscovery.cs" Link="Shared\LoopbackDiscovery.cs" />
     <Compile Include="..\Shared\FakeSocksProxy.cs" Link="Shared\FakeSocksProxy.cs" />
+    <Compile Include="..\Shared\RecordingFailureSink.cs" Link="Shared\RecordingFailureSink.cs" />
   </ItemGroup>
 </Project>

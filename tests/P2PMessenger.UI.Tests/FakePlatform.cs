@@ -16,6 +16,8 @@ internal sealed class FakePlatform : IClipboardService, ICodeFileService, IQrSca
 
     public CodeFileResult OpenResult { get; set; } = new(CodeFileStatus.Cancelled, null);
 
+    public Exception? OpenFailure { get; set; }
+
     public (string Name, byte[] Png)? SavedImage { get; private set; }
 
     public List<QrScanRequest> ScanRequests { get; } = [];
@@ -60,5 +62,6 @@ internal sealed class FakePlatform : IClipboardService, ICodeFileService, IQrSca
         return Task.FromResult(SaveResult);
     }
 
-    public Task<CodeFileResult> OpenAsync(CancellationToken cancellationToken) => Task.FromResult(OpenResult);
+    public Task<CodeFileResult> OpenAsync(CancellationToken cancellationToken) =>
+        OpenFailure is { } failure ? Task.FromException<CodeFileResult>(failure) : Task.FromResult(OpenResult);
 }

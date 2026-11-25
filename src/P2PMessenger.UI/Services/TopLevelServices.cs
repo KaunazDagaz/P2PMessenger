@@ -2,6 +2,7 @@ using System.Text;
 using Avalonia.Controls;
 using Avalonia.Input.Platform;
 using Avalonia.Platform.Storage;
+using P2PMessenger.Core;
 using P2PMessenger.UI.Qr;
 using P2PMessenger.UI.Resources;
 
@@ -165,7 +166,7 @@ public sealed class TopLevelServices : IClipboardService, ICodeFileService
                     ? new CodeFileResult(CodeFileStatus.Done, text)
                     : new CodeFileResult(CodeFileStatus.NoCodeInImage, null);
             }
-            catch (Exception exception) when (exception is not OutOfMemoryException and not OperationCanceledException)
+            catch (Exception exception) when (Failures.IsFailure(exception))
             {
                 return new CodeFileResult(CodeFileStatus.Failed, null);
             }

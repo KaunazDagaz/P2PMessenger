@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
+using P2PMessenger.Core;
 using P2PMessenger.UI.Services;
 
 namespace P2PMessenger.Desktop.Camera;
@@ -29,7 +30,7 @@ public sealed class DesktopQrScanner : IQrScanner
         {
             entries = await Task.Run(cameras.List, cancellationToken);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
+        catch (Exception exception) when (Failures.IsFailure(exception))
         {
             return QrScanResult.NoCamera;
         }

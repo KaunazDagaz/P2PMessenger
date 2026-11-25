@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
+using P2PMessenger.Core;
 using P2PMessenger.Core.Identity;
 
 namespace P2PMessenger.Transport.Tor;
@@ -370,7 +371,7 @@ internal sealed class TorControlClient : IAsyncDisposable
                 waiting.TrySetResult(reply);
             }
         }
-        catch (Exception exception) when (exception is not OutOfMemoryException)
+        catch (Exception exception) when (Failures.IsRecoverable(exception))
         {
             failure = exception;
         }

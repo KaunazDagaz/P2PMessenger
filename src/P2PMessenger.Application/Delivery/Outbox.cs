@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using P2PMessenger.Application.Chats;
 using P2PMessenger.Application.Connections;
+using P2PMessenger.Core;
 using P2PMessenger.Core.Crypto;
 using P2PMessenger.Core.Messages;
 using P2PMessenger.Transport.Connections;
@@ -19,6 +20,7 @@ internal sealed class Outbox : IAsyncDisposable
     private readonly DeliveryOptions options;
     private readonly TimeProvider timeProvider;
     private readonly ILogger logger;
+    private readonly IFailureSink? failureSink;
     private readonly Lock gate = new();
     private readonly Dictionary<Ed25519PublicKey, Courier> couriers = [];
     private readonly CancellationTokenSource stopping = new();
@@ -32,13 +34,15 @@ internal sealed class Outbox : IAsyncDisposable
         IWakeUpScheduler scheduler,
         DeliveryOptions options,
         TimeProvider timeProvider,
-        ILogger logger)
+        ILogger logger,
+        IFailureSink? failures = null)
     {
         this.chats = chats;
         this.connections = connections;
         this.options = options;
         this.timeProvider = timeProvider;
         this.logger = logger;
+        failureSink = failures;
         stopToken = stopping.Token;
         connections.Changed += OnConnectionChanged;
         wakeUps = scheduler.Every(options.WakeUpInterval, WakeUp);
@@ -182,9 +186,15 @@ internal sealed class Outbox : IAsyncDisposable
             {
                 return;
             }
-            catch (Exception exception) when (exception is not OutOfMemoryException)
+            catch (Exception exception) when (Failures.IsRecoverable(exception))
             {
-                string exceptionType = exception.GetType().Name;
+                if (outbox.failureSink is { } sink)
+                {
+                    sink.Report(FailureSource.Delivery, exception);
+                    return;
+                }
+
+                string exceptionType = Failures.TypeName(exception);
                 DeliveryFailed(outbox.logger, exceptionType, null);
             }
         }

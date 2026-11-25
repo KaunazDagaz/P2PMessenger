@@ -63,4 +63,12 @@ public sealed class DesktopPlatformTests
         Assert.Equal(Path.GetFullPath("third-app"), platform.DataFolder);
         Assert.Equal(OperatingSystem.IsWindows() || OperatingSystem.IsLinux(), platform.KeyProtector is not null);
     }
+
+    [Fact]
+    public void FromArguments_GivesALogFolderInsideTheDataFolder()
+    {
+        var platform = DesktopPlatform.FromArguments(["--data", "fifth-app"]);
+
+        Assert.Equal(Path.Combine(Path.GetFullPath("fifth-app"), "logs"), platform.LogFolder);
+    }
 }

@@ -1,31 +1,32 @@
-using System.Runtime.CompilerServices;
 using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
+using P2PMessenger.Application.Errors;
+using P2PMessenger.Core;
 
 namespace P2PMessenger.UI.Services;
 
 public sealed class GlobalErrorHandler
 {
-    private static readonly Action<ILogger, string, ErrorOrigin, Exception?> LogUnhandled = LoggerMessage.Define<string, ErrorOrigin>(
-        LogLevel.Error,
-        new EventId(1, "UnhandledException"),
-        "Unhandled exception of type {ExceptionType} on {Origin}");
-
-    private readonly ILogger logger;
+    private readonly GlobalFailureHandler failures;
     private readonly IUiThread uiThread;
     private readonly Action onError;
-    private readonly ConditionalWeakTable<Exception, object> reported = [];
     private bool installed;
 
     public GlobalErrorHandler(ILogger logger, IUiThread uiThread, Action onError)
+        : this(new GlobalFailureHandler(logger), uiThread, onError)
     {
-        ArgumentNullException.ThrowIfNull(logger);
+    }
+
+    public GlobalErrorHandler(GlobalFailureHandler failures, IUiThread uiThread, Action onError)
+    {
+        ArgumentNullException.ThrowIfNull(failures);
         ArgumentNullException.ThrowIfNull(uiThread);
         ArgumentNullException.ThrowIfNull(onError);
 
-        this.logger = logger;
+        this.failures = failures;
         this.uiThread = uiThread;
         this.onError = onError;
+        failures.FailureReported += OnFailureReported;
     }
 
     public void Install()
@@ -36,9 +37,8 @@ public sealed class GlobalErrorHandler
         }
 
         installed = true;
+        failures.Install();
         Dispatcher.UIThread.UnhandledException += OnUiThreadException;
-        TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
-        AppDomain.CurrentDomain.UnhandledException += OnAppDomainException;
     }
 
     public void Uninstall()
@@ -49,53 +49,20 @@ public sealed class GlobalErrorHandler
         }
 
         installed = false;
+        failures.Uninstall();
         Dispatcher.UIThread.UnhandledException -= OnUiThreadException;
-        TaskScheduler.UnobservedTaskException -= OnUnobservedTaskException;
-        AppDomain.CurrentDomain.UnhandledException -= OnAppDomainException;
     }
 
-    public bool Handle(Exception exception, ErrorOrigin origin)
+    public bool Handle(Exception exception, FailureSource source) => failures.Handle(exception, source);
+
+    private void OnFailureReported(object? sender, FailureReport report)
     {
-        ArgumentNullException.ThrowIfNull(exception);
-
-        Exception cause = Unwrap(exception);
-        if (cause is OutOfMemoryException)
-        {
-            return false;
-        }
-
-        if (!reported.TryAdd(cause, reported))
-        {
-            return true;
-        }
-        LogUnhandled(logger, cause.GetType().FullName ?? cause.GetType().Name, origin, null);
-        if (origin != ErrorOrigin.AppDomain)
+        if (report.Source is FailureSource.UiThread or FailureSource.BackgroundTask)
         {
             uiThread.Post(onError);
         }
-
-        return true;
     }
-
-    private static Exception Unwrap(Exception exception) =>
-        exception is AggregateException aggregate && aggregate.Flatten().InnerExceptions is [var single, ..] ? single : exception;
 
     private void OnUiThreadException(object sender, DispatcherUnhandledExceptionEventArgs e) =>
-        e.Handled = Handle(e.Exception, ErrorOrigin.UiThread);
-
-    private void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
-    {
-        if (Handle(e.Exception, ErrorOrigin.BackgroundTask))
-        {
-            e.SetObserved();
-        }
-    }
-
-    private void OnAppDomainException(object sender, UnhandledExceptionEventArgs e)
-    {
-        if (e.ExceptionObject is Exception exception)
-        {
-            Handle(exception, ErrorOrigin.AppDomain);
-        }
-    }
+        e.Handled = Handle(e.Exception, FailureSource.UiThread);
 }
