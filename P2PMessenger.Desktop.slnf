@@ -12,6 +12,7 @@
       "tests\\P2PMessenger.Application.Tests\\P2PMessenger.Application.Tests.csproj",
       "tests\\P2PMessenger.Core.Tests\\P2PMessenger.Core.Tests.csproj",
       "tests\\P2PMessenger.Desktop.Tests\\P2PMessenger.Desktop.Tests.csproj",
+      "tests\\P2PMessenger.E2E.Tests\\P2PMessenger.E2E.Tests.csproj",
       "tests\\P2PMessenger.Integration.Tests\\P2PMessenger.Integration.Tests.csproj",
       "tests\\P2PMessenger.Storage.Tests\\P2PMessenger.Storage.Tests.csproj",
       "tests\\P2PMessenger.Transport.Tests\\P2PMessenger.Transport.Tests.csproj",

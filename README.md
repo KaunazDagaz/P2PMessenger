@@ -1,5 +1,7 @@
 # P2PMessenger
 
+[![CI](https://github.com/KaunazDagaz/P2PMessenger/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/KaunazDagaz/P2PMessenger/actions/workflows/ci.yml)
+
 A friend-to-friend messenger for small groups of people, for the times their usual messenger stops working: weak or no internet, travel without mobile data, or an internet shutdown. Messages are end-to-end encrypted and travel directly between the devices, over a shared Wi-Fi network or one phone's hotspot, or over Tor onion services. There is no server. Clients for Windows, Linux and Android.
 
 Bachelor diploma project "Secure Decentralized P2P Messenger with End-to-End Encryption" by Mikita Besau, European Humanities University.
@@ -17,7 +19,7 @@ Bachelor diploma project "Secure Decentralized P2P Messenger with End-to-End Enc
 | `src/P2PMessenger.UI` | Avalonia views and view models shared by both heads; the front-end documentation is in [`src/P2PMessenger.UI/README.md`](src/P2PMessenger.UI/README.md) |
 | `src/P2PMessenger.Desktop` | Windows and Linux head, with the platform key stores (DPAPI on Windows, the Secret Service on Linux) |
 | `src/P2PMessenger.Android` | Android head, with the Android Keystore as its key store |
-| `tests/` | One test project per layer and one for each head, integration tests and headless UI tests |
+| `tests/` | One test project per layer and one for each head, integration tests, headless UI tests and end-to-end tests |
 | `tools/` | `get-tor.ps1`, which downloads the pinned Tor Expert Bundles into `tools/tor` (not committed; see [Tor](#tor)) |
 | `API.md` | The description of the API: the wire protocol between two apps and the application interface used by the screens (see [Back-end](#back-end)) |
 
@@ -92,11 +94,11 @@ Each test project writes its own Cobertura report, and the integration and UI te
 
 ```
 dotnet test --solution P2PMessenger.Desktop.slnf --configuration Release --results-directory TestResults
-dotnet tool install --global dotnet-reportgenerator-globaltool
-reportgenerator "-reports:TestResults/*.xml" "-targetdir:TestResults/coverage" "-reporttypes:TextSummary;Html" "-assemblyfilters:+P2PMessenger.Core;+P2PMessenger.Transport;+P2PMessenger.Storage;+P2PMessenger.Application;-*.Tests"
+dotnet tool restore
+dotnet reportgenerator "-reports:TestResults/*.xml" "-targetdir:TestResults/coverage" "-reporttypes:TextSummary;Html" "-assemblyfilters:+P2PMessenger.Core;+P2PMessenger.Transport;+P2PMessenger.Storage;+P2PMessenger.Application;-*.Tests"
 ```
 
-`TestResults/coverage/Summary.txt` gives the totals and `TestResults/coverage/index.html` the report by class and file. On 2026-11-25, on Windows, 1,799 tests ran and none failed; 20 were skipped, because they need Linux, a Secret Service or a real tor. The merged line coverage of the four assemblies that hold the business logic was 93.0 % (branch coverage 86.7 %): `P2PMessenger.Core` 95.2 %, `P2PMessenger.Storage` 94.8 %, `P2PMessenger.Application` 94.2 % and `P2PMessenger.Transport` 90.2 %. The platform code of the two heads is checked on the platforms themselves (see [Build, test and run](#build-test-and-run)).
+`TestResults/coverage/Summary.txt` gives the totals and `TestResults/coverage/index.html` the report by class and file. On 2026-11-25, on Windows, 1,799 tests ran and none failed; 20 were skipped, because they need Linux, a Secret Service or a real tor. The merged line coverage of the four assemblies that hold the business logic was 93.0 % (branch coverage 86.7 %): `P2PMessenger.Core` 95.2 %, `P2PMessenger.Storage` 94.8 %, `P2PMessenger.Application` 94.2 % and `P2PMessenger.Transport` 90.2 %. The platform code of the two heads is checked on the platforms themselves (see [Build, test and run](#build-test-and-run)). CI makes the same merge for every assembly of the desktop solution on every run and fails when the line coverage is below 70 % (see [Continuous integration](#continuous-integration)); that figure includes the screens and the desktop head, so it is lower than the one above.
 
 ### Choices that differ from the criterion
 
@@ -138,13 +140,35 @@ dotnet list P2PMessenger.Desktop.slnf package --vulnerable --include-transitive
 - The tests run on Microsoft Testing Platform (`global.json`). Every `dotnet test` run also writes one Cobertura coverage report for each test project, into a `TestResults` folder in the test assembly's output folder, or into the folder given by `--results-directory` (`tests/Directory.Build.props`). Reports of earlier runs stay there, so delete the folder before a run whose reports you want to merge (see [Tests and coverage](#tests-and-coverage)).
 - Coverage instrumentation rewrites `P2PMessenger.Core.dll` next to the test assembly while the tests run, so the Core architecture test reads the copy that `P2PMessenger.Core.Tests.csproj` puts in the `architecture` subfolder on build.
 - A test project that runs no tests ends with exit code 8, and then `dotnet test` fails; a new test project without tests needs `--ignore-exit-code 8` in its project file until its first test.
-- The integration tests and the UI tests open TCP connections on the loopback interface. The storage, application and integration tests create databases in the temporary folder and delete them afterwards.
+- The integration tests, the UI tests and the end-to-end tests open TCP connections on the loopback interface. The storage, application, integration and end-to-end tests create databases in the temporary folder and delete them afterwards.
 - `P2PMessenger.Desktop.Tests` tests the key stores of the desktop head. Its DPAPI tests run only on Windows. Its Secret Service tests run only on Linux with an unlocked Secret Service on the D-Bus session bus, and are reported as skipped elsewhere (as on a CI runner, which has no session bus).
 - `P2PMessenger.Android.Tests` tests the parts of the Android head that need no Android API (the stored format of the Android Keystore protector, its fallback from StrongBox to the TEE and its answers to failures) by compiling those source files of the head into itself, because a project cannot reference the head without the android workload. The one class that calls the Android Keystore is checked on a phone.
 - A Debug APK from `dotnet build` holds only the Android part of the app and runs only when deployed with `dotnet build src/P2PMessenger.Android -t:Run`. To install it by hand, build it with `-p:EmbedAssembliesIntoApk=true`.
 - Every restore writes a `packages.lock.json` file next to each project. Commit them. After changing a version in `Directory.Packages.props`, run `dotnet restore --force-evaluate` to update them.
 - Every text the app shows is in `src/P2PMessenger.UI/Resources/UiText.resx`, with its class `UiText.Designer.cs` checked in next to it. Visual Studio and Rider regenerate the class when the `.resx` is saved; elsewhere, after editing the `.resx`, run `dotnet msbuild src/P2PMessenger.UI -t:GenerateResourceDesigners` (a target in `Directory.Build.targets`). A test fails when the class and the `.resx` differ.
 - Avalonia's build tooling sends anonymous build-time telemetry to Avalonia, and the .NET CLI sends its own; neither affects the app. Set `AVALONIA_TELEMETRY_OPTOUT=1` and `DOTNET_CLI_TELEMETRY_OPTOUT=1` to turn them off.
+
+## Testing
+
+The tests are in `tests/`, one project per layer, with the folders of the project they test. Test classes are named `<Subject>Tests` and test methods `Subject_Condition_Result`.
+
+| Layer | Project | What the tests check |
+| --- | --- | --- |
+| Unit: Core | `P2PMessenger.Core.Tests` | The published test vectors (RFCs, and the Noise vectors of cacophony and snow), reference vectors of our own formats, bit-flip sweeps that every contact code, announcement, message and session frame must survive by being refused, and the architecture rules |
+| Unit: Storage, Application, Transport | `P2PMessenger.Storage.Tests`, `P2PMessenger.Application.Tests`, `P2PMessenger.Transport.Tests` | Common and edge cases of each class: a real SQLite database in a temporary folder with its migrations and per-record encryption, the services behind the screens, admission limits and the control of tor against a fake tor |
+| Integration | `P2PMessenger.Integration.Tests` | Two complete apps (storage, application, transport) over real TCP on the loopback interface: identities, contacts, chat, restart, deletion, passphrase and lock; adversarial peers (strangers, wrong keys, tampered, truncated, replayed or reordered frames) and flooding, which are refused or closed; the dependency rules between the projects |
+| UI | `P2PMessenger.UI.Tests` | The real views and view models on a real messenger, rendered with Avalonia.Headless: pages, forms and their validation, error and loading states, and the QR code read back from the rendered window |
+| End to end | `P2PMessenger.E2E.Tests` | Two or three complete apps, each with its real main window, its encrypted SQLite database and its own TCP listener, driven only by mouse clicks and typed text: two people create identities, add each other by contact codes and chat until the sender's message shows "Received by the contact's app"; a message to a contact whose app is closed waits and arrives when the app starts again; a stranger is refused, both as a raw connection to the listening port and as an app that holds only a contact's code; the passphrase lock hides the chat while messages keep arriving, a wrong passphrase is refused and a restart receives nothing until the passphrase is entered; a deleted chat disappears on this device only; deleting all data erases the database and returns to identity creation |
+| Heads | `P2PMessenger.Desktop.Tests`, `P2PMessenger.Android.Tests` | The key stores and the platform code that needs no device |
+
+- **Tools.** xUnit v3 on Microsoft Testing Platform, `coverlet.MTP` for Cobertura coverage reports, Avalonia.Headless for the UI and end-to-end tests, and ReportGenerator, pinned in `.config/dotnet-tools.json`, to merge the reports. Test doubles that stand in for the network are in `tests/Shared`: a fake tor SOCKS route, an in-memory hub for finding contacts on the local network, and a fake clock.
+- **API endpoints.** There is no HTTP API (see [Back-end](#back-end)). What the integration tests exercise in its place is the encrypted protocol between two apps and the application interface that the screens call, both described in [`API.md`](API.md), the SQLite database, and the access control: callers that are not contacts are refused, and the passphrase lock stops all sending and receiving.
+- **How to run.** `dotnet test --solution P2PMessenger.Desktop.slnf`; the end-to-end tests alone, which take under a minute, with `dotnet test --project tests/P2PMessenger.E2E.Tests`. The commands for one merged coverage figure and its HTML report, and the figures themselves, are in [Tests and coverage](#tests-and-coverage). CI runs the same suite on Windows and Linux for every push and pull request, and a failing test fails the job (see [Continuous integration](#continuous-integration)).
+- **Known gaps and why.**
+  - The Android head is not in the coverage figure: a test project cannot reference it without the android workload, and running it needs a phone, which CI does not have (CI builds it). Its parts that need no Android API are compiled into `P2PMessenger.Android.Tests`; the class that calls the Android Keystore is checked on a phone.
+  - The key stores of the desktop head are tested where their platform exists: the DPAPI tests run on Windows only, and the Secret Service tests run on Linux only with an unlocked Secret Service on the session bus, which a CI runner lacks, so they are skipped there. The code that talks to a real camera and the desktop window needs a camera and a display, so tests cover it only in part, and it is checked on the machines themselves.
+  - Tests with a real tor run only when `P2PM_TOR` names a tor executable, and the one over the real Tor network also needs `P2PM_TOR_NETWORK=1` and the internet. In CI, apps reach each other through the fake tor route instead.
+  - The UI and end-to-end tests run on Avalonia's headless platform: they draw the real views and send real mouse and keyboard input, but no test drives a window of the operating system, a camera or an Android phone. The end-to-end tests stand in for the platform key store with a fake one, and for multicast and broadcast, which need real network interfaces, with the in-memory hub of `tests/Shared`; everything else, including the TCP connections, the Noise sessions and the encrypted database, is real.
 
 ## Trying the app
 
@@ -237,6 +261,7 @@ Only the main activity is exported, because the launcher starts it; the camera s
 GitHub Actions runs `.github/workflows/ci.yml` on every push and pull request. The actions are pinned to commit SHAs, and the workflow can only read the repository.
 
 - **Desktop**, on Windows and Linux: a locked restore, the format check, a Release build (warnings are errors) and the tests with coverage. The coverage reports are uploaded as the `test-results-<OS>` artifact. On Linux the job also fails if `dotnet list package --vulnerable --include-transitive` finds a vulnerable package.
+- **Coverage**, on Linux, once the desktop jobs have passed: ReportGenerator, pinned in `.config/dotnet-tools.json`, merges the reports of the Linux run. The job summary shows the coverage by assembly, the `coverage-report` artifact holds the HTML report. The job fails when the line coverage of the desktop solution's assemblies, test assemblies left out, is below 70 %. GitHub's own code-coverage feature is not used: it needs GitHub Code Quality, which is offered to organizations on the Team and Enterprise Cloud plans.
 - **Android**, on Linux: Microsoft OpenJDK 21 (the newest JDK the android workload supports), the android workload and the Android SDK parts the project needs, then a locked restore, a Debug build with the .NET code inside the APK, and the same check for vulnerable packages.
 - For pull requests and `main`, the desktop builds and the APK are uploaded as artifacts. Each run signs the APK with a new debug key, so uninstall the previous build before installing another one.
 

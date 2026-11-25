@@ -15,6 +15,7 @@
     <Project Path="tests/P2PMessenger.Application.Tests/P2PMessenger.Application.Tests.csproj" />
     <Project Path="tests/P2PMessenger.Core.Tests/P2PMessenger.Core.Tests.csproj" />
     <Project Path="tests/P2PMessenger.Desktop.Tests/P2PMessenger.Desktop.Tests.csproj" />
+    <Project Path="tests/P2PMessenger.E2E.Tests/P2PMessenger.E2E.Tests.csproj" />
     <Project Path="tests/P2PMessenger.Integration.Tests/P2PMessenger.Integration.Tests.csproj" />
     <Project Path="tests/P2PMessenger.Storage.Tests/P2PMessenger.Storage.Tests.csproj" />
     <Project Path="tests/P2PMessenger.Transport.Tests/P2PMessenger.Transport.Tests.csproj" />

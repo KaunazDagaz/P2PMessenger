@@ -41,8 +41,11 @@ public sealed class TorRouteTests
                 && alice.Chats.MessagesWith(bobKey).Single().Delivery == DeliveryState.Received,
             cancellationToken);
 
+        await TestMessengers.WaitUntilAsync(
+            () => alice.Connections.TorStatusOf(bobKey) == TorDialStatus.None && bob.Connections.TorStatusOf(aliceKey) == TorDialStatus.None,
+            cancellationToken);
+
         Assert.True(alice.Connections.UsesTor);
-        Assert.Equal(TorDialStatus.None, alice.Connections.TorStatusOf(bobKey));
         Assert.Equal(tor.Proxy.Usernames.Count, tor.Proxy.Usernames.Distinct().Count());
         alice.Identity.Dispose();
         bob.Identity.Dispose();
