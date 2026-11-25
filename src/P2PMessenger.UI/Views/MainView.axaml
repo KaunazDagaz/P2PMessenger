@@ -89,12 +89,38 @@
                 <TextBlock x:Name="NoticeText" Text="{Binding Notice}" TextWrapping="Wrap" VerticalAlignment="Center" />
             </DockPanel>
         </Border>
+        <Border x:Name="ErrorNoticePanel"
+                DockPanel.Dock="Top"
+                Margin="12,12,12,0"
+                Padding="12"
+                BorderThickness="1"
+                CornerRadius="4"
+                BorderBrush="{DynamicResource SystemControlErrorTextForegroundBrush}"
+                IsVisible="{Binding HasErrorNotice}">
+            <DockPanel>
+                <Button x:Name="DismissErrorButton"
+                        DockPanel.Dock="Right"
+                        Margin="8,0,0,0"
+                        Content="{x:Static res:UiText.CommonDismiss}"
+                        Command="{Binding DismissErrorNoticeCommand}" />
+                <TextBlock x:Name="ErrorNoticeText"
+                           Text="{Binding ErrorNotice}"
+                           Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center" />
+            </DockPanel>
+        </Border>
         <Grid>
-            <TextBlock x:Name="StartingText"
-                       Text="{x:Static res:UiText.AppStarting}"
-                       IsVisible="{Binding IsStarting}"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center" />
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MinWidth="160" Spacing="8">
+                <TextBlock x:Name="StartingText"
+                           Text="{x:Static res:UiText.AppStarting}"
+                           IsVisible="{Binding IsStarting}"
+                           HorizontalAlignment="Center" />
+                <ProgressBar x:Name="StartingBar"
+                             IsIndeterminate="True"
+                             IsVisible="{Binding IsStarting}"
+                             AutomationProperties.Name="{x:Static res:UiText.AppStarting}" />
+            </StackPanel>
             <TextBlock x:Name="ErrorText"
                        Text="{Binding ErrorMessage}"
                        IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"

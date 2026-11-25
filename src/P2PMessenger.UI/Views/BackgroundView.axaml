@@ -6,6 +6,10 @@
              x:DataType="vm:BackgroundViewModel">
     <ScrollViewer>
         <StackPanel Margin="16" Spacing="12" MaxWidth="560" HorizontalAlignment="Stretch">
+            <ProgressBar x:Name="BusyBar"
+                         IsIndeterminate="True"
+                         IsVisible="{Binding IsBusy}"
+                         AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
             <TextBlock x:Name="FirstRunText" Text="{x:Static res:UiText.BackgroundFirstRun}" TextWrapping="Wrap" IsVisible="{Binding IsFirstRun}" />
             <TextBlock x:Name="IntroText" Text="{x:Static res:UiText.BackgroundIntro}" TextWrapping="Wrap" />
             <TextBlock x:Name="BatteryText" Text="{Binding BatteryText}" TextWrapping="Wrap" />

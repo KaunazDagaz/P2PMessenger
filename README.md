@@ -14,13 +14,31 @@ Bachelor diploma project "Secure Decentralized P2P Messenger with End-to-End Enc
 | `src/P2PMessenger.Transport` | TCP, LAN discovery, tor control and SOCKS5, connections and reachability |
 | `src/P2PMessenger.Storage` | SQLite schema and migrations, repositories, per-record encryption |
 | `src/P2PMessenger.Application` | Use cases, and the interfaces for platform services that the heads implement |
-| `src/P2PMessenger.UI` | Avalonia views and view models shared by both heads |
+| `src/P2PMessenger.UI` | Avalonia views and view models shared by both heads; the front-end documentation is in [`src/P2PMessenger.UI/README.md`](src/P2PMessenger.UI/README.md) |
 | `src/P2PMessenger.Desktop` | Windows and Linux head, with the platform key stores (DPAPI on Windows, the Secret Service on Linux) |
 | `src/P2PMessenger.Android` | Android head, with the Android Keystore as its key store |
 | `tests/` | One test project per layer and one for each head, integration tests and headless UI tests |
 | `tools/` | `get-tor.ps1`, which downloads the pinned Tor Expert Bundles into `tools/tor` (not committed; see [Tor](#tor)) |
 
 Dependency rules: `Core` references no other project and uses no I/O or platform API; `Transport` and `Storage` reference `Core`; `Application` references `Core`, `Transport` and `Storage`; `UI` references `Application`; the two heads reference `UI`. The architecture tests in `P2PMessenger.Integration.Tests` and `P2PMessenger.Core.Tests` enforce them.
+
+## Front-end
+
+The client is an Avalonia application written in C# with the MVVM pattern. One code base, `P2PMessenger.UI`, runs on Windows, Linux and Android; the two heads start it and provide the platform services. The front-end works with the application layer of its own process. Its documentation is in [`src/P2PMessenger.UI/README.md`](src/P2PMessenger.UI/README.md):
+
+| What | Where |
+| --- | --- |
+| How to build, run and test the client | [Build, run and test](src/P2PMessenger.UI/README.md#build-run-and-test) |
+| Where each requirement of the front-end criterion is implemented, and its status | [Where each requirement is implemented](src/P2PMessenger.UI/README.md#where-each-requirement-is-implemented) |
+| Technology stack and why | [Technology stack and why](src/P2PMessenger.UI/README.md#technology-stack-and-why) |
+| Architecture diagram, project structure, MVVM and state management | [Architecture](src/P2PMessenger.UI/README.md#architecture) |
+| Navigation diagram and user flows | [Navigation and user flows](src/P2PMessenger.UI/README.md#navigation-and-user-flows) |
+| Forms and validation, error handling, loading states, logging | [Forms and validation](src/P2PMessenger.UI/README.md#forms-and-validation), [Error handling](src/P2PMessenger.UI/README.md#error-handling), [Loading states](src/P2PMessenger.UI/README.md#loading-states), [Logging](src/P2PMessenger.UI/README.md#logging) |
+| The API the front-end works with | [The API the front-end works with](src/P2PMessenger.UI/README.md#the-api-the-front-end-works-with) |
+| Unit, UI and end-to-end tests | [Tests](src/P2PMessenger.UI/README.md#tests) |
+| What is not built yet | [Planned](src/P2PMessenger.UI/README.md#planned) |
+
+To try the client, run `dotnet run --project src/P2PMessenger.Desktop` and follow [Trying the app](#trying-the-app).
 
 ## Prerequisites
 

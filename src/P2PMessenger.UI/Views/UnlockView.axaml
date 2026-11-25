@@ -18,6 +18,10 @@
                     Command="{Binding UnlockCommand}"
                     IsDefault="True" />
             <TextBlock x:Name="BusyText" Text="{x:Static res:UiText.UnlockChecking}" IsVisible="{Binding IsBusy}" />
+            <ProgressBar x:Name="BusyBar"
+                         IsIndeterminate="True"
+                         IsVisible="{Binding IsBusy}"
+                         AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
             <TextBlock x:Name="ErrorText"
                        Text="{Binding ErrorMessage}"
                        IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"

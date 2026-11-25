@@ -33,7 +33,11 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
     private string? notice;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsLocked), nameof(Title), nameof(HasNotice), nameof(IsBackVisible), nameof(CanLock), nameof(IsPageVisible))]
+    [NotifyPropertyChangedFor(nameof(HasErrorNotice))]
+    private string? errorNotice;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsLocked), nameof(Title), nameof(HasNotice), nameof(HasErrorNotice), nameof(IsBackVisible), nameof(CanLock), nameof(IsPageVisible))]
     [NotifyCanExecuteChangedFor(nameof(LockCommand))]
     private UnlockViewModel? lockPage;
 
@@ -62,6 +66,8 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
     public bool IsPageVisible => !IsLocked;
 
     public bool HasNotice => Notice is not null && !IsLocked;
+
+    public bool HasErrorNotice => ErrorNotice is not null && !IsLocked;
 
     public bool IsBackVisible => CanGoBack && !IsLocked;
 
@@ -106,6 +112,8 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
     public void EnterBackground() => services.Lock.EnterBackground();
 
     public void EnterForeground() => services.Lock.EnterForeground();
+
+    public void ShowUnexpectedError() => ErrorNotice = UiText.AppUnexpectedError;
 
     public void Push(PageViewModel page)
     {
@@ -153,6 +161,9 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
 
     [RelayCommand]
     private void DismissNotice() => Notice = null;
+
+    [RelayCommand]
+    private void DismissErrorNotice() => ErrorNotice = null;
 
     [RelayCommand(CanExecute = nameof(CanLock))]
     private void Lock() => services.Lock.LockNow();

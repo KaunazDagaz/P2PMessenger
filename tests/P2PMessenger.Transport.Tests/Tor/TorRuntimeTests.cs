@@ -207,7 +207,7 @@ public sealed class TorRuntimeTests : IAsyncDisposable
         Assert.True(await Eventually.TrueAsync(() => Equals(runtime.SocksEndpoint, new IPEndPoint(IPAddress.Loopback, 39051)), cancellationToken));
         Assert.Equal(["SETCONF DisableNetwork=1", "SETCONF DisableNetwork=0", "GETINFO net/listeners/socks"], AfterOnion(tor));
         Assert.False(tor.NetworkDisabled);
-        Assert.True(changes >= 1);
+        Assert.True(await Eventually.TrueAsync(() => Volatile.Read(ref changes) >= 1, cancellationToken));
         Assert.Equal(1, starter.StartCount);
         Assert.Equal(1, runtime.ControlledCount);
     }

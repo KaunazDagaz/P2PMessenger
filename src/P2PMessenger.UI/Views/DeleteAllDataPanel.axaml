@@ -28,6 +28,10 @@
                             Command="{Binding CancelCommand}" />
                 </WrapPanel>
                 <TextBlock x:Name="DeleteAllBusyText" Text="{x:Static res:UiText.DeleteAllDataDeleting}" IsVisible="{Binding IsBusy}" />
+                <ProgressBar x:Name="DeleteAllBusyBar"
+                             IsIndeterminate="True"
+                             IsVisible="{Binding IsBusy}"
+                             AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
                 <TextBlock x:Name="DeleteAllErrorText"
                            Text="{Binding ErrorMessage}"
                            IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"

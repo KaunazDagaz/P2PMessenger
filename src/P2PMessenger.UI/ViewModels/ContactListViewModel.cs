@@ -19,7 +19,15 @@ public sealed partial class ContactListViewModel : PageViewModel
     private readonly Func<bool, CancellationToken, Task>? setTor;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasContacts))]
     private bool isEmpty = true;
+
+    [ObservableProperty]
+    private bool hasNoMatches;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSearchText))]
+    private string searchText = string.Empty;
 
     [ObservableProperty]
     private bool hasNoNetwork;
@@ -70,6 +78,10 @@ public sealed partial class ContactListViewModel : PageViewModel
 
     public bool OffersBackground { get; }
 
+    public bool HasContacts => !IsEmpty;
+
+    public bool HasSearchText => !string.IsNullOrEmpty(SearchText);
+
     public ObservableCollection<ContactItemViewModel> Contacts { get; } = [];
 
     public override void OnShown()
@@ -108,6 +120,9 @@ public sealed partial class ContactListViewModel : PageViewModel
     private void Background() => navigation.Push(pages.Background(false));
 
     [RelayCommand]
+    private void ClearSearch() => SearchText = string.Empty;
+
+    [RelayCommand]
     private void DeleteAllData() => navigation.Push(pages.DeleteAllData());
 
     private void Open(Contact contact) => navigation.Push(pages.Conversation(contact));
@@ -135,7 +150,7 @@ public sealed partial class ContactListViewModel : PageViewModel
         {
             await setTor(!messenger.InternetRoute.IsOn, cancellationToken);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
+        catch (ObjectDisposedException)
         {
         }
         finally
@@ -154,14 +169,27 @@ public sealed partial class ContactListViewModel : PageViewModel
 
     private void Refresh()
     {
-        Contacts.Clear();
-        foreach (Contact contact in messenger.Contacts.All)
-        {
-            Contacts.Add(new ContactItemViewModel(contact, messenger, Open));
-        }
-
-        IsEmpty = Contacts.Count == 0;
+        RefreshContacts();
         HasNoNetwork = messenger.Connections.Network is { HasAnyNetwork: false };
         RefreshInternetRoute();
     }
+
+    private void RefreshContacts()
+    {
+        string filter = SearchText.Trim();
+        IReadOnlyList<Contact> all = messenger.Contacts.All;
+        Contacts.Clear();
+        foreach (Contact contact in all)
+        {
+            if (filter.Length == 0 || contact.Name.Value.Contains(filter, StringComparison.CurrentCultureIgnoreCase))
+            {
+                Contacts.Add(new ContactItemViewModel(contact, messenger, Open));
+            }
+        }
+
+        IsEmpty = all.Count == 0;
+        HasNoMatches = all.Count > 0 && Contacts.Count == 0;
+    }
+
+    partial void OnSearchTextChanged(string value) => RefreshContacts();
 }

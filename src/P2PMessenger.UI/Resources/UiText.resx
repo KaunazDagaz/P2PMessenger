@@ -21,6 +21,12 @@
   <data name="AppStartFailed" xml:space="preserve">
     <value>The app could not start. Close it and open it again.</value>
   </data>
+  <data name="AppUnexpectedError" xml:space="preserve">
+    <value>Something went wrong, so the last action may not have finished. Try it again; if it keeps failing, restart the app.</value>
+  </data>
+  <data name="CommonWorking" xml:space="preserve">
+    <value>Working…</value>
+  </data>
   <data name="CommonBack" xml:space="preserve">
     <value>Back</value>
   </data>
@@ -68,6 +74,15 @@
   </data>
   <data name="ContactListNoNetwork" xml:space="preserve">
     <value>This device has no Wi-Fi and no internet. Nearby contacts can be reached if one person shares a hotspot from a phone and the others join it.</value>
+  </data>
+  <data name="ContactListSearchLabel" xml:space="preserve">
+    <value>Search contacts</value>
+  </data>
+  <data name="ContactListSearchClear" xml:space="preserve">
+    <value>Clear</value>
+  </data>
+  <data name="ContactListNoMatches" xml:space="preserve">
+    <value>No contact matches your search.</value>
   </data>
   <data name="ContactListTorOff" xml:space="preserve">
     <value>Internet route off: Tor is turned off on this device. Nearby messaging continues.</value>
