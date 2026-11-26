@@ -43,7 +43,7 @@ public sealed class GroupDeletionViewTests
         Assert.True(UiHarness.Find<Border>(view, "DeleteChatPanel").IsVisible);
         Assert.False(UiHarness.Find<Button>(view, "DeleteChatButton").IsVisible);
         Assert.Equal(
-            "Delete the chat of Team? Its messages are removed from this device, and your messages that are still waiting are no longer sent from it. You stay a member and keep receiving new messages. The members' apps keep their copies.",
+            "Delete the chat of Team? Its messages are removed from this device, and your messages that are still waiting are no longer sent from it. You stay a member and keep receiving new messages. The members' apps keep their copies and can pass them on to other members.",
             UiHarness.Find<TextBlock>(view, "DeleteChatQuestionText").Text);
         page.CancelDeleteChatCommand.Execute(null);
         UiHarness.Flush();

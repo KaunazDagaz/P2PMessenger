@@ -1,4 +1,5 @@
 using P2PMessenger.Application.Groups;
+using P2PMessenger.Core.Groups;
 using P2PMessenger.Core.Identity;
 
 namespace P2PMessenger.Application.Tests.Groups;
@@ -17,9 +18,9 @@ public sealed class DeletedRangesTests
 
         var list = ranges.ToList();
         Assert.Equal(3, list.Count);
-        Assert.Contains(new DeletedRange(bob.IdentityKey, 1, 3), list);
-        Assert.Contains(new DeletedRange(bob.IdentityKey, 6, 7), list);
-        Assert.Contains(new DeletedRange(carol.IdentityKey, 5, 5), list);
+        Assert.Contains(new AuthorSequenceRange(bob.IdentityKey, 1, 3), list);
+        Assert.Contains(new AuthorSequenceRange(bob.IdentityKey, 6, 7), list);
+        Assert.Contains(new AuthorSequenceRange(carol.IdentityKey, 5, 5), list);
         Assert.True(ranges.Contains(bob.IdentityKey, 2));
         Assert.False(ranges.Contains(bob.IdentityKey, 4));
         Assert.False(ranges.Contains(carol.IdentityKey, 4));
@@ -65,6 +66,6 @@ public sealed class DeletedRangesTests
     {
         using var bob = KeySet.Create();
 
-        Assert.Throws<ArgumentException>(() => DeletedRanges.From([new DeletedRange(bob.IdentityKey, first, last)]));
+        Assert.Throws<ArgumentOutOfRangeException>(() => DeletedRanges.From([new AuthorSequenceRange(bob.IdentityKey, first, last)]));
     }
 }

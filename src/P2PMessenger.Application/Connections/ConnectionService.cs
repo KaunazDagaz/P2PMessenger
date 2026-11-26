@@ -31,6 +31,7 @@ public sealed class ConnectionService : IAsyncDisposable
     private readonly ChatLog chats;
     private readonly GroupBook groups;
     private readonly GroupChats groupChats;
+    private readonly GroupPassOn groupPassOn;
     private readonly ConnectionOptions options;
     private readonly TimeProvider timeProvider;
     private readonly ILoggerFactory loggers;
@@ -54,6 +55,7 @@ public sealed class ConnectionService : IAsyncDisposable
         ChatLog chats,
         GroupBook groups,
         GroupChats groupChats,
+        GroupPassOn groupPassOn,
         ConnectionOptions options,
         TimeProvider timeProvider,
         ILoggerFactory loggers,
@@ -64,6 +66,7 @@ public sealed class ConnectionService : IAsyncDisposable
         this.chats = chats;
         this.groups = groups;
         this.groupChats = groupChats;
+        this.groupPassOn = groupPassOn;
         this.options = options;
         this.timeProvider = timeProvider;
         this.loggers = loggers;
@@ -353,6 +356,9 @@ public sealed class ConnectionService : IAsyncDisposable
 
     private bool IsFresh(NearbyPeer peer) =>
         peer.Endpoint is not null && timeProvider.GetElapsedTime(peer.HeardAt) < heardLifetime;
+
+    private bool IsCurrentConnection(Ed25519PublicKey contactKey, ContactConnection connection) =>
+        manager.TryGetConnection(contactKey, out ContactConnection? active) && ReferenceEquals(active, connection);
 
     private void OnContactChanged(object? sender, ContactChangedEventArgs e)
     {
@@ -666,6 +672,7 @@ public sealed class ConnectionService : IAsyncDisposable
         {
             SessionContact peer = connection.Contact;
             await service.contacts.ConfirmFirstConnectionAsync(peer.IdentityKey, peer.StaticKey, cancellationToken).ConfigureAwait(false);
+            service.groupPassOn.OnConnected(connection, service.IsCurrentConnection);
             service.RaiseChanged(peer.IdentityKey);
         }
 
@@ -680,9 +687,10 @@ public sealed class ConnectionService : IAsyncDisposable
                     break;
                 case Acknowledgement acknowledgement:
                     if (!await service.chats.MarkReceivedAsync(contactKey, acknowledgement.Id, cancellationToken).ConfigureAwait(false)
-                        && !await service.groups.MarkNoticeReceivedAsync(contactKey, acknowledgement.Id, cancellationToken).ConfigureAwait(false))
+                        && !await service.groups.MarkNoticeReceivedAsync(contactKey, acknowledgement.Id, cancellationToken).ConfigureAwait(false)
+                        && !await service.groupChats.MarkReceivedAsync(contactKey, acknowledgement.Id, cancellationToken).ConfigureAwait(false))
                     {
-                        await service.groupChats.MarkReceivedAsync(contactKey, acknowledgement.Id, cancellationToken).ConfigureAwait(false);
+                        service.groupPassOn.MarkAcknowledged(connection, acknowledgement.Id);
                     }
 
                     break;
@@ -703,15 +711,20 @@ public sealed class ConnectionService : IAsyncDisposable
                 case GroupMessage groupMessage:
                     if (await service.groupChats.ReceiveAsync(contactKey, groupMessage, cancellationToken).ConfigureAwait(false) is { } received)
                     {
+                        service.groupPassOn.MarkPeerHas(connection, received);
                         _ = connection.SendAsync(Acknowledgement.Create(received), CancellationToken.None);
                     }
 
+                    break;
+                case GroupSummary summary:
+                    service.groupPassOn.ReceiveSummary(connection, summary);
                     break;
             }
         }
 
         public ValueTask DisconnectedAsync(ContactConnection connection, CancellationToken cancellationToken)
         {
+            service.groupPassOn.OnDisconnected(connection);
             service.RaiseChanged(connection.Contact.IdentityKey);
             return ValueTask.CompletedTask;
         }

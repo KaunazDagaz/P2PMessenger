@@ -4,6 +4,7 @@ using P2PMessenger.Application.Connections;
 using P2PMessenger.Application.Groups;
 using P2PMessenger.Core;
 using P2PMessenger.Core.Crypto;
+using P2PMessenger.Core.Groups;
 using P2PMessenger.Core.Messages;
 using P2PMessenger.Transport.Connections;
 
@@ -19,6 +20,7 @@ internal sealed class Outbox : IAsyncDisposable
     private readonly ChatLog chats;
     private readonly GroupBook groups;
     private readonly GroupChats groupChats;
+    private readonly GroupPassOn groupPassOn;
     private readonly ConnectionService connections;
     private readonly DeliveryOptions options;
     private readonly TimeProvider timeProvider;
@@ -35,6 +37,7 @@ internal sealed class Outbox : IAsyncDisposable
         ChatLog chats,
         GroupBook groups,
         GroupChats groupChats,
+        GroupPassOn groupPassOn,
         ConnectionService connections,
         IWakeUpScheduler scheduler,
         DeliveryOptions options,
@@ -45,6 +48,7 @@ internal sealed class Outbox : IAsyncDisposable
         this.chats = chats;
         this.groups = groups;
         this.groupChats = groupChats;
+        this.groupPassOn = groupPassOn;
         this.connections = connections;
         this.options = options;
         this.timeProvider = timeProvider;
@@ -54,40 +58,24 @@ internal sealed class Outbox : IAsyncDisposable
         connections.Changed += OnConnectionChanged;
         groups.DeliveryNeeded += OnDeliveryNeeded;
         groupChats.DeliveryNeeded += OnDeliveryNeeded;
+        groupPassOn.DeliveryNeeded += OnDeliveryNeeded;
         wakeUps = scheduler.Every(options.WakeUpInterval, WakeUp);
     }
 
-    public void Request(Ed25519PublicKey contactKey)
-    {
-        Courier? courier;
-        lock (gate)
-        {
-            if (disposed)
-            {
-                return;
-            }
-
-            if (!couriers.TryGetValue(contactKey, out courier))
-            {
-                courier = new Courier(this, contactKey);
-                couriers.Add(contactKey, courier);
-            }
-        }
-
-        courier.Request();
-    }
+    public void Request(Ed25519PublicKey contactKey) => Request(contactKey, false);
 
     public void WakeUp()
     {
         IEnumerable<Ed25519PublicKey> waiting = chats.ContactsWithWaitingMessages()
             .Concat(groups.ContactsWithPendingNotices())
             .Concat(groupChats.MembersWithWaitingMessages())
+            .Concat(groupPassOn.ContactsWithPendingWork())
             .Distinct();
         foreach (Ed25519PublicKey contactKey in waiting)
         {
             if (connections.IsConnected(contactKey))
             {
-                Request(contactKey);
+                Request(contactKey, true);
             }
         }
     }
@@ -110,10 +98,31 @@ internal sealed class Outbox : IAsyncDisposable
         connections.Changed -= OnConnectionChanged;
         groups.DeliveryNeeded -= OnDeliveryNeeded;
         groupChats.DeliveryNeeded -= OnDeliveryNeeded;
+        groupPassOn.DeliveryNeeded -= OnDeliveryNeeded;
         wakeUps.Dispose();
         await stopping.CancelAsync().ConfigureAwait(false);
         await Task.WhenAll(stopped.Select(static courier => courier.Stop())).ConfigureAwait(false);
         stopping.Dispose();
+    }
+
+    private void Request(Ed25519PublicKey contactKey, bool resetPassOnRound)
+    {
+        Courier? courier;
+        lock (gate)
+        {
+            if (disposed)
+            {
+                return;
+            }
+
+            if (!couriers.TryGetValue(contactKey, out courier))
+            {
+                courier = new Courier(this, contactKey);
+                couriers.Add(contactKey, courier);
+            }
+        }
+
+        courier.Request(resetPassOnRound);
     }
 
     private void OnConnectionChanged(object? sender, ConnectionChangedEventArgs e)
@@ -134,6 +143,10 @@ internal sealed class Outbox : IAsyncDisposable
         private readonly Ed25519PublicKey contactKey;
         private readonly Lock gate = new();
         private readonly Dictionary<MessageId, Attempt> attempts = [];
+        private readonly Dictionary<MessageId, Attempt> passOnAttempts = [];
+        private ContactConnection? roundConnection;
+        private int passedInRound;
+        private bool resetRound;
         private Task loop = Task.CompletedTask;
         private bool running;
         private bool again;
@@ -145,13 +158,18 @@ internal sealed class Outbox : IAsyncDisposable
             this.contactKey = contactKey;
         }
 
-        public void Request()
+        public void Request(bool resetPassOnRound)
         {
             lock (gate)
             {
                 if (stopped)
                 {
                     return;
+                }
+
+                if (resetPassOnRound)
+                {
+                    resetRound = true;
                 }
 
                 if (running)
@@ -223,6 +241,14 @@ internal sealed class Outbox : IAsyncDisposable
                 return;
             }
 
+            if (ConsumeRoundReset() || !ReferenceEquals(roundConnection, connection))
+            {
+                roundConnection = connection;
+                passedInRound = 0;
+            }
+
+            PrunePassOnAttempts(connection);
+
             IReadOnlyList<ChatMessage> waiting = outbox.chats.WaitingFor(contactKey);
             IReadOnlyList<PendingSend> groupItems = [.. outbox.groups.PendingNoticesFor(contactKey), .. outbox.groupChats.WaitingFor(contactKey)];
             HashSet<MessageId> stillWaiting = [.. waiting.Select(static message => message.Id), .. groupItems.Select(static item => item.Id)];
@@ -291,10 +317,105 @@ internal sealed class Outbox : IAsyncDisposable
 
                 attempts[item.Id] = new Attempt(connection, outbox.timeProvider.GetTimestamp());
             }
+
+            foreach (GroupSummary summary in outbox.groupPassOn.TakeSummaries(contactKey, connection))
+            {
+                if (stop.IsCancellationRequested || connection.IsClosed)
+                {
+                    return;
+                }
+
+                if (!await connection.SendAsync(summary, stop).ConfigureAwait(false))
+                {
+                    return;
+                }
+            }
+
+            int sentInBatch = 0;
+            while (sentInBatch < outbox.options.PassOnBatchSize && passedInRound < outbox.options.PassOnRoundLimit)
+            {
+                if (stop.IsCancellationRequested || connection.IsClosed)
+                {
+                    return;
+                }
+
+                if (!outbox.groupPassOn.TryDequeueMessage(contactKey, connection, out PassOnItem item))
+                {
+                    break;
+                }
+
+                if (IsPassOnRecent(item.Id, connection))
+                {
+                    continue;
+                }
+
+                using (await outbox.chats.EnterDeliveryAsync(contactKey, stop).ConfigureAwait(false))
+                {
+                    if (!outbox.groupChats.TryGetStoredEnvelope(item.GroupId, item.Id, out GroupMessage? envelope))
+                    {
+                        continue;
+                    }
+
+                    if (!await connection.SendAsync(envelope, stop).ConfigureAwait(false))
+                    {
+                        return;
+                    }
+                }
+
+                passOnAttempts[item.Id] = new Attempt(connection, outbox.timeProvider.GetTimestamp());
+                sentInBatch++;
+                passedInRound++;
+            }
+
+            if (passedInRound < outbox.options.PassOnRoundLimit && outbox.groupPassOn.HasPendingMessages(contactKey, connection))
+            {
+                ContinueSoon();
+            }
+        }
+
+        private bool ConsumeRoundReset()
+        {
+            lock (gate)
+            {
+                if (!resetRound)
+                {
+                    return false;
+                }
+
+                resetRound = false;
+                return true;
+            }
+        }
+
+        private void ContinueSoon()
+        {
+            lock (gate)
+            {
+                if (!stopped)
+                {
+                    again = true;
+                }
+            }
+        }
+
+        private void PrunePassOnAttempts(ContactConnection connection)
+        {
+            foreach (MessageId expired in passOnAttempts
+                .Where(pair => !ReferenceEquals(pair.Value.Connection, connection) || outbox.timeProvider.GetElapsedTime(pair.Value.SentAt) >= outbox.options.ResendAfter)
+                .Select(static pair => pair.Key)
+                .ToList())
+            {
+                passOnAttempts.Remove(expired);
+            }
         }
 
         private bool IsRecent(MessageId id, ContactConnection connection) =>
             attempts.TryGetValue(id, out Attempt attempt)
+            && ReferenceEquals(attempt.Connection, connection)
+            && outbox.timeProvider.GetElapsedTime(attempt.SentAt) < outbox.options.ResendAfter;
+
+        private bool IsPassOnRecent(MessageId id, ContactConnection connection) =>
+            passOnAttempts.TryGetValue(id, out Attempt attempt)
             && ReferenceEquals(attempt.Connection, connection)
             && outbox.timeProvider.GetElapsedTime(attempt.SentAt) < outbox.options.ResendAfter;
     }

@@ -9,4 +9,5 @@ public enum SessionMessageType
     GroupInvitation = 4,
     GroupJoin = 5,
     GroupMessage = 6,
+    GroupSummary = 7,
 }

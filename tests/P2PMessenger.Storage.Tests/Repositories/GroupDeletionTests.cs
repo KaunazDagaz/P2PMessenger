@@ -1,7 +1,6 @@
 using Microsoft.Data.Sqlite;
 using P2PMessenger.Core.Groups;
 using P2PMessenger.Core.Identity;
-using P2PMessenger.Storage.Repositories;
 
 namespace P2PMessenger.Storage.Tests.Repositories;
 
@@ -62,7 +61,7 @@ public sealed class GroupDeletionTests
             await store.Data.Groups.AddAsync(GroupSamples.Group(first, firstKey, user.IdentityKey), cancellationToken);
             await store.Data.Groups.AddAsync(GroupSamples.Group(second, secondKey, user.IdentityKey), cancellationToken);
             Assert.Empty(await store.Data.GroupMessages.LoadDeletedRangesAsync(cancellationToken));
-            StoredSequenceRange[] ranges = [.. Sorted(Range(bob, 1, 4), Range(bob, 7, 7), Range(user, 1, 2))];
+            AuthorSequenceRange[] ranges = [.. Sorted(Range(bob, 1, 4), Range(bob, 7, 7), Range(user, 1, 2))];
 
             Assert.Equal(0, await store.Data.GroupMessages.DeleteConversationAsync(first.GroupId, ranges, cancellationToken));
             Assert.Equal(0, await store.Data.GroupMessages.DeleteConversationAsync(second.GroupId, [], cancellationToken));
@@ -102,7 +101,7 @@ public sealed class GroupDeletionTests
         {
             await store.Data.Groups.AddAsync(GroupSamples.Group(record, key, user.IdentityKey), cancellationToken);
 
-            await Assert.ThrowsAsync<ArgumentException>(() => store.Data.GroupMessages.DeleteConversationAsync(record.GroupId, [Range(bob, first, last)], cancellationToken));
+            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => store.Data.GroupMessages.DeleteConversationAsync(record.GroupId, [Range(bob, first, last)], cancellationToken));
         }
     }
 
@@ -117,7 +116,7 @@ public sealed class GroupDeletionTests
         using (key)
         {
             await store.Data.Groups.AddAsync(GroupSamples.Group(record, key, user.IdentityKey), cancellationToken);
-            StoredSequenceRange[] backwards = [.. Sorted(Range(bob, 1, 1), Range(user, 1, 1)).Reverse()];
+            AuthorSequenceRange[] backwards = [.. Sorted(Range(bob, 1, 1), Range(user, 1, 1)).Reverse()];
 
             await Assert.ThrowsAsync<ArgumentException>(() => store.Data.GroupMessages.DeleteConversationAsync(record.GroupId, backwards, cancellationToken));
             await Assert.ThrowsAsync<ArgumentException>(() => store.Data.GroupMessages.DeleteConversationAsync(record.GroupId, [Range(bob, 1, 3), Range(bob, 3, 5)], cancellationToken));
@@ -297,9 +296,9 @@ public sealed class GroupDeletionTests
         await Assert.ThrowsAsync<SqliteException>(() => Sql.ExecuteAsync(raw, "UPDATE conversation SET deleted_ranges_enc = x'00' WHERE group_id IS NOT NULL;", [], cancellationToken));
     }
 
-    private static StoredSequenceRange Range(KeySet author, long first, long last) => new(author.IdentityKey, first, last);
+    private static AuthorSequenceRange Range(KeySet author, long first, long last) => new(author.IdentityKey, first, last);
 
-    private static IEnumerable<StoredSequenceRange> Sorted(params StoredSequenceRange[] ranges) =>
+    private static IEnumerable<AuthorSequenceRange> Sorted(params AuthorSequenceRange[] ranges) =>
         ranges.OrderBy(static range => Convert.ToHexString(range.AuthorKey.Bytes), StringComparer.Ordinal).ThenBy(static range => range.First);
 
     private static async Task<List<byte[]>> BlobsAsync(SqliteConnection connection, string query, CancellationToken cancellationToken)

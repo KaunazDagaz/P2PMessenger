@@ -5,7 +5,7 @@ P2PMessenger has no server, so it has no HTTP API, no OpenAPI description, no RE
 1. **The wire protocol** (Sections 1 to 8): every format that two apps exchange, over the local network, over Tor or through another channel. This is the interface between two running apps, and the one that an independent implementation would have to follow. The data is binary, not JSON, because every connection is an encrypted Noise session with padded frames.
 2. **The application interface** (Section 9): the operations, events and result values through which the screens use the back-end libraries inside one app.
 
-**Status:** this document describes the version on the `main` branch. Small groups (6.7 to 6.13) are specified for creating a group, joining it and sending group messages directly to each member; passing group messages on between members, acknowledgements passed on by other members, leaving and removing members, and the copy of chats to a PC are not built yet and will add their own message types. A change to any format changes this document in the same change, and the tests named below compare the code with the reference vectors byte by byte.
+**Status:** this document describes the version on the `main` branch. Small groups (6.7 to 6.14) are specified for creating a group, joining it, sending group messages directly to each member and passing missed group messages on between members; acknowledgements passed on by other members, leaving and removing members, and the copy of chats to a PC are not built yet and will add their own message types. A change to any format changes this document in the same change, and the tests named below compare the code with the reference vectors byte by byte.
 
 ## Where the code is
 
@@ -14,7 +14,7 @@ P2PMessenger has no server, so it has no HTTP API, no OpenAPI description, no RE
 | Contact codes, fingerprints, onion addresses (Section 3) | `src/P2PMessenger.Core/Contacts`, `src/P2PMessenger.Core/Identity` | `tests/P2PMessenger.Core.Tests` |
 | Pairwise key, hint, prologue, handshake, frames (Sections 4 and 5) | `src/P2PMessenger.Core/Sessions`, `src/P2PMessenger.Core/Noise` | `tests/P2PMessenger.Core.Tests` |
 | Message types (Section 6) | `src/P2PMessenger.Core/Messages` | `tests/P2PMessenger.Core.Tests` |
-| Groups (Sections 6.7 to 6.13) | `src/P2PMessenger.Core/Groups`, `src/P2PMessenger.Application/Groups` | `tests/P2PMessenger.Core.Tests`, `tests/P2PMessenger.Storage.Tests`, `tests/P2PMessenger.Integration.Tests` |
+| Groups (Sections 6.7 to 6.14) | `src/P2PMessenger.Core/Groups`, `src/P2PMessenger.Application/Groups` | `tests/P2PMessenger.Core.Tests`, `tests/P2PMessenger.Storage.Tests`, `tests/P2PMessenger.Application.Tests`, `tests/P2PMessenger.Integration.Tests` |
 | Connections, admission, reconnects (Section 4.9) | `src/P2PMessenger.Transport/Connections`, `src/P2PMessenger.Transport/Admission`, `src/P2PMessenger.Transport/Tcp` | `tests/P2PMessenger.Transport.Tests`, `tests/P2PMessenger.Integration.Tests` |
 | Discovery on the local network (Section 7) | `src/P2PMessenger.Core/Discovery`, `src/P2PMessenger.Transport/Discovery` | `tests/P2PMessenger.Core.Tests`, `tests/P2PMessenger.Transport.Tests` |
 | Onion service (Section 8) | `src/P2PMessenger.Transport/Tor`, `src/P2PMessenger.Core/Identity` | `tests/P2PMessenger.Transport.Tests`, `tests/P2PMessenger.Integration.Tests` |
@@ -52,7 +52,7 @@ These apply to every format below.
 | Session 1 (`P2PM/session/v1`) | The pairwise key, the connection hint, the prologue and the KK handshake of Section 4 |
 | Frames 1 | 2-byte length, four size classes (Section 5) |
 | Text 1, acknowledgement 1, keep-alive 1 | The message types of Section 6 |
-| Group record 1, group invitation 1, group join 1, group message 1 | Small groups (6.7 to 6.13) |
+| Group record 1, group invitation 1, group join 1, group message 1, group summary 1 | Small groups (6.7 to 6.14) |
 | Connection rules 1 | TCP, either side opens, one session per contact and the choice between two, a keep-alive after 15 s without another frame, closing after 45 s without a frame (Section 4.9) |
 | Connection rules 2 | Every session has a route, nearby or Tor; a Tor session replaces a nearby one, and a nearby one replaces a Tor one only if the Tor session counted 10 s or more earlier; over Tor 10 s for the hint and 20 s for the handshake (Section 4.9) |
 | Announcement 1 (`P2PM/announcement/v1`) | The announcement key, the 274-byte announcement, multicast, directed broadcast and the sweep, a random listening port (Section 7) |
@@ -293,7 +293,7 @@ On the wire this leaves four frame sizes. Keep-alives, acknowledgements and text
 
 ## 6. Message types
 
-Text messages, acknowledgements and keep-alives, with message IDs and per-sender sequence numbers, and the three message types of small groups.
+Text messages, acknowledgements and keep-alives, with message IDs and per-sender sequence numbers, and the four message types of small groups.
 
 ### 6.1 Content
 
@@ -307,6 +307,7 @@ content = type (1 byte) | version (1 byte) | body.
 | 4 | 1 | Group invitation | 6.9 | 254 to 15,769 bytes |
 | 5 | 1 | Group join | 6.10 | 54 bytes |
 | 6 | 1 | Group message | 6.11 | 191 to 16,382 bytes |
+| 7 | 1 | Group summary | 6.12 | 23 to 16,382 bytes |
 
 Any other type or version is refused, and the session closes. All apps of a conversation must run the same protocol version. A later release that adds a type or a version needs a new session version or a way for the apps to tell each other what they understand.
 
@@ -353,8 +354,9 @@ A group is a small set of people who have all added each other as contacts. Grou
 - **Group key.** 32 random bytes for XChaCha20-Poly1305, one per epoch. The record names it only by a key check (6.8). The key is sent only inside a one-to-one session (6.9), never inside a group message, and only to members.
 - **Creating and joining.** The creator invites each other member with the record and the key (6.9). Only contacts whose first connection has succeeded can be invited. An invited member joins when every other member is a contact of theirs whose first connection has succeeded: their app then sends every member a join with the hash of the record it received (6.10). Until then the app names the members still to be added, with their fingerprints; they are added by the usual exchange of contact codes, never from the invitation.
 - **Created.** A group counts as created on a device when every member has joined with the same record hash; the creator counts as joined by signing. A member who joined with another hash means that the creator sent different lists to different members: the group then never counts as created on that device, and the app says that the member lists do not match. Nobody writes in a group before it counts as created, so every member sees the same member list first.
-- **Delivery.** The author's app sends a group message directly to every other member and keeps sending it to each one, as for a text (6.3), until that member's app acknowledges it in a session with that member. The sender sees how many members' apps have confirmed it.
-- **Deleting on one device.** A user can delete a group chat on their own device, and their own group message while no member's app has acknowledged it; nothing is sent about it, and the other members keep their copies. The device keeps the IDs of the deleted messages (6.5) and, per author, the ranges of sequence numbers it had. A resent copy of a deleted message is acknowledged but not shown; a different message whose author and sequence number fall in a deleted range is dropped without an acknowledgement, as for a number already used; and the user's next group message is numbered after the highest of their own, deleted ones included, so no number is used twice.
+- **Delivery.** The author's app sends a group message directly to every other member and keeps sending it to each one, as for a text (6.3), until that member's app acknowledges it in a session with that member. The sender sees how many members' apps have confirmed it directly.
+- **Passing messages on.** When two members connect, each app sends one group summary (6.12) per shared created group (and sends one when a group reaches the created state while already connected) listing the sequence ranges it holds per current member. The peer replies with the signed group messages (6.11) it holds that the summary does not cover, whoever wrote them, skipping the peer's own messages and the sender's own messages still waiting for that peer. While two members are already connected, a newly arrived group message from a third member is not forwarded immediately; instead the receiving app schedules one delayed group summary after a short pause (2 seconds, coalesced per group and skipped if that peer already holds the message). A peer receiving a summary that newly advertises a current member's range it does not hold replies with its own group summary so only truly missing messages are passed on. A receiver verifies membership, epoch, author signature, seen IDs and deleted ranges on every passed-on message exactly as on a direct one, and never shows a message twice.
+- **Deleting on one device.** A user can delete a group chat on their own device, and their own group message while no member's app has acknowledged it; nothing is sent about it, and any member's app that has a message keeps its copy and can pass it on to other members. The device keeps the IDs of the deleted messages (6.5) and, per author, the ranges of sequence numbers it had, and includes those ranges in its group summaries (6.12) so other members do not pass deleted messages back. A resent copy of a deleted message is acknowledged but not shown; a different message whose author and sequence number fall in a deleted range is dropped without an acknowledgement, as for a number already used; and the user's next group message is numbered after the highest of their own, deleted ones included, so no number is used twice.
 
 ### 6.8 Group record, version 1
 
@@ -400,11 +402,29 @@ A join from a contact who is not a member of the group changes nothing. A join f
 
 The associated data of the encryption is `P2PM/group-text/v1`, the group ID, the epoch and the author's identity key. The content (p bytes) has the layout of a text (6.2): message ID (16), sequence (8, the author's number for their messages in this group, from 1), written-at time (8) and 1 to 16,192 bytes of UTF-8. A receiver checks, in this order, that it knows the group, that the contact who sent the message and the author are both members, that the epoch is the group's, that the signature verifies with the author's key and that the content decrypts and parses; it drops a message that fails any check, without an acknowledgement. Because the signature covers the ciphertext, a member can check who wrote a message without decrypting it, and the author's app keeps the message exactly as signed. A message whose ID the receiver has seen is shown once and acknowledged again (6.5); a second message from the same author with a sequence number already used in the group is dropped.
 
-### 6.12 Acknowledgements of group notices and messages
+### 6.12 Group summary, version 1
 
-A group message is acknowledged with its message ID, as a text is (6.3). An invitation and a join have no ID field; their acknowledgements carry an ID derived from the record hash: the first 16 bytes of BLAKE2b-256 of `P2PM/group-invitation-id/v1` and the record hash for an invitation, and of `P2PM/group-join-id/v1`, the record hash and the joining member's identity key for a join. An acknowledgement counts only when it arrives in a session with the member it is expected from.
+| Offset in the body | Size | Field | Rule |
+| --- | --- | --- | --- |
+| 0 | 16 | Group ID | The group's ID |
+| 16 | 4 | Epoch | Big-endian, 1 to 2^31 - 1 |
+| 20 | 1 | a | Number of authors, 0 to 160 |
+| 21 | | Authors | `a` entries, ordered by author identity key as unsigned bytes, each key once. Each entry is: author identity key (32 bytes), range count `r` (1 byte, 1 to 255), then `r` ranges |
+| | 16 per range | Range | First sequence (8 bytes, big-endian signed, 1 to 2^63 - 1) and last sequence (8 bytes, big-endian signed, `First` to 2^63 - 1). Within an author, ranges are strictly increasing with `First > previous Last + 1` (no overlapping or touching ranges) |
 
-### 6.13 Reference vectors
+The body is 21 to 16,380 bytes so every summary fits into one transport frame (5.2). A summary that violates any rule (wrong length, trailing bytes, epoch out of range, more than 160 authors, duplicate or unsorted authors, 0 ranges for an author, invalid range bounds, overlapping or touching ranges) is refused and closes the session.
+
+A device builds its summary for a created group from the union of the sequence numbers of its stored group messages of that epoch (including its own) and its deleted ranges for that group, filtered to current members and merging overlapping and touching ranges per author. If the merged ranges exceed one frame or 255 ranges for an author, the sender keeps the newest ranges per author round-robin until the frame budget is full, without merging across gaps.
+
+Summaries are not acknowledged. A receiver ignores a summary for an unknown group, from a contact who is not a member, for another epoch, or for a group whose member lists differ; entries for authors who are not current members are ignored while entries for current members are still processed. A summary received for a known group that has not reached the created state yet (and whose lists do not differ) may be kept in memory (up to 256) and processed once the group becomes created.
+
+Passing messages on runs in the outbox strictly after the device's own one-to-one messages, group notices and own group messages. To avoid holding up direct traffic, duplicating traffic on already-open sessions, or rescanning on repeated summaries, each app paces pass-on to each contact with its own settings: delayed coalesced summary re-exchange after 2 seconds for newly arrived third-party messages on open sessions, summary processing rate-limited per session and group (duplicate summaries for an unchanged group state are ignored within the 30-second resend window, and distinct summaries are limited to a burst of 4 refilling at 1 every 2 seconds), batches of 16 passed-on messages (yielding to own messages between batches), at most 256 passed-on messages per contact per round (continuing on the next 10-second wake-up), and a 30-second per-session guard before passing the same message ID to the same contact again.
+
+### 6.13 Acknowledgements of group notices and messages
+
+A group message is acknowledged with its message ID, as a text is (6.3). A receiver acknowledges a passed-on group message to the member who sent it so that member stops passing it on in that session; an acknowledgement counts toward the author's receipt count only when it arrives in a session with the member it is expected from. An invitation and a join have no ID field; their acknowledgements carry an ID derived from the record hash: the first 16 bytes of BLAKE2b-256 of `P2PM/group-invitation-id/v1` and the record hash for an invitation, and of `P2PM/group-join-id/v1`, the record hash and the joining member's identity key for a join.
+
+### 6.14 Reference vectors
 
 Computed with an independent Python implementation (PyNaCl and `cryptography`). The group ID is `00112233445566778899aabbccddeeff`, the epoch 1, the group key the bytes `00` to `1f`, the name `Field team`, and the members Alice (identity key of RFC 8032 test 1), Bob (test 3) and Carol (test 2), Alice signing.
 
@@ -416,12 +436,17 @@ Computed with an independent Python implementation (PyNaCl and `cryptography`). 
 | ID of the invitation's acknowledgement | `a9a32bc3b34a8bfacd5e1f8dd8f7b837` |
 | ID of the acknowledgement of Bob's join | `e9f25dbd1584829ebebccf1b03a93e09` |
 | Content of the join | `050100112233445566778899aabbccddeeff00000001e5f239c247fcaeeae204dfa0f3016974de1854b585ea6c8e506a93a3f276fd47` |
+| Content of an empty group summary (23 bytes) | `070100112233445566778899aabbccddeeff0000000100` |
+
+A group summary for this group (epoch 1) covering Carol's sequences 2 to 4 and Alice's sequences 1 to 3 and 5 (ordered by identity key: Carol first, Alice second) has this content (137 bytes):
+
+`070100112233445566778899aabbccddeeff00000001023d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c0100000000000000020000000000000004d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a020000000000000001000000000000000300000000000000050000000000000005`
 
 Alice's group message with the nonce `40` to `57`, the message ID `ffeeddccbbaa99887766554433221100`, the sequence 1, the time 1794571200000 and the text `Hello, group` has this content (202 bytes):
 
 `060100112233445566778899aabbccddeeff00000001d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a404142434445464748494a4b4c4d4e4f50515253545556572bd7d8bc6b4ae09ef892d2fa9cbe749292baadc41359539b6a31fce4ddc345905e9c6e023abea4778ddd813cfbad9273fde0c21b36a11a91c81c5c147838ce584662138f5fb5c3f270ad490894d195e1bbe3bd3a4077d0ed7531f03ff4ba801392bdec5231eb41848077a69bb5786115adeafea024c8521630700109`
 
-The content of the invitation is the type and version `0401`, the group key and the record; it is in `GroupNoticeTests`.
+The content of the invitation is the type and version `0401`, the group key and the record; it is in `GroupNoticeTests`. The group summary vectors are in `GroupSummaryTests`.
 
 ## 7. Discovery on the local network
 

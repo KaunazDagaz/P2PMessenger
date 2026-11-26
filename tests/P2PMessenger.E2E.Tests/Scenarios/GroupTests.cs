@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Headless.XUnit;
 using Avalonia.VisualTree;
 using P2PMessenger.E2E.Tests.Support;
@@ -75,6 +76,60 @@ public sealed class GroupTests
         await carol.WaitUntilAsync(() => carol.TryNamed<TextBox>("DraftBox") is not null, "Carol can write once she knows that everyone has joined");
         await Flows.SendAsync(carol, "Still there?");
         await alice.WaitForTextAsync("Still there?");
+    }
+
+    [AvaloniaFact]
+    [Trait("Story", "US-13")]
+    [Trait("NFR", "NFR-04")]
+    public async Task AliceWritesWhileCarolIsClosed_AliceClosesAndCarolMeetsBob_CarolSeesAlicesMessage()
+    {
+        LoopbackDiscovery hub = new();
+        await using Device alice = new(hub, "Alice");
+        await using Device bob = new(hub, "Bob");
+        await using Device carol = new(hub, "Carol");
+        foreach (Device device in new[] { alice, bob, carol })
+        {
+            await device.LaunchAsync();
+            await Flows.CreateIdentityAsync(device);
+        }
+
+        foreach ((Device first, Device second) in new[] { (alice, bob), (alice, carol), (bob, carol) })
+        {
+            await Flows.AddEachOtherAsync(first, second);
+            await Flows.WaitUntilConnectedAsync(first, second);
+            await Flows.GoBackToContactsAsync(first);
+            await Flows.GoBackToContactsAsync(second);
+        }
+
+        alice.ClickButton("NewGroupButton");
+        await alice.WaitForTitleAsync(UiText.NewGroupTitle);
+        alice.Type("NameBox", "Field team");
+        alice.Click(Candidate(alice, "Bob"));
+        alice.Click(Candidate(alice, "Carol"));
+        alice.ClickButton("CreateButton");
+        await alice.WaitForTitleAsync("Field team");
+        await alice.WaitUntilAsync(() => alice.TryNamed<TextBox>("DraftBox") is not null, "Alice can write once Bob and Carol have joined");
+        foreach (Device member in new[] { bob, carol })
+        {
+            await OpenGroupAsync(member, "Field team");
+            await member.WaitUntilAsync(() => member.TryNamed<TextBox>("DraftBox") is not null, $"{member.Name} can write once everyone has joined");
+        }
+
+        await carol.QuitAsync();
+        await Flows.SendAsync(alice, "Meet at the north gate.");
+        await alice.WaitForTextAsync(string.Format(CultureInfo.InvariantCulture, ReceivedFormat, 1, 2));
+        await bob.WaitForTextAsync("Meet at the north gate.");
+
+        await alice.QuitAsync();
+        await carol.LaunchAsync();
+        await OpenGroupAsync(carol, "Field team");
+        await carol.WaitForTextAsync("Meet at the north gate.");
+        var senders = carol.Named<ItemsControl>("MessageItems").GetVisualDescendants().OfType<TextBlock>()
+            .SelectMany(static block => block.Inlines?.OfType<Run>() ?? [])
+            .Select(static run => run.Text)
+            .ToArray();
+        Assert.Contains("Alice", senders);
+        Assert.DoesNotContain("Bob", senders);
     }
 
     private static CheckBox Candidate(Device device, string name) =>

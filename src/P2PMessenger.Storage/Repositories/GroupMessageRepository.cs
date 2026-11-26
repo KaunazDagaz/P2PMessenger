@@ -146,10 +146,10 @@ public sealed class GroupMessageRepository
             cancellationToken);
     }
 
-    public Task<IReadOnlyDictionary<GroupId, IReadOnlyList<StoredSequenceRange>>> LoadDeletedRangesAsync(CancellationToken cancellationToken) =>
+    public Task<IReadOnlyDictionary<GroupId, IReadOnlyList<AuthorSequenceRange>>> LoadDeletedRangesAsync(CancellationToken cancellationToken) =>
         gate.ReadAsync(LoadDeletedRangesAsync, cancellationToken);
 
-    public async Task<int> DeleteConversationAsync(GroupId groupId, IReadOnlyList<StoredSequenceRange> deleted, CancellationToken cancellationToken)
+    public async Task<int> DeleteConversationAsync(GroupId groupId, IReadOnlyList<AuthorSequenceRange> deleted, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(groupId);
 
@@ -177,7 +177,7 @@ public sealed class GroupMessageRepository
         return removed;
     }
 
-    public async Task<bool> DeleteWaitingAsync(GroupId groupId, MessageId id, IReadOnlyList<StoredSequenceRange> deleted, CancellationToken cancellationToken)
+    public async Task<bool> DeleteWaitingAsync(GroupId groupId, MessageId id, IReadOnlyList<AuthorSequenceRange> deleted, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(groupId);
         ArgumentNullException.ThrowIfNull(id);
@@ -221,15 +221,15 @@ public sealed class GroupMessageRepository
         return removed;
     }
 
-    private static byte[] EncodeRanges(IReadOnlyList<StoredSequenceRange> ranges)
+    private static byte[] EncodeRanges(IReadOnlyList<AuthorSequenceRange> ranges)
     {
         ArgumentNullException.ThrowIfNull(ranges);
 
         byte[] bytes = new byte[sizeof(int) + (ranges.Count * RangeLength)];
         BinaryPrimitives.WriteInt32BigEndian(bytes, ranges.Count);
-        StoredSequenceRange? previous = null;
+        AuthorSequenceRange? previous = null;
         int offset = sizeof(int);
-        foreach (StoredSequenceRange range in ranges)
+        foreach (AuthorSequenceRange range in ranges)
         {
             ArgumentNullException.ThrowIfNull(range);
             ArgumentNullException.ThrowIfNull(range.AuthorKey);
@@ -248,7 +248,7 @@ public sealed class GroupMessageRepository
         return bytes;
     }
 
-    private static List<StoredSequenceRange> DecodeRanges(RecordLocation location, byte[] bytes)
+    private static List<AuthorSequenceRange> DecodeRanges(RecordLocation location, byte[] bytes)
     {
         if (bytes.Length < sizeof(int))
         {
@@ -261,19 +261,20 @@ public sealed class GroupMessageRepository
             throw StoredValues.Damaged(location);
         }
 
-        List<StoredSequenceRange> ranges = new(count);
-        StoredSequenceRange? previous = null;
+        List<AuthorSequenceRange> ranges = new(count);
+        AuthorSequenceRange? previous = null;
         for (int offset = sizeof(int); offset < bytes.Length; offset += RangeLength)
         {
-            if (!Ed25519PublicKey.TryCreate(bytes.AsSpan(offset, Ed25519PublicKey.Length), out Ed25519PublicKey? author))
+            if (!Ed25519PublicKey.TryCreate(bytes.AsSpan(offset, Ed25519PublicKey.Length), out Ed25519PublicKey? author)
+                || !SequenceRange.TryCreate(
+                    BinaryPrimitives.ReadInt64BigEndian(bytes.AsSpan(offset + Ed25519PublicKey.Length)),
+                    BinaryPrimitives.ReadInt64BigEndian(bytes.AsSpan(offset + Ed25519PublicKey.Length + sizeof(long))),
+                    out SequenceRange sequenceRange))
             {
                 throw StoredValues.Damaged(location);
             }
 
-            StoredSequenceRange range = new(
-                author,
-                BinaryPrimitives.ReadInt64BigEndian(bytes.AsSpan(offset + Ed25519PublicKey.Length)),
-                BinaryPrimitives.ReadInt64BigEndian(bytes.AsSpan(offset + Ed25519PublicKey.Length + sizeof(long))));
+            AuthorSequenceRange range = new(author, sequenceRange);
             if (!Follows(previous, range))
             {
                 throw StoredValues.Damaged(location);
@@ -286,7 +287,7 @@ public sealed class GroupMessageRepository
         return ranges;
     }
 
-    private static bool Follows(StoredSequenceRange? previous, StoredSequenceRange range)
+    private static bool Follows(AuthorSequenceRange? previous, AuthorSequenceRange range)
     {
         if (range.First < 1 || range.Last < range.First)
         {
@@ -326,9 +327,9 @@ public sealed class GroupMessageRepository
             ("$conversation_id", conversationId)).ConfigureAwait(false);
     }
 
-    private async Task<IReadOnlyDictionary<GroupId, IReadOnlyList<StoredSequenceRange>>> LoadDeletedRangesAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    private async Task<IReadOnlyDictionary<GroupId, IReadOnlyList<AuthorSequenceRange>>> LoadDeletedRangesAsync(SqliteConnection connection, CancellationToken cancellationToken)
     {
-        Dictionary<GroupId, IReadOnlyList<StoredSequenceRange>> deleted = [];
+        Dictionary<GroupId, IReadOnlyList<AuthorSequenceRange>> deleted = [];
         using SqliteCommand command = Sql.Command(connection, null, SelectDeletedRanges);
         using SqliteDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
@@ -343,7 +344,7 @@ public sealed class GroupMessageRepository
             }
 
             RecordLocation location = Locations.ConversationDeletedRanges(conversationId);
-            List<StoredSequenceRange> ranges = DecodeRanges(location, StoredValues.Open(keys, location, reader.GetFieldValue<byte[]>(1)));
+            List<AuthorSequenceRange> ranges = DecodeRanges(location, StoredValues.Open(keys, location, reader.GetFieldValue<byte[]>(1)));
             if (!deleted.TryAdd(groupId, ranges))
             {
                 throw StoredValues.Inconsistent("two conversations belong to one group");

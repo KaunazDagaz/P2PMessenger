@@ -12,7 +12,7 @@ public sealed class InMemoryGroupStore : IGroupStore, IDisposable
     private readonly Lock gate = new();
     private readonly Dictionary<GroupId, (GroupRecord Record, byte[] Key, List<GroupMemberStatus> Members)> groups = [];
     private readonly List<GroupChatMessage> messages = [];
-    private readonly Dictionary<GroupId, IReadOnlyList<DeletedRange>> deletedByGroup = [];
+    private readonly Dictionary<GroupId, IReadOnlyList<AuthorSequenceRange>> deletedByGroup = [];
 
     public InMemoryGroupStore(ISeenMessageIds seen)
     {
@@ -125,15 +125,15 @@ public sealed class InMemoryGroupStore : IGroupStore, IDisposable
         }
     }
 
-    public ValueTask<IReadOnlyDictionary<GroupId, IReadOnlyList<DeletedRange>>> LoadDeletedAsync(CancellationToken cancellationToken)
+    public ValueTask<IReadOnlyDictionary<GroupId, IReadOnlyList<AuthorSequenceRange>>> LoadDeletedAsync(CancellationToken cancellationToken)
     {
         lock (gate)
         {
-            return ValueTask.FromResult<IReadOnlyDictionary<GroupId, IReadOnlyList<DeletedRange>>>(new Dictionary<GroupId, IReadOnlyList<DeletedRange>>(deletedByGroup));
+            return ValueTask.FromResult<IReadOnlyDictionary<GroupId, IReadOnlyList<AuthorSequenceRange>>>(new Dictionary<GroupId, IReadOnlyList<AuthorSequenceRange>>(deletedByGroup));
         }
     }
 
-    public ValueTask<int> DeleteChatAsync(GroupId groupId, IReadOnlyList<DeletedRange> deleted, CancellationToken cancellationToken)
+    public ValueTask<int> DeleteChatAsync(GroupId groupId, IReadOnlyList<AuthorSequenceRange> deleted, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(groupId);
         ArgumentNullException.ThrowIfNull(deleted);
@@ -146,7 +146,7 @@ public sealed class InMemoryGroupStore : IGroupStore, IDisposable
         }
     }
 
-    public ValueTask<bool> DeleteWaitingAsync(GroupId groupId, MessageId id, IReadOnlyList<DeletedRange> deleted, CancellationToken cancellationToken)
+    public ValueTask<bool> DeleteWaitingAsync(GroupId groupId, MessageId id, IReadOnlyList<AuthorSequenceRange> deleted, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(groupId);
         ArgumentNullException.ThrowIfNull(id);
@@ -182,7 +182,7 @@ public sealed class InMemoryGroupStore : IGroupStore, IDisposable
         }
     }
 
-    private void Keep(GroupId groupId, IReadOnlyList<DeletedRange> deleted)
+    private void Keep(GroupId groupId, IReadOnlyList<AuthorSequenceRange> deleted)
     {
         if (deleted.Count > 0)
         {

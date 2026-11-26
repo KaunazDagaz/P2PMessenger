@@ -1354,7 +1354,7 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The chat was deleted on this device only. You are still a member, and the members&apos; apps still have their copies..
+        ///   Looks up a localized string similar to The chat was deleted on this device only. You are still a member, and the members&apos; apps still have their copies and can pass them on to other members..
         /// </summary>
         public static string GroupChatDeleted {
             get {
@@ -1381,7 +1381,7 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Delete the chat of {0}? Its messages are removed from this device, and your messages that are still waiting are no longer sent from it. You stay a member and keep receiving new messages. The members&apos; apps keep their copies..
+        ///   Looks up a localized string similar to Delete the chat of {0}? Its messages are removed from this device, and your messages that are still waiting are no longer sent from it. You stay a member and keep receiving new messages. The members&apos; apps keep their copies and can pass them on to other members..
         /// </summary>
         public static string GroupDeleteChatQuestionFormat {
             get {
@@ -1390,7 +1390,7 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to This many members&apos; apps confirmed that they have stored the message; it does not show whether anyone has read it. The others get it when their app is reachable. Because a member&apos;s app has it, it can no longer be deleted on its own..
+        ///   Looks up a localized string similar to This many members&apos; apps confirmed directly to this device that they have stored the message; it does not show whether anyone has read it. Other members may already have received it through another member, and this count updates when their app connects to yours. Because a member&apos;s app has it and can pass it on, it can no longer be deleted on its own..
         /// </summary>
         public static string GroupDeliveryReceivedExplanation {
             get {
@@ -1489,7 +1489,7 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The waiting message was deleted on this device and will not be sent again. If it reached a member&apos;s app before that app&apos;s confirmation came back, it stays there..
+        ///   Looks up a localized string similar to The waiting message was deleted on this device and will not be sent again. If it reached a member&apos;s app before that app&apos;s confirmation came back, it stays there and that app can pass it on to other members..
         /// </summary>
         public static string GroupMessageDeleted {
             get {
