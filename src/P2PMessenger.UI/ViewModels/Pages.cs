@@ -1,6 +1,7 @@
 using P2PMessenger.Application;
 using P2PMessenger.Application.Contacts;
 using P2PMessenger.Application.LocalData;
+using P2PMessenger.Core.Groups;
 using P2PMessenger.UI.Resources;
 using P2PMessenger.UI.Services;
 
@@ -53,6 +54,10 @@ public sealed class Pages
     public AddInPersonViewModel AddInPerson() => Own(new AddInPersonViewModel(Messenger, services.QrScanner, services.UiThread, navigation, this));
 
     public ConversationViewModel Conversation(Contact contact) => Own(new ConversationViewModel(Messenger, contact.IdentityKey, services.UiThread, navigation, this));
+
+    public NewGroupViewModel NewGroup() => Own(new NewGroupViewModel(Messenger, navigation, this));
+
+    public GroupConversationViewModel GroupConversation(GroupId groupId) => Own(new GroupConversationViewModel(Messenger, groupId, services.UiThread));
 
     public VerifyContactViewModel VerifyContact(Contact contact) => Own(new VerifyContactViewModel(Messenger, contact.IdentityKey, services.UiThread));
 

@@ -37,6 +37,16 @@ internal static class Formats
     public static readonly CompositeFormat DeleteChatQuestion = CompositeFormat.Parse(UiText.ConversationDeleteChatQuestionFormat);
     public static readonly CompositeFormat ChatDeleted = CompositeFormat.Parse(UiText.ConversationChatDeletedFormat);
     public static readonly CompositeFormat MessageDeleted = CompositeFormat.Parse(UiText.ConversationMessageDeletedFormat);
+    public static readonly CompositeFormat GroupItemMembers = CompositeFormat.Parse(UiText.GroupItemMembersFormat);
+    public static readonly CompositeFormat GroupItemWaiting = CompositeFormat.Parse(UiText.GroupItemWaitingFormat);
+    public static readonly CompositeFormat NewGroupTooMany = CompositeFormat.Parse(UiText.NewGroupTooManyFormat);
+    public static readonly CompositeFormat GroupMembers = CompositeFormat.Parse(UiText.GroupMembersFormat);
+    public static readonly CompositeFormat GroupYou = CompositeFormat.Parse(UiText.GroupYouFormat);
+    public static readonly CompositeFormat GroupWaiting = CompositeFormat.Parse(UiText.GroupWaitingFormat);
+    public static readonly CompositeFormat GroupListsDiffer = CompositeFormat.Parse(UiText.GroupListsDifferFormat);
+    public static readonly CompositeFormat GroupCreatedBy = CompositeFormat.Parse(UiText.GroupCreatedByFormat);
+    public static readonly CompositeFormat GroupDeliveryReceived = CompositeFormat.Parse(UiText.GroupDeliveryReceivedFormat);
+    public static readonly CompositeFormat GroupDeleteChatQuestion = CompositeFormat.Parse(UiText.GroupDeleteChatQuestionFormat);
 
     public static string With(CompositeFormat format, object? argument) => string.Format(CultureInfo.CurrentCulture, format, argument);
 

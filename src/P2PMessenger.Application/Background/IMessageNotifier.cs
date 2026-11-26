@@ -7,4 +7,6 @@ public interface IMessageNotifier
     Task<bool> RequestPermissionAsync(CancellationToken cancellationToken);
 
     void Show(MessageNotice notice);
+
+    void ShowGroup(GroupMessageNotice notice);
 }

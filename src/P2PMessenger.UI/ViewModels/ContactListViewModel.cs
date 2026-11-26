@@ -5,6 +5,7 @@ using P2PMessenger.Application;
 using P2PMessenger.Application.Chats;
 using P2PMessenger.Application.Connections;
 using P2PMessenger.Application.Contacts;
+using P2PMessenger.Application.Groups;
 using P2PMessenger.UI.Resources;
 using P2PMessenger.UI.Services;
 
@@ -84,12 +85,18 @@ public sealed partial class ContactListViewModel : PageViewModel
 
     public ObservableCollection<ContactItemViewModel> Contacts { get; } = [];
 
+    public ObservableCollection<GroupItemViewModel> Groups { get; } = [];
+
+    public bool HasGroups => Groups.Count > 0;
+
     public override void OnShown()
     {
         messenger.Contacts.Changed += OnContactChanged;
         messenger.Chats.Changed += OnChatChanged;
         messenger.Connections.Changed += OnConnectionChanged;
         messenger.InternetRoute.Changed += OnInternetRouteChanged;
+        messenger.Groups.Changed += OnGroupChanged;
+        messenger.GroupChats.Changed += OnGroupChatChanged;
         Refresh();
     }
 
@@ -99,6 +106,8 @@ public sealed partial class ContactListViewModel : PageViewModel
         messenger.Chats.Changed -= OnChatChanged;
         messenger.Connections.Changed -= OnConnectionChanged;
         messenger.InternetRoute.Changed -= OnInternetRouteChanged;
+        messenger.Groups.Changed -= OnGroupChanged;
+        messenger.GroupChats.Changed -= OnGroupChatChanged;
     }
 
     [RelayCommand]
@@ -109,6 +118,9 @@ public sealed partial class ContactListViewModel : PageViewModel
 
     [RelayCommand]
     private void MyCode() => navigation.Push(pages.Profile());
+
+    [RelayCommand]
+    private void NewGroup() => navigation.Push(pages.NewGroup());
 
     [RelayCommand]
     private void Network() => navigation.Push(pages.Network());
@@ -126,6 +138,12 @@ public sealed partial class ContactListViewModel : PageViewModel
     private void DeleteAllData() => navigation.Push(pages.DeleteAllData());
 
     private void Open(Contact contact) => navigation.Push(pages.Conversation(contact));
+
+    private void OpenGroup(Group group) => navigation.Push(pages.GroupConversation(group.Id));
+
+    private void OnGroupChanged(object? sender, GroupChangedEventArgs e) => uiThread.Post(Refresh);
+
+    private void OnGroupChatChanged(object? sender, GroupChatChangedEventArgs e) => uiThread.Post(Refresh);
 
     private void OnContactChanged(object? sender, ContactChangedEventArgs e) => uiThread.Post(Refresh);
 
@@ -177,6 +195,17 @@ public sealed partial class ContactListViewModel : PageViewModel
     private void RefreshContacts()
     {
         string filter = SearchText.Trim();
+        IReadOnlyList<Group> groups = messenger.Groups.All;
+        Groups.Clear();
+        foreach (Group group in groups.OrderBy(static group => group.Name.Value, StringComparer.CurrentCultureIgnoreCase))
+        {
+            if (filter.Length == 0 || group.Name.Value.Contains(filter, StringComparison.CurrentCultureIgnoreCase))
+            {
+                Groups.Add(new GroupItemViewModel(group, messenger, OpenGroup));
+            }
+        }
+
+        OnPropertyChanged(nameof(HasGroups));
         IReadOnlyList<Contact> all = messenger.Contacts.All;
         Contacts.Clear();
         foreach (Contact contact in all)
@@ -188,7 +217,7 @@ public sealed partial class ContactListViewModel : PageViewModel
         }
 
         IsEmpty = all.Count == 0;
-        HasNoMatches = all.Count > 0 && Contacts.Count == 0;
+        HasNoMatches = all.Count + groups.Count > 0 && Contacts.Count + Groups.Count == 0;
     }
 
     partial void OnSearchTextChanged(string value) => RefreshContacts();

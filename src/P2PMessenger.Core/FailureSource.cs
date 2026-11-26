@@ -8,4 +8,5 @@ public enum FailureSource
     Connections = 3,
     Discovery = 4,
     Delivery = 5,
+    Groups = 6,
 }

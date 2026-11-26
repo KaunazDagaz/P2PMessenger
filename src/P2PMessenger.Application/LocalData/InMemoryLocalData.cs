@@ -1,5 +1,6 @@
 using P2PMessenger.Application.Chats;
 using P2PMessenger.Application.Contacts;
+using P2PMessenger.Application.Groups;
 using P2PMessenger.Application.Identity;
 
 namespace P2PMessenger.Application.LocalData;
@@ -51,7 +52,7 @@ public sealed class InMemoryLocalData : ILocalData
     private static LocalDataStores NewStores(LocalDataMode mode)
     {
         InMemorySeenMessageIds seen = new();
-        return new LocalDataStores(new InMemoryIdentityStore(), new InMemoryContactStore(), new InMemoryChatStore(seen), seen, mode);
+        return new LocalDataStores(new InMemoryIdentityStore(), new InMemoryContactStore(), new InMemoryChatStore(seen), new InMemoryGroupStore(seen), seen, mode);
     }
 
     private static Task<PassphraseChangeResult> NotAvailable() => Task.FromResult(PassphraseChangeResult.Of(PassphraseChangeOutcome.NotAvailable));

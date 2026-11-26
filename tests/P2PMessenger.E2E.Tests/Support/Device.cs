@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Net;
 using System.Text;
@@ -138,22 +139,10 @@ internal sealed class Device : IAsyncDisposable
     {
         ArgumentNullException.ThrowIfNull(target);
 
-        Settle();
-        if (!target.IsEffectivelyVisible || !target.IsEffectivelyEnabled)
+        if (!TryClick(target, out string? problem))
         {
-            throw new InvalidOperationException($"{Name} cannot click {Describe(target)}: it is hidden or disabled. The window shows: {Summary()}");
+            throw new InvalidOperationException(problem);
         }
-
-        Point? centre = target.TranslatePoint(new Point(target.Bounds.Width / 2, target.Bounds.Height / 2), Window);
-        if (centre is not { } point)
-        {
-            throw new InvalidOperationException($"{Name} cannot find {Describe(target)} in the window.");
-        }
-
-        Window.MouseMove(point);
-        Window.MouseDown(point, MouseButton.Left);
-        Window.MouseUp(point, MouseButton.Left);
-        Dispatcher.UIThread.RunJobs();
     }
 
     public void ClickButton(string buttonName) => Click(Named<Button>(buttonName));
@@ -204,6 +193,7 @@ internal sealed class Device : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(done);
 
         DateTime deadline = DateTime.UtcNow + Patience;
+        string? lastProblem = null;
         while (true)
         {
             Dispatcher.UIThread.RunJobs();
@@ -212,9 +202,10 @@ internal sealed class Device : IAsyncDisposable
                 return;
             }
 
-            if (find() is { } target)
+            Settle();
+            if (find() is { } target && !TryClick(target, out string? problem))
             {
-                Click(target);
+                lastProblem = problem;
             }
 
             DateTime settled = DateTime.UtcNow + RetryAfter;
@@ -231,7 +222,7 @@ internal sealed class Device : IAsyncDisposable
 
             if (DateTime.UtcNow >= deadline)
             {
-                Assert.Fail($"Within the time allowed, clicking did not do this: {description}. The window of {Name} shows: {Summary()}");
+                Assert.Fail($"Within the time allowed, clicking did not do this: {description}. The last click that could not be made: {lastProblem ?? "none"}. The window of {Name} shows: {Summary()}");
             }
         }
     }
@@ -283,6 +274,30 @@ internal sealed class Device : IAsyncDisposable
 
     private static string Describe(Control control) =>
         string.IsNullOrEmpty(control.Name) ? control.GetType().Name : $"{control.GetType().Name} {control.Name}";
+
+    private bool TryClick(Control target, [NotNullWhen(false)] out string? problem)
+    {
+        Settle();
+        if (!target.IsEffectivelyVisible || !target.IsEffectivelyEnabled)
+        {
+            problem = $"{Name} cannot click {Describe(target)}: it is hidden or disabled. The window shows: {Summary()}";
+            return false;
+        }
+
+        Point? centre = target.TranslatePoint(new Point(target.Bounds.Width / 2, target.Bounds.Height / 2), Window);
+        if (centre is not { } point)
+        {
+            problem = $"{Name} cannot find {Describe(target)} in the window.";
+            return false;
+        }
+
+        Window.MouseMove(point);
+        Window.MouseDown(point, MouseButton.Left);
+        Window.MouseUp(point, MouseButton.Left);
+        Dispatcher.UIThread.RunJobs();
+        problem = null;
+        return true;
+    }
 
     private void Settle()
     {

@@ -31,6 +31,8 @@ internal sealed class FakeBackground : IBackgroundService, IBatteryExemption, IM
 
     public List<MessageNotice> Shown { get; } = [];
 
+    public List<GroupMessageNotice> ShownGroups { get; } = [];
+
     public BackgroundPorts Ports() => new(this, this, this, this, () => IsVisible);
 
     public void RequestResume() => ResumeRequested?.Invoke(this, EventArgs.Empty);
@@ -85,6 +87,14 @@ internal sealed class FakeBackground : IBackgroundService, IBatteryExemption, IM
         lock (Shown)
         {
             Shown.Add(notice);
+        }
+    }
+
+    public void ShowGroup(GroupMessageNotice notice)
+    {
+        lock (ShownGroups)
+        {
+            ShownGroups.Add(notice);
         }
     }
 

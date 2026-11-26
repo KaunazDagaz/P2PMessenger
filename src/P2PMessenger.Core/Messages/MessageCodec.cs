@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Diagnostics.CodeAnalysis;
+using P2PMessenger.Core.Groups;
 
 namespace P2PMessenger.Core.Messages;
 
@@ -75,6 +76,15 @@ internal static class MessageCodec
                 return true;
             case SessionMessageType.KeepAlive when body.IsEmpty:
                 message = KeepAlive.Instance;
+                return true;
+            case SessionMessageType.GroupInvitation when GroupInvitation.TryDecodeBody(body, out GroupInvitation? invitation):
+                message = invitation;
+                return true;
+            case SessionMessageType.GroupJoin when GroupJoin.TryDecodeBody(body, out GroupJoin? join):
+                message = join;
+                return true;
+            case SessionMessageType.GroupMessage when GroupMessage.TryDecodeBody(body, out GroupMessage? groupMessage):
+                message = groupMessage;
                 return true;
             default:
                 return false;

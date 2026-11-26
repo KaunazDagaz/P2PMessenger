@@ -2,7 +2,9 @@ using System.Diagnostics;
 using System.Net;
 using P2PMessenger.Application.Chats;
 using P2PMessenger.Application.Delivery;
+using P2PMessenger.Application.Groups;
 using P2PMessenger.Core.Crypto;
+using P2PMessenger.Core.Groups;
 using P2PMessenger.Tests.Shared;
 
 namespace P2PMessenger.Application.Tests.Delivery;
@@ -241,6 +243,83 @@ public sealed class OutboxTests
         Assert.Equal("after", Assert.Single(pair.Bob.Chats.MessagesWith(pair.AliceKey)).Text);
     }
 
+    [Fact(Timeout = 60_000)]
+    [Trait("Story", "US-15")]
+    [Trait("Story", "US-21")]
+    [Trait("Story", "US-12")]
+    public async Task DeleteWaitingGroupMessage_BeforeTheMemberIsReachable_IsNeverSentAndTheNumbersGoOn()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var pair = await Pair.ConnectAsync(cancellationToken);
+        var groupId = await pair.CreateGroupAsync(cancellationToken);
+        await pair.DisconnectAsync(cancellationToken);
+        await pair.Alice.SendToGroupAsync(groupId, "keep", cancellationToken);
+        var dropped = (await pair.Alice.SendToGroupAsync(groupId, "drop", cancellationToken)).Message!;
+
+        Assert.True(await pair.Alice.DeleteWaitingGroupMessageAsync(groupId, dropped.Id, cancellationToken));
+        await pair.Alice.SendToGroupAsync(groupId, "after", cancellationToken);
+        pair.Reconnect();
+        await TestMessengers.WaitUntilAsync(() => pair.Alice.GroupChats.MessagesIn(groupId).All(static message => message.ReceivedCount == 1), cancellationToken);
+        await Task.Delay(300, cancellationToken);
+
+        Assert.Equal(["keep", "after"], pair.Bob.GroupChats.MessagesIn(groupId).Select(static message => message.Text));
+        Assert.Equal([1L, 3L], pair.Bob.GroupChats.MessagesIn(groupId).Select(static message => message.Sequence));
+        Assert.Equal(2, pair.Alice.GroupChats.MessagesIn(groupId).Count);
+    }
+
+    [Fact(Timeout = 60_000)]
+    [Trait("Story", "US-21")]
+    [Trait("Story", "US-15")]
+    [Trait("Story", "US-12")]
+    public async Task DeleteGroupChat_WithAWaitingMessage_CancelsItAndTheMemberKeepsItsCopy()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var pair = await Pair.ConnectAsync(cancellationToken);
+        var groupId = await pair.CreateGroupAsync(cancellationToken);
+        await pair.Alice.SendToGroupAsync(groupId, "one", cancellationToken);
+        await TestMessengers.WaitUntilAsync(() => pair.Alice.GroupChats.MessagesIn(groupId).Single().ReceivedCount == 1, cancellationToken);
+        await pair.DisconnectAsync(cancellationToken);
+        await pair.Alice.SendToGroupAsync(groupId, "two", cancellationToken);
+
+        Assert.Equal(2, await pair.Alice.DeleteGroupChatAsync(groupId, cancellationToken));
+        Assert.Empty(pair.Alice.GroupChats.MessagesIn(groupId));
+        await pair.Alice.SendToGroupAsync(groupId, "three", cancellationToken);
+        pair.Reconnect();
+        await TestMessengers.WaitUntilAsync(() => pair.Alice.GroupChats.MessagesIn(groupId).Single().ReceivedCount == 1, cancellationToken);
+        await Task.Delay(300, cancellationToken);
+
+        Assert.Equal(["one", "three"], pair.Bob.GroupChats.MessagesIn(groupId).Select(static message => message.Text));
+        Assert.Equal([1L, 3L], pair.Bob.GroupChats.MessagesIn(groupId).Select(static message => message.Sequence));
+        Assert.Equal("three", Assert.Single(pair.Alice.GroupChats.MessagesIn(groupId)).Text);
+    }
+
+    [Fact(Timeout = 60_000)]
+    [Trait("Story", "US-15")]
+    [Trait("Story", "US-21")]
+    public async Task DeleteWaitingGroupMessage_AfterAPassTookItButBeforeItsTurn_IsNotSent()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var pair = await Pair.ConnectAsync(cancellationToken);
+        var groupId = await pair.CreateGroupAsync(cancellationToken);
+        await pair.DisconnectAsync(cancellationToken);
+        var dropped = (await pair.Alice.SendToGroupAsync(groupId, "drop", cancellationToken)).Message!;
+
+        var turn = await pair.Alice.Chats.EnterDeliveryAsync(pair.BobKey, cancellationToken);
+        var deleting = pair.Alice.DeleteWaitingGroupMessageAsync(groupId, dropped.Id, cancellationToken);
+        pair.Reconnect();
+        await TestMessengers.WaitUntilAsync(() => pair.Alice.Connections.IsConnected(pair.BobKey), cancellationToken);
+        await Task.Delay(300, cancellationToken);
+        Assert.False(deleting.IsCompleted);
+        turn.Dispose();
+
+        Assert.True(await deleting);
+        await pair.Alice.SendToGroupAsync(groupId, "after", cancellationToken);
+        await TestMessengers.WaitUntilAsync(() => pair.Bob.GroupChats.MessagesIn(groupId).Count > 0, cancellationToken);
+        await Task.Delay(300, cancellationToken);
+
+        Assert.Equal("after", Assert.Single(pair.Bob.GroupChats.MessagesIn(groupId)).Text);
+    }
+
     private sealed class Pair : IAsyncDisposable
     {
         private Pair(Messenger alice, Messenger bob, LoopbackDiscovery.Node aliceNode)
@@ -301,6 +380,18 @@ public sealed class OutboxTests
         }
 
         public void Reconnect() => AliceNode.InRange = true;
+
+        public async Task<GroupId> CreateGroupAsync(CancellationToken cancellationToken)
+        {
+            var created = await Alice.CreateGroupAsync("Pair group", [BobKey], cancellationToken);
+            Assert.Equal(CreateGroupOutcome.Created, created.Outcome);
+            var groupId = created.Group!.Id;
+            await TestMessengers.WaitUntilAsync(
+                () => Alice.Groups.TryGet(groupId, out var atAlice) && atAlice.State == GroupState.Created
+                    && Bob.Groups.TryGet(groupId, out var atBob) && atBob.State == GroupState.Created,
+                cancellationToken);
+            return groupId;
+        }
 
         public async ValueTask DisposeAsync()
         {

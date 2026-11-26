@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using Android.Content;
 using P2PMessenger.Application.Background;
 using P2PMessenger.UI.Resources;
@@ -12,6 +14,9 @@ internal static class Notifications
 
     private const int OpenRequest = 1;
     private const int QuitRequest = 2;
+
+    private static readonly CompositeFormat GroupMessageFrom = CompositeFormat.Parse(UiText.NotificationGroupMessageFromFormat);
+    private static readonly CompositeFormat GroupPreview = CompositeFormat.Parse(UiText.NotificationGroupPreviewFormat);
 
     public static void EnsureChannels(Context context)
     {
@@ -86,10 +91,40 @@ internal static class Notifications
 
         using Notification notification = builder.Build() ?? throw new InvalidOperationException("Android returned no notification.");
         manager.Notify(BackgroundRules.MessageNotificationId(notice.ContactKey.Bytes), notification);
-        if (context.GetSystemService(Context.KeyguardService) is KeyguardManager keyguard && keyguard.IsDeviceLocked)
+        ShowLockScreenNoticeIfLocked(context);
+    }
+
+    public static void ShowGroupMessage(Context context, GroupMessageNotice notice)
+    {
+        ArgumentNullException.ThrowIfNull(notice);
+
+        NotificationManager? manager = Manager(context);
+        if (manager is null)
         {
-            ShowLockScreenNotice(context);
+            return;
         }
+
+        EnsureChannels(context);
+        string text = notice.Preview is { } preview
+            ? string.Format(CultureInfo.CurrentCulture, GroupPreview, notice.AuthorName, preview)
+            : string.Format(CultureInfo.CurrentCulture, GroupMessageFrom, notice.AuthorName);
+        using Notification.Builder builder = new(context, MessagesChannel);
+        _ = builder.SetContentTitle(notice.GroupName)
+            ?.SetContentText(text)
+            ?.SetSmallIcon(global::Android.Resource.Drawable.StatNotifyChat)
+            ?.SetCategory(Notification.CategoryMessage)
+            ?.SetVisibility(NotificationVisibility.Secret)
+            ?.SetAutoCancel(true)
+            ?.SetContentIntent(OpenApp(context));
+        if (notice.Preview is not null)
+        {
+            using Notification.BigTextStyle style = new();
+            _ = builder.SetStyle(style.BigText(text));
+        }
+
+        using Notification notification = builder.Build() ?? throw new InvalidOperationException("Android returned no notification.");
+        manager.Notify(BackgroundRules.MessageNotificationId(notice.GroupId.Bytes), notification);
+        ShowLockScreenNoticeIfLocked(context);
     }
 
     public static void ShowLockScreenNotice(Context context)
@@ -144,6 +179,14 @@ internal static class Notifications
     }
 
     public static void CancelUnlockNeeded(Context context) => Manager(context)?.Cancel(BackgroundRules.UnlockNotificationId);
+
+    private static void ShowLockScreenNoticeIfLocked(Context context)
+    {
+        if (context.GetSystemService(Context.KeyguardService) is KeyguardManager keyguard && keyguard.IsDeviceLocked)
+        {
+            ShowLockScreenNotice(context);
+        }
+    }
 
     private static PendingIntent? OpenApp(Context context)
     {

@@ -109,6 +109,7 @@ internal sealed class AppPeer : IAsyncDisposable
             {
                 ContactStore = opened.Stores.Contacts,
                 ChatStore = opened.Stores.Chats,
+                GroupStore = opened.Stores.Groups,
                 SeenMessageIds = opened.Stores.SeenMessageIds,
                 ListenAddress = IPAddress.Loopback,
                 ListenPort = 0,

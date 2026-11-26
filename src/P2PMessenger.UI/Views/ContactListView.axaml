@@ -10,6 +10,11 @@
             <Button x:Name="AddInPersonButton" Margin="0,0,8,8" Content="{x:Static res:UiText.ContactListAddInPerson}" Command="{Binding AddInPersonCommand}" />
             <Button x:Name="AddContactButton" Margin="0,0,8,8" Content="{x:Static res:UiText.ContactListAddContact}" Command="{Binding AddContactCommand}" />
             <Button x:Name="MyCodeButton" Margin="0,0,8,8" Content="{x:Static res:UiText.ContactListMyCode}" Command="{Binding MyCodeCommand}" />
+            <Button x:Name="NewGroupButton"
+                    Margin="0,0,8,8"
+                    Content="{x:Static res:UiText.ContactListNewGroup}"
+                    Command="{Binding NewGroupCommand}"
+                    IsVisible="{Binding HasContacts}" />
             <Button x:Name="PassphraseButton"
                     Margin="0,0,8,8"
                     Content="{x:Static res:UiText.ContactListPassphrase}"
@@ -82,31 +87,66 @@
                    TextWrapping="Wrap"
                    IsVisible="{Binding HasNoMatches}" />
         <ScrollViewer>
-            <ItemsControl x:Name="ContactItems" ItemsSource="{Binding Contacts}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate DataType="vm:ContactItemViewModel">
-                        <Button Command="{Binding OpenCommand}"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                Margin="0,0,0,8"
-                                Padding="12"
-                                AutomationProperties.Name="{Binding Name}">
-                            <StackPanel Spacing="2">
-                                <DockPanel>
-                                    <TextBlock DockPanel.Dock="Right"
-                                               Text="{Binding UnreadText}"
-                                               IsVisible="{Binding HasUnread}"
-                                               FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                </DockPanel>
-                                <TextBlock Text="{Binding Fingerprint}" FontFamily="monospace" FontSize="12" />
-                                <TextBlock Text="{Binding StatusText}" />
-                                <TextBlock Text="{Binding KeyText}" />
-                            </StackPanel>
-                        </Button>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+            <StackPanel>
+                <TextBlock x:Name="GroupsHeading"
+                           Margin="0,0,0,8"
+                           Text="{x:Static res:UiText.ContactListGroupsHeading}"
+                           FontWeight="SemiBold"
+                           IsVisible="{Binding HasGroups}" />
+                <ItemsControl x:Name="GroupItems" ItemsSource="{Binding Groups}" IsVisible="{Binding HasGroups}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:GroupItemViewModel">
+                            <Button Command="{Binding OpenCommand}"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Stretch"
+                                    Margin="0,0,0,8"
+                                    Padding="12"
+                                    AutomationProperties.Name="{Binding Name}">
+                                <StackPanel Spacing="2">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right"
+                                                   Text="{Binding UnreadText}"
+                                                   IsVisible="{Binding HasUnread}"
+                                                   FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    </DockPanel>
+                                    <TextBlock Text="{Binding StateText}" />
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock x:Name="ContactsHeading"
+                           Margin="0,8,0,8"
+                           Text="{x:Static res:UiText.ContactListContactsHeading}"
+                           FontWeight="SemiBold"
+                           IsVisible="{Binding HasGroups}" />
+                <ItemsControl x:Name="ContactItems" ItemsSource="{Binding Contacts}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:ContactItemViewModel">
+                            <Button Command="{Binding OpenCommand}"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Stretch"
+                                    Margin="0,0,0,8"
+                                    Padding="12"
+                                    AutomationProperties.Name="{Binding Name}">
+                                <StackPanel Spacing="2">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right"
+                                                   Text="{Binding UnreadText}"
+                                                   IsVisible="{Binding HasUnread}"
+                                                   FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    </DockPanel>
+                                    <TextBlock Text="{Binding Fingerprint}" FontFamily="monospace" FontSize="12" />
+                                    <TextBlock Text="{Binding StatusText}" />
+                                    <TextBlock Text="{Binding KeyText}" />
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
         </ScrollViewer>
     </DockPanel>
 </UserControl>

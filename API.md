@@ -5,7 +5,7 @@ P2PMessenger has no server, so it has no HTTP API, no OpenAPI description, no RE
 1. **The wire protocol** (Sections 1 to 8): every format that two apps exchange, over the local network, over Tor or through another channel. This is the interface between two running apps, and the one that an independent implementation would have to follow. The data is binary, not JSON, because every connection is an encrypted Noise session with padded frames.
 2. **The application interface** (Section 9): the operations, events and result values through which the screens use the back-end libraries inside one app.
 
-**Status:** this document describes the version on the `main` branch. Group messages and the copy of chats to a PC are not built and are not specified here; they will add their own message types. A change to any format changes this document in the same change, and the tests named below compare the code with the reference vectors byte by byte.
+**Status:** this document describes the version on the `main` branch. Small groups (6.7 to 6.13) are specified for creating a group, joining it and sending group messages directly to each member; passing group messages on between members, acknowledgements passed on by other members, leaving and removing members, and the copy of chats to a PC are not built yet and will add their own message types. A change to any format changes this document in the same change, and the tests named below compare the code with the reference vectors byte by byte.
 
 ## Where the code is
 
@@ -14,6 +14,7 @@ P2PMessenger has no server, so it has no HTTP API, no OpenAPI description, no RE
 | Contact codes, fingerprints, onion addresses (Section 3) | `src/P2PMessenger.Core/Contacts`, `src/P2PMessenger.Core/Identity` | `tests/P2PMessenger.Core.Tests` |
 | Pairwise key, hint, prologue, handshake, frames (Sections 4 and 5) | `src/P2PMessenger.Core/Sessions`, `src/P2PMessenger.Core/Noise` | `tests/P2PMessenger.Core.Tests` |
 | Message types (Section 6) | `src/P2PMessenger.Core/Messages` | `tests/P2PMessenger.Core.Tests` |
+| Groups (Sections 6.7 to 6.13) | `src/P2PMessenger.Core/Groups`, `src/P2PMessenger.Application/Groups` | `tests/P2PMessenger.Core.Tests`, `tests/P2PMessenger.Storage.Tests`, `tests/P2PMessenger.Integration.Tests` |
 | Connections, admission, reconnects (Section 4.9) | `src/P2PMessenger.Transport/Connections`, `src/P2PMessenger.Transport/Admission`, `src/P2PMessenger.Transport/Tcp` | `tests/P2PMessenger.Transport.Tests`, `tests/P2PMessenger.Integration.Tests` |
 | Discovery on the local network (Section 7) | `src/P2PMessenger.Core/Discovery`, `src/P2PMessenger.Transport/Discovery` | `tests/P2PMessenger.Core.Tests`, `tests/P2PMessenger.Transport.Tests` |
 | Onion service (Section 8) | `src/P2PMessenger.Transport/Tor`, `src/P2PMessenger.Core/Identity` | `tests/P2PMessenger.Transport.Tests`, `tests/P2PMessenger.Integration.Tests` |
@@ -51,6 +52,7 @@ These apply to every format below.
 | Session 1 (`P2PM/session/v1`) | The pairwise key, the connection hint, the prologue and the KK handshake of Section 4 |
 | Frames 1 | 2-byte length, four size classes (Section 5) |
 | Text 1, acknowledgement 1, keep-alive 1 | The message types of Section 6 |
+| Group record 1, group invitation 1, group join 1, group message 1 | Small groups (6.7 to 6.13) |
 | Connection rules 1 | TCP, either side opens, one session per contact and the choice between two, a keep-alive after 15 s without another frame, closing after 45 s without a frame (Section 4.9) |
 | Connection rules 2 | Every session has a route, nearby or Tor; a Tor session replaces a nearby one, and a nearby one replaces a Tor one only if the Tor session counted 10 s or more earlier; over Tor 10 s for the hint and 20 s for the handshake (Section 4.9) |
 | Announcement 1 (`P2PM/announcement/v1`) | The announcement key, the 274-byte announcement, multicast, directed broadcast and the sweep, a random listening port (Section 7) |
@@ -291,7 +293,7 @@ On the wire this leaves four frame sizes. Keep-alives, acknowledgements and text
 
 ## 6. Message types
 
-Text messages, acknowledgements and keep-alives, with message IDs and per-sender sequence numbers.
+Text messages, acknowledgements and keep-alives, with message IDs and per-sender sequence numbers, and the three message types of small groups.
 
 ### 6.1 Content
 
@@ -302,6 +304,9 @@ content = type (1 byte) | version (1 byte) | body.
 | 1 | 1 | Text | 6.2 | 35 to 16,382 bytes |
 | 2 | 1 | Acknowledgement | 6.3 | 18 bytes |
 | 3 | 1 | Keep-alive | Empty | 2 bytes |
+| 4 | 1 | Group invitation | 6.9 | 254 to 15,769 bytes |
+| 5 | 1 | Group join | 6.10 | 54 bytes |
+| 6 | 1 | Group message | 6.11 | 191 to 16,382 bytes |
 
 Any other type or version is refused, and the session closes. All apps of a conversation must run the same protocol version. A later release that adds a type or a version needs a new session version or a way for the apps to tell each other what they understand.
 
@@ -339,6 +344,84 @@ The transport frames of the session of 4.8 (Alice's keep-alive and text, then Bo
 | Acknowledgement from Bob | `020100112233445566778899aabbccddeeff` | `0110061c5f95907020de9c791bd5a5602c5722d2991645eb119f12fc2b0f6d3ccec14a3db5fc65c589b3f98317735dbd5ea9e0de16a170e03057f3bceb125c274075d29c46f77eef82b82ecd3af4f18f30450158e10b3d5baf0e15641fcb6fb96f639fa340e0234c6a193dc6d33a1890a41a30d545a0d01578dee861e020177865a1209de756be6a2378e59bb3ad001bfcac2bd31b0138f0a4fe7b7c6265768bec90e6ae3db50c930a2c7bcb78d7517789e74eed15e2f2e2f7e7d4052a9a7abd66b5eafe9331a12e0ce132d29c83c7ede2cf70de354628293de453ad2ccc44f74618fd0e1160733a3dcecf972b7e16d7262b28b0b9a4a6f569c0117d61f302e297db8fe7876079592a7ec90d9d11cb0a02a5` |
 
 A text of 350 bytes (150 times `é` and 50 times `x`, ID `ffeeddccbbaa99887766554433221100`, sequence 42, time 0) has a content of 384 bytes and goes into the 1,024-byte class; its content is in `MessageCodecTests`.
+
+### 6.7 Groups
+
+A group is a small set of people who have all added each other as contacts. Group messages travel inside the same one-to-one sessions as everything else (Section 4), but each one is encrypted once with the group's key and signed by its author, so that every member can check who wrote it and only members can read it.
+
+- **Group record.** The signed list of who is in a group (6.8): a random 16-byte group ID, an epoch number, the group's name and every member's identity key and name. The member who makes a record signs it; at creation that is the person who creates the group.
+- **Group key.** 32 random bytes for XChaCha20-Poly1305, one per epoch. The record names it only by a key check (6.8). The key is sent only inside a one-to-one session (6.9), never inside a group message, and only to members.
+- **Creating and joining.** The creator invites each other member with the record and the key (6.9). Only contacts whose first connection has succeeded can be invited. An invited member joins when every other member is a contact of theirs whose first connection has succeeded: their app then sends every member a join with the hash of the record it received (6.10). Until then the app names the members still to be added, with their fingerprints; they are added by the usual exchange of contact codes, never from the invitation.
+- **Created.** A group counts as created on a device when every member has joined with the same record hash; the creator counts as joined by signing. A member who joined with another hash means that the creator sent different lists to different members: the group then never counts as created on that device, and the app says that the member lists do not match. Nobody writes in a group before it counts as created, so every member sees the same member list first.
+- **Delivery.** The author's app sends a group message directly to every other member and keeps sending it to each one, as for a text (6.3), until that member's app acknowledges it in a session with that member. The sender sees how many members' apps have confirmed it.
+- **Deleting on one device.** A user can delete a group chat on their own device, and their own group message while no member's app has acknowledged it; nothing is sent about it, and the other members keep their copies. The device keeps the IDs of the deleted messages (6.5) and, per author, the ranges of sequence numbers it had. A resent copy of a deleted message is acknowledged but not shown; a different message whose author and sequence number fall in a deleted range is dropped without an acknowledgement, as for a number already used; and the user's next group message is numbered after the highest of their own, deleted ones included, so no number is used twice.
+
+### 6.8 Group record, version 1
+
+| Offset | Size | Field | Rule |
+| --- | --- | --- | --- |
+| 0 | 1 | Version | 1 |
+| 1 | 16 | Group ID | Random, the same on every member's device |
+| 17 | 4 | Epoch | Big-endian, 1 to 2^31 - 1; 1 at creation |
+| 21 | 32 | Key check | BLAKE2b-256 of `P2PM/group-key-check/v1` and the 32-byte group key |
+| 53 | 1 | n | Length of the name, 1 to 64 |
+| 54 | n | Name | The group's name, under the rules of a display name (3.3) |
+| 54 + n | 1 | m | Number of members, 2 to 160 |
+| | m × (33 + k) | Members | Each: identity key (32), name length k (1, 1 to 64) and name (k bytes, rules of 3.3); ordered by identity key as unsigned bytes, each key once |
+| | 32 | Signer | The identity key of the member who made the record; must be one of the members |
+| | 64 | Signature | Ed25519 by the signer over `P2PM/group-record/v1` and every byte before the signature |
+
+A record is 220 to 15,735 bytes. The members' names are the names the signer knows them by; an app shows a member who is also its contact under the contact's own name. The record hash, which joins carry, is BLAKE2b-256 of `P2PM/group-record-hash/v1` and every byte before the signature. A record that breaks any rule, or whose signature does not verify, is refused.
+
+### 6.9 Group invitation, version 1
+
+The body is the 32-byte group key followed by the record (6.8). The receiver refuses it, and closes the session, if the record is refused or the key does not match the key check. It ignores the invitation, but still acknowledges it, if the record's epoch is not 1, if its signer is not the contact who sent it or if the receiver is not a member; and it keeps only the first record it receives for a group ID.
+
+### 6.10 Group join, version 1
+
+| Offset in the body | Size | Field |
+| --- | --- | --- |
+| 0 | 16 | Group ID |
+| 16 | 4 | Epoch, big-endian, 1 to 2^31 - 1 |
+| 20 | 32 | Hash of the record that the sender joined |
+
+A join from a contact who is not a member of the group changes nothing. A join for a group that the receiver does not know yet is not acknowledged, so the sender sends it again; the receiver may keep it in memory and count it as soon as the invitation arrives.
+
+### 6.11 Group message, version 1
+
+| Offset in the body | Size | Field |
+| --- | --- | --- |
+| 0 | 16 | Group ID |
+| 16 | 4 | Epoch, big-endian, 1 to 2^31 - 1 |
+| 20 | 32 | Author's identity key |
+| 52 | 24 | Nonce, random |
+| 76 | p + 16 | XChaCha20-Poly1305 ciphertext and tag of the content below, with the group key of that epoch |
+| 92 + p | 64 | Ed25519 signature by the author over `P2PM/group-message/v1` and every byte before the signature |
+
+The associated data of the encryption is `P2PM/group-text/v1`, the group ID, the epoch and the author's identity key. The content (p bytes) has the layout of a text (6.2): message ID (16), sequence (8, the author's number for their messages in this group, from 1), written-at time (8) and 1 to 16,192 bytes of UTF-8. A receiver checks, in this order, that it knows the group, that the contact who sent the message and the author are both members, that the epoch is the group's, that the signature verifies with the author's key and that the content decrypts and parses; it drops a message that fails any check, without an acknowledgement. Because the signature covers the ciphertext, a member can check who wrote a message without decrypting it, and the author's app keeps the message exactly as signed. A message whose ID the receiver has seen is shown once and acknowledged again (6.5); a second message from the same author with a sequence number already used in the group is dropped.
+
+### 6.12 Acknowledgements of group notices and messages
+
+A group message is acknowledged with its message ID, as a text is (6.3). An invitation and a join have no ID field; their acknowledgements carry an ID derived from the record hash: the first 16 bytes of BLAKE2b-256 of `P2PM/group-invitation-id/v1` and the record hash for an invitation, and of `P2PM/group-join-id/v1`, the record hash and the joining member's identity key for a join. An acknowledgement counts only when it arrives in a session with the member it is expected from.
+
+### 6.13 Reference vectors
+
+Computed with an independent Python implementation (PyNaCl and `cryptography`). The group ID is `00112233445566778899aabbccddeeff`, the epoch 1, the group key the bytes `00` to `1f`, the name `Field team`, and the members Alice (identity key of RFC 8032 test 1), Bob (test 3) and Carol (test 2), Alice signing.
+
+| Value | Hex |
+| --- | --- |
+| Key check | `96f3d2f12f7b40a59412d045cdaef7994006bb964ac3e8acde30ee30c11151a1` |
+| Record (273 bytes) | `0100112233445566778899aabbccddeeff0000000196f3d2f12f7b40a59412d045cdaef7994006bb964ac3e8acde30ee30c11151a10a4669656c64207465616d033d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c054361726f6cd75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a05416c696365fc51cd8e6218a1a38da47ed00230f0580816ed13ba3303ac5deb91154890802503426f62d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511ab7481612e39ba07d6deb51e43085a07e4fd3e4eef0a4a717bb76fc9d91061858134ee12fd9efd30d2976da95c8595b885d5a962706891d8338583c1175dd1505` |
+| Record hash | `e5f239c247fcaeeae204dfa0f3016974de1854b585ea6c8e506a93a3f276fd47` |
+| ID of the invitation's acknowledgement | `a9a32bc3b34a8bfacd5e1f8dd8f7b837` |
+| ID of the acknowledgement of Bob's join | `e9f25dbd1584829ebebccf1b03a93e09` |
+| Content of the join | `050100112233445566778899aabbccddeeff00000001e5f239c247fcaeeae204dfa0f3016974de1854b585ea6c8e506a93a3f276fd47` |
+
+Alice's group message with the nonce `40` to `57`, the message ID `ffeeddccbbaa99887766554433221100`, the sequence 1, the time 1794571200000 and the text `Hello, group` has this content (202 bytes):
+
+`060100112233445566778899aabbccddeeff00000001d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a404142434445464748494a4b4c4d4e4f50515253545556572bd7d8bc6b4ae09ef892d2fa9cbe749292baadc41359539b6a31fce4ddc345905e9c6e023abea4778ddd813cfbad9273fde0c21b36a11a91c81c5c147838ce584662138f5fb5c3f270ad490894d195e1bbe3bd3a4077d0ed7531f03ff4ba801392bdec5231eb41848077a69bb5786115adeafea024c8521630700109`
+
+The content of the invitation is the type and version `0401`, the group key and the record; it is in `GroupNoticeTests`.
 
 ## 7. Discovery on the local network
 
@@ -428,17 +511,21 @@ Reference vector: the expanded keys of the four RFC 8032 seeds of `OnionServiceK
 
 ## 9. Application interface
 
-The screens in `P2PMessenger.UI` reach the back-end only through `P2PMessenger.Application`, inside one process; no network separates them. The entry point is `Messenger`, which owns the identity, the contacts, the chats and the connections of one running app. Expected failures (an empty text, a refused contact code, a locked or damaged database) are returned as result values with the enumerations below, not thrown. An unexpected failure of background work (a connection, discovery, delivery) is not thrown to the screens either: it is reported to one `GlobalFailureHandler`, which logs the type of the exception once and raises `FailureReported`. Changes are announced by events that can be raised on any thread; the screens move them to the UI thread.
+The screens in `P2PMessenger.UI` reach the back-end only through `P2PMessenger.Application`, inside one process; no network separates them. The entry point is `Messenger`, which owns the identity, the contacts, the chats, the groups and the connections of one running app. Expected failures (an empty text, a refused contact code, a locked or damaged database) are returned as result values with the enumerations below, not thrown. An unexpected failure of background work (a connection, discovery, delivery) is not thrown to the screens either: it is reported to one `GlobalFailureHandler`, which logs the type of the exception once and raises `FailureReported`. Changes are announced by events that can be raised on any thread; the screens move them to the UI thread.
 
 ### 9.1 Messenger
 
 | Member | Purpose |
 | --- | --- |
 | `static Messenger.StartAsync(OwnIdentity, MessengerSetup, CancellationToken)` | Starts the listener, the local-network discovery, the Tor route and the outbox for an identity |
-| `Identity`, `Contacts`, `Chats`, `Connections`, `InternetRoute` | The services of 9.2 |
+| `Identity`, `Contacts`, `Chats`, `Groups`, `GroupChats`, `Connections`, `InternetRoute` | The services of 9.2 |
 | `SendAsync(Ed25519PublicKey contactKey, string? text, CancellationToken)` | Records a text for a contact and hands it to the outbox; returns `SendResult(Outcome, Message)` |
 | `DeleteChatAsync(contactKey, CancellationToken)` | Deletes the chat with a contact on this device and cancels its waiting messages; returns the number of messages deleted |
 | `DeleteWaitingAsync(contactKey, MessageId, CancellationToken)` | Deletes one message that is still waiting; returns whether it was waiting |
+| `CreateGroupAsync(string? name, IReadOnlyCollection<Ed25519PublicKey> contactKeys, CancellationToken)` | Creates a group of the user and the given contacts and hands the invitations to the outbox; returns `CreateGroupResult(Outcome, Group)` |
+| `SendToGroupAsync(GroupId, string? text, CancellationToken)` | Seals and signs a group message, records it with one waiting delivery per other member and hands it to the outbox; returns `GroupSendResult(Outcome, Message)` |
+| `DeleteGroupChatAsync(GroupId, CancellationToken)` | Deletes a group's messages on this device and stops sending the user's waiting ones; the group and the membership stay. Returns the number of messages deleted |
+| `DeleteWaitingGroupMessageAsync(GroupId, MessageId, CancellationToken)` | Deletes one of the user's group messages that no member's app has acknowledged; returns whether it was deleted |
 | `DisposeAsync()` | Stops the connections, discovery and tor |
 
 ### 9.2 Services
@@ -448,6 +535,8 @@ The screens in `P2PMessenger.UI` reach the back-end only through `P2PMessenger.A
 | `IdentityService` | `LoadAsync`; `CreateAsync(name, ct)` returns `CreateIdentityResult` | None |
 | `ContactBook` | `All`; `TryGet(identityKey, out Contact)`; `Check(text)` and `Check(ContactCode)` return `CodeCheck`; `AddAsync(check[, CodeExchange], ct)` returns `AddContactResult`; `SetKeyComparisonAsync(identityKey, KeyComparison, ct)`; `MarkScannedInPersonAsync(check, ct)` | `Changed` (`ContactChangedEventArgs`) |
 | `ChatLog` | `MessagesWith`, `WaitingFor`, `ContactsWithWaitingMessages`, `UnreadCount`, `MarkRead`; `ReceiveAsync`, `MarkReceivedAsync`, `DeleteChatAsync`, `DeleteWaitingAsync` | `Changed` (`ChatChangedEventArgs`) |
+| `GroupBook` | `All`; `TryGet(groupId, out Group)`; `MembersToAdd(group)`, the members who are not yet contacts whose first connection has succeeded; `CreateAsync(name, contactKeys, ct)`. A `Group` has its `Record`, its `Members` (`GroupMemberStatus`: identity key, name, `MemberJoin`, and the `NoticeState` of the invitation and of the user's own join for that member) and its `GroupState` | `Changed` (`GroupChangedEventArgs`) |
+| `GroupChats` | `MessagesIn(groupId)`, `UnreadCount`, `MarkRead`. A `GroupChatMessage` has its signed `Envelope`, author, direction, ID, sequence, times, text and, for the user's own message, one `DeliveryState` per other member with `ReceivedCount`, `RecipientCount` and `CanBeDeleted` (no member's app has it yet) | `Changed` (`GroupChatChangedEventArgs`: a message `Added`, `Updated` or `Removed`, or the chat `IsCleared`) |
 | `ConnectionService` | `ListeningPort`, `LastListenResult`, `DiscoveryState`, `DiscoveryPort`, `Network`, `UsesTor`; `IsConnected`, `IsHeard`, `ReachabilityOf`, `DialStatusOf`, `TorStatusOf` per contact | `Changed` (`ConnectionChangedEventArgs`) |
 | `InternetRoute` | `Status`, `IsInBuild`, `IsOn`, `TargetKind`; `SetEnabledAsync(on, ct)` turns Tor on or off | `Changed` |
 | `GlobalFailureHandler` | `Install()` and `Uninstall()` hook the unobserved task and the process-ending exception; `Handle(exception, FailureSource)` returns false for out-of-memory and otherwise logs the exception's type once (an exception reported again, also inside an `AggregateException`, is ignored); `Report(source, exception)` is the same call for the components; `Count`. It is given to the messenger as `MessengerSetup.Failures` | `FailureReported` (`FailureReport`: the `FailureSource` and the exception's type name, never its message) |
@@ -456,13 +545,18 @@ The screens in `P2PMessenger.UI` reach the back-end only through `P2PMessenger.A
 
 | Type | Values |
 | --- | --- |
+| `CreateGroupOutcome` | `Created`; `NameNotValid` (the rules of a display name); `NoMembers`; `TooManyMembers` (more than 160 with the user); `NotAnAddedContact` (a chosen contact's first connection has not succeeded) |
+| `GroupSendOutcome` | `Queued`; `Empty`; `TooLong` (more than 16,192 bytes of UTF-8); `NotSendable`; `NotAGroup`; `NotCreatedYet` (not every member has joined, or the member lists do not match) |
+| `GroupState` | `Joining` (the user has not joined: some members are not yet their contacts); `WaitingForMembers`; `Created`; `ListsDiffer` (a member joined with another record) |
+| `MemberJoin` | `NotYet`; `Joined`; `JoinedAnotherList` |
+| `NoticeState` | `None`; `Waiting`; `Received` (an invitation or the user's own join, per member) |
 | `SendOutcome` | `Queued` (stored and waiting for the contact's app to confirm it); `Empty` (no text or only white space); `TooLong` (more than 16,348 bytes of UTF-8); `NotSendable` (the text format refuses it); `NotAContact`; `WaitingForFirstConnection` (the contact is not yet added because no connection has succeeded) |
 | `CodeCheckOutcome` | `New`; `NewConnectionKeys` (a known person with new connection keys); `LooksLikeContact` (a new person with the name of a contact); `AlreadyContact`; `OwnCode`; `KeysInUse` (the keys belong to this device or to another contact); `NotACode`; `UnsupportedVersion`; `Damaged` |
 | `AddContactOutcome` | `Added`; `KeysReplaced`; `NotAddable` (the check does not allow adding); `Stale` (the contact list changed since the check) |
 | `CreateIdentityError` | `None`; `InvalidName`; `AlreadyCreated` |
 | `DeliveryState` | `None` (a received message), `Waiting` and `Received` (a sent message: waiting for, or confirmed by, the contact's app) |
 | `Reachability` | `NotReachable`; `Nearby`; `Tor` |
-| `FailureSource` | Where a failure was caught: `UiThread`, `BackgroundTask` (a failed task that nobody observed), `AppDomain` (an exception that ends the process), `Connections`, `Discovery`, `Delivery` |
+| `FailureSource` | Where a failure was caught: `UiThread`, `BackgroundTask` (a failed task that nobody observed), `AppDomain` (an exception that ends the process), `Connections`, `Discovery`, `Delivery`, `Groups` (joining a group after a contact changed) |
 | `InternetRouteState` | `NotInBuild`; `Off`; `Starting`; `Connected`; `Unavailable`, with an `InternetRouteProblem`: `None`, `NotInBuild`, `NoNetwork`, `ClockWrong`, `CannotReachTor`, `TorFailed`, `TorStopped` |
 | `LocalDataStatus` | `Opened`; `NotCreated`; `PassphraseNeeded`; `WrongPassphrase`; `PassphraseRequired`; `PassphraseNotAccepted`; `Failed`, with a `LocalDataProblem`: `None`, `KeyStoreUnavailable`, `KeyStoreRefused`, `KeyNotFound`, `NewerVersion`, `Damaged` |
 
@@ -476,10 +570,10 @@ The back-end libraries call no platform API themselves: whatever differs between
 | --- | --- | --- |
 | `IKeyProtector` (Application) | Wraps the database's data key with the platform key store | `DpapiKeyProtector` and `SecretServiceKeyProtector` in `P2PMessenger.Desktop`; `AndroidKeystoreKeyProtector` in `P2PMessenger.Android` |
 | `ISettingsStore` (Application) | The few on/off settings of the app | `FileSettingsStore` (Desktop), `PreferenceFlags` (Android), `InMemorySettingsStore` |
-| `IBackgroundService`, `IBatteryExemption`, `IMessageNotifier` (Application) | The Android background service, the battery exemption and message notifications | `P2PMessenger.Android` |
+| `IBackgroundService`, `IBatteryExemption`, `IMessageNotifier` (Application) | The Android background service, the battery exemption and message notifications: `Show(MessageNotice)` for a one-to-one message and `ShowGroup(GroupMessageNotice)` for a group message, each with the text only if the user turned previews on | `P2PMessenger.Android` |
 | `ILocalInterfaceSource` (Transport) | The device's local network interfaces | `SystemInterfaceSource` (Transport), `AndroidInterfaceSource` (Android) |
 | `ILocalData` (Application) | Opens, creates, unlocks and deletes the local database; the passphrase operations | `DatabaseLocalData` (SQLite), `InMemoryLocalData` |
-| `IContactStore`, `IChatStore`, `IIdentityStore` (Application) | Persistence of the contacts, the chats and the identity | The database-backed stores in `Application/LocalData`, and the `InMemory` ones |
+| `IContactStore`, `IChatStore`, `IGroupStore`, `IIdentityStore` (Application) | Persistence of the contacts, the chats, the groups with their messages and the identity | The database-backed stores in `Application/LocalData`, and the `InMemory` ones |
 | `IWakeUpScheduler` (Application) | The timer that wakes the outbox | `TimerWakeUpScheduler` |
 | `IFailureSink` (Core) | Receives the unexpected failures that the connections, discovery and delivery catch in their background work; without one they log the failure themselves | `GlobalFailureHandler` (Application), passed in through `MessengerSetup.Failures` |
 | `IDialer`, `IDiscoveryLink`, `IKnownContacts` (Transport) | Opening connections, the UDP socket of discovery and the list of contacts that may call | `TcpDialer` and `OnionDialer`, `UdpDiscoveryLink`, `KnownContacts` (Transport) |

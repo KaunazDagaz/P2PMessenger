@@ -616,6 +616,15 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Contacts.
+        /// </summary>
+        public static string ContactListContactsHeading {
+            get {
+                return ResourceManager.GetString("ContactListContactsHeading", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Delete all data.
         /// </summary>
         public static string ContactListDeleteAllData {
@@ -634,6 +643,15 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Groups.
+        /// </summary>
+        public static string ContactListGroupsHeading {
+            get {
+                return ResourceManager.GetString("ContactListGroupsHeading", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to My code.
         /// </summary>
         public static string ContactListMyCode {
@@ -648,6 +666,15 @@ namespace P2PMessenger.UI.Resources {
         public static string ContactListNetwork {
             get {
                 return ResourceManager.GetString("ContactListNetwork", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to New group.
+        /// </summary>
+        public static string ContactListNewGroup {
+            get {
+                return ResourceManager.GetString("ContactListNewGroup", resourceCulture);
             }
         }
         
@@ -1327,6 +1354,213 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The chat was deleted on this device only. You are still a member, and the members&apos; apps still have their copies..
+        /// </summary>
+        public static string GroupChatDeleted {
+            get {
+                return ResourceManager.GetString("GroupChatDeleted", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Created by you..
+        /// </summary>
+        public static string GroupCreatedBy {
+            get {
+                return ResourceManager.GetString("GroupCreatedBy", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Created by {0}..
+        /// </summary>
+        public static string GroupCreatedByFormat {
+            get {
+                return ResourceManager.GetString("GroupCreatedByFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Delete the chat of {0}? Its messages are removed from this device, and your messages that are still waiting are no longer sent from it. You stay a member and keep receiving new messages. The members&apos; apps keep their copies..
+        /// </summary>
+        public static string GroupDeleteChatQuestionFormat {
+            get {
+                return ResourceManager.GetString("GroupDeleteChatQuestionFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This many members&apos; apps confirmed that they have stored the message; it does not show whether anyone has read it. The others get it when their app is reachable. Because a member&apos;s app has it, it can no longer be deleted on its own..
+        /// </summary>
+        public static string GroupDeliveryReceivedExplanation {
+            get {
+                return ResourceManager.GetString("GroupDeliveryReceivedExplanation", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Received by {0} of {1} members&apos; apps.
+        /// </summary>
+        public static string GroupDeliveryReceivedFormat {
+            get {
+                return ResourceManager.GetString("GroupDeliveryReceivedFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to No other member&apos;s app has confirmed this message yet; it is sent again automatically to each member until their app does, and it may already have arrived..
+        /// </summary>
+        public static string GroupDeliveryWaitingExplanation {
+            get {
+                return ResourceManager.GetString("GroupDeliveryWaitingExplanation", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Not joined yet: open it to see whom to add.
+        /// </summary>
+        public static string GroupItemJoining {
+            get {
+                return ResourceManager.GetString("GroupItemJoining", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The member lists do not match.
+        /// </summary>
+        public static string GroupItemListsDiffer {
+            get {
+                return ResourceManager.GetString("GroupItemListsDiffer", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} members.
+        /// </summary>
+        public static string GroupItemMembersFormat {
+            get {
+                return ResourceManager.GetString("GroupItemMembersFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Waiting for {0} of {1} members to join.
+        /// </summary>
+        public static string GroupItemWaitingFormat {
+            get {
+                return ResourceManager.GetString("GroupItemWaitingFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to You have not joined this group yet. To join, add these members as contacts, in person or with codes sent through another channel, and compare fingerprints with them. Your app joins by itself once you have added them all..
+        /// </summary>
+        public static string GroupJoiningIntro {
+            get {
+                return ResourceManager.GetString("GroupJoiningIntro", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to You have every member as a contact. Your app joins as soon as each first connection is complete..
+        /// </summary>
+        public static string GroupJoiningNone {
+            get {
+                return ResourceManager.GetString("GroupJoiningNone", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The member lists of this group do not match: {0} joined with a different list than yours. Nobody can write in this group; create a new one with the people you trust..
+        /// </summary>
+        public static string GroupListsDifferFormat {
+            get {
+                return ResourceManager.GetString("GroupListsDifferFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Members: {0}.
+        /// </summary>
+        public static string GroupMembersFormat {
+            get {
+                return ResourceManager.GetString("GroupMembersFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The waiting message was deleted on this device and will not be sent again. If it reached a member&apos;s app before that app&apos;s confirmation came back, it stays there..
+        /// </summary>
+        public static string GroupMessageDeleted {
+            get {
+                return ResourceManager.GetString("GroupMessageDeleted", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Delete this waiting message? This device will not send it again..
+        /// </summary>
+        public static string GroupMessageDeleteQuestion {
+            get {
+                return ResourceManager.GetString("GroupMessageDeleteQuestion", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A member&apos;s app has already received the message, so it was not deleted..
+        /// </summary>
+        public static string GroupMessageNotDeletable {
+            get {
+                return ResourceManager.GetString("GroupMessageNotDeletable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Not sent: this group is no longer on this device..
+        /// </summary>
+        public static string GroupNotAGroup {
+            get {
+                return ResourceManager.GetString("GroupNotAGroup", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Not sent: you can write once every member has joined..
+        /// </summary>
+        public static string GroupNotCreatedYet {
+            get {
+                return ResourceManager.GetString("GroupNotCreatedYet", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Not sent: the message is too long for a group..
+        /// </summary>
+        public static string GroupTooLong {
+            get {
+                return ResourceManager.GetString("GroupTooLong", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Waiting for these members to join: {0}. Nobody can write in the group until every member has joined..
+        /// </summary>
+        public static string GroupWaitingFormat {
+            get {
+                return ResourceManager.GetString("GroupWaitingFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} (you).
+        /// </summary>
+        public static string GroupYouFormat {
+            get {
+                return ResourceManager.GetString("GroupYouFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Add a code they sent.
         /// </summary>
         public static string InPersonAddByCode {
@@ -1687,6 +1921,114 @@ namespace P2PMessenger.UI.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Create group.
+        /// </summary>
+        public static string NewGroupCreate {
+            get {
+                return ResourceManager.GetString("NewGroupCreate", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The group could not be saved on this device. Try again..
+        /// </summary>
+        public static string NewGroupFailed {
+            get {
+                return ResourceManager.GetString("NewGroupFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Choose contacts who have all added each other. Each invited member joins once they have every other member as a contact. Nobody can write in the group until every member has joined, so that everyone sees the same member list..
+        /// </summary>
+        public static string NewGroupIntro {
+            get {
+                return ResourceManager.GetString("NewGroupIntro", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Enter a group name of up to 64 bytes (fewer letters in some alphabets) without control characters..
+        /// </summary>
+        public static string NewGroupInvalidName {
+            get {
+                return ResourceManager.GetString("NewGroupInvalidName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Members.
+        /// </summary>
+        public static string NewGroupMembersLabel {
+            get {
+                return ResourceManager.GetString("NewGroupMembersLabel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Group name.
+        /// </summary>
+        public static string NewGroupNameLabel {
+            get {
+                return ResourceManager.GetString("NewGroupNameLabel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Name of the group.
+        /// </summary>
+        public static string NewGroupNamePlaceholder {
+            get {
+                return ResourceManager.GetString("NewGroupNamePlaceholder", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to You have no contacts to invite yet. Only contacts whose first connection is complete can be invited..
+        /// </summary>
+        public static string NewGroupNoContacts {
+            get {
+                return ResourceManager.GetString("NewGroupNoContacts", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Choose at least one contact..
+        /// </summary>
+        public static string NewGroupNoMembers {
+            get {
+                return ResourceManager.GetString("NewGroupNoMembers", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A chosen contact is no longer an added contact. Choose again..
+        /// </summary>
+        public static string NewGroupNotAdded {
+            get {
+                return ResourceManager.GetString("NewGroupNotAdded", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to New group.
+        /// </summary>
+        public static string NewGroupTitle {
+            get {
+                return ResourceManager.GetString("NewGroupTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A group can have at most {0} members, you included..
+        /// </summary>
+        public static string NewGroupTooManyFormat {
+            get {
+                return ResourceManager.GetString("NewGroupTooManyFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to New messages on the lock screen.
         /// </summary>
         public static string NotificationChannelLockScreen {
@@ -1710,6 +2052,24 @@ namespace P2PMessenger.UI.Resources {
         public static string NotificationChannelService {
             get {
                 return ResourceManager.GetString("NotificationChannelService", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to New message from {0}.
+        /// </summary>
+        public static string NotificationGroupMessageFromFormat {
+            get {
+                return ResourceManager.GetString("NotificationGroupMessageFromFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0}: {1}.
+        /// </summary>
+        public static string NotificationGroupPreviewFormat {
+            get {
+                return ResourceManager.GetString("NotificationGroupPreviewFormat", resourceCulture);
             }
         }
         

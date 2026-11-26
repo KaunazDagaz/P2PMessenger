@@ -13,6 +13,8 @@ public sealed class StoredData : IDisposable
         Contacts = new ContactRepository(gate, keys);
         Messages = new MessageRepository(gate, keys);
         SeenMessages = new SeenMessageRepository(gate, keys);
+        Groups = new GroupRepository(gate, keys);
+        GroupMessages = new GroupMessageRepository(gate, keys);
     }
 
     public IdentityRepository Identity { get; }
@@ -22,6 +24,10 @@ public sealed class StoredData : IDisposable
     public MessageRepository Messages { get; }
 
     public SeenMessageRepository SeenMessages { get; }
+
+    public GroupRepository Groups { get; }
+
+    public GroupMessageRepository GroupMessages { get; }
 
     public void Dispose() => keys.Dispose();
 }
