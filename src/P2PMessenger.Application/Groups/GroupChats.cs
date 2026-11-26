@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using P2PMessenger.Application.Chats;
 using P2PMessenger.Application.Identity;
@@ -18,6 +19,7 @@ public sealed class GroupChats : IDisposable
     private readonly SemaphoreSlim writing = new(1, 1);
     private readonly Lock gate = new();
     private readonly Dictionary<GroupId, Conversation> conversations = [];
+    private readonly Dictionary<MessageId, GroupChatMessage> messagesById = [];
 
     internal GroupChats(
         GroupBook groups,
@@ -26,7 +28,7 @@ public sealed class GroupChats : IDisposable
         ISeenMessageIds seen,
         TimeProvider timeProvider,
         IEnumerable<GroupChatMessage> loaded,
-        IReadOnlyDictionary<GroupId, IReadOnlyList<DeletedRange>> deleted,
+        IReadOnlyDictionary<GroupId, IReadOnlyList<AuthorSequenceRange>> deleted,
         Func<Ed25519PublicKey, CancellationToken, Task<IDisposable>> enterDelivery)
     {
         this.groups = groups;
@@ -39,9 +41,10 @@ public sealed class GroupChats : IDisposable
         foreach (GroupChatMessage message in loaded.OrderBy(static message => message.RecordedAt))
         {
             ConversationOf(message.GroupId).Insert(message, own.Keys.IdentityKey);
+            messagesById[message.Id] = message;
         }
 
-        foreach ((GroupId groupId, IReadOnlyList<DeletedRange> ranges) in deleted)
+        foreach ((GroupId groupId, IReadOnlyList<AuthorSequenceRange> ranges) in deleted)
         {
             ConversationOf(groupId).KeepDeleted(DeletedRanges.From(ranges), own.Keys.IdentityKey);
         }
@@ -50,6 +53,8 @@ public sealed class GroupChats : IDisposable
     public event EventHandler<GroupChatChangedEventArgs>? Changed;
 
     internal event EventHandler<Ed25519PublicKey>? DeliveryNeeded;
+
+    internal event EventHandler<GroupMessageArrivedEventArgs>? MessageArrived;
 
     public IReadOnlyList<GroupChatMessage> MessagesIn(GroupId groupId)
     {
@@ -114,7 +119,13 @@ public sealed class GroupChats : IDisposable
                 removed = await store.DeleteChatAsync(groupId, updated.ToList(), cancellationToken).ConfigureAwait(false);
                 lock (gate)
                 {
-                    ConversationOf(groupId).Clear(updated);
+                    Conversation conversation = ConversationOf(groupId);
+                    foreach (GroupChatMessage message in conversation.Messages)
+                    {
+                        messagesById.Remove(message.Id);
+                    }
+
+                    conversation.Clear(updated);
                 }
             }
             finally
@@ -162,7 +173,8 @@ public sealed class GroupChats : IDisposable
                 lock (gate)
                 {
                     Conversation conversation = ConversationOf(groupId);
-                    conversation.Messages.Remove(waiting);
+                    conversation.Remove(waiting);
+                    messagesById.Remove(waiting.Id);
                     conversation.KeepDeleted(updated, own.Keys.IdentityKey);
                 }
 
@@ -232,6 +244,7 @@ public sealed class GroupChats : IDisposable
             lock (gate)
             {
                 ConversationOf(groupId).Insert(message, own.Keys.IdentityKey);
+                messagesById[message.Id] = message;
             }
         }
         finally
@@ -286,6 +299,7 @@ public sealed class GroupChats : IDisposable
             {
                 Conversation conversation = ConversationOf(group.Id);
                 conversation.Insert(message, own.Keys.IdentityKey);
+                messagesById[message.Id] = message;
                 conversation.Unread++;
             }
         }
@@ -295,6 +309,7 @@ public sealed class GroupChats : IDisposable
         }
 
         Changed?.Invoke(this, new GroupChatChangedEventArgs(group.Id, message, null));
+        MessageArrived?.Invoke(this, new GroupMessageArrivedEventArgs(senderKey, message));
         return text.Id;
     }
 
@@ -304,7 +319,12 @@ public sealed class GroupChats : IDisposable
         await writing.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            GroupChatMessage? waiting = Find(message => message.Id.Equals(id) && message.IsWaitingFor(memberKey));
+            GroupChatMessage? waiting;
+            lock (gate)
+            {
+                waiting = messagesById.TryGetValue(id, out GroupChatMessage? candidate) && candidate.IsWaitingFor(memberKey) ? candidate : null;
+            }
+
             if (waiting is null || !await store.MarkReceivedAsync(waiting.GroupId, memberKey, id, cancellationToken).ConfigureAwait(false))
             {
                 return false;
@@ -314,6 +334,7 @@ public sealed class GroupChats : IDisposable
             lock (gate)
             {
                 ConversationOf(waiting.GroupId).Replace(waiting, received);
+                messagesById[received.Id] = received;
             }
         }
         finally
@@ -340,8 +361,13 @@ public sealed class GroupChats : IDisposable
         }
     }
 
-    internal bool IsWaitingFor(Ed25519PublicKey memberKey, MessageId id) =>
-        Find(message => message.Id.Equals(id) && message.IsWaitingFor(memberKey)) is not null;
+    internal bool IsWaitingFor(Ed25519PublicKey memberKey, MessageId id)
+    {
+        lock (gate)
+        {
+            return messagesById.TryGetValue(id, out GroupChatMessage? message) && message.IsWaitingFor(memberKey);
+        }
+    }
 
     internal IReadOnlyList<Ed25519PublicKey> MembersWithWaitingMessages()
     {
@@ -354,6 +380,135 @@ public sealed class GroupChats : IDisposable
                     .SelectMany(static message => message.Deliveries.Where(static delivery => delivery.Value == DeliveryState.Waiting).Select(static delivery => delivery.Key))
                     .Distinct(),
             ];
+        }
+    }
+
+    internal long VersionOf(GroupId groupId)
+    {
+        lock (gate)
+        {
+            return conversations.TryGetValue(groupId, out Conversation? conversation) ? conversation.Version : 0;
+        }
+    }
+
+    internal GroupSummary SummaryFor(Group group)
+    {
+        ArgumentNullException.ThrowIfNull(group);
+
+        Dictionary<Ed25519PublicKey, List<SequenceRange>> held = HeldByAuthor(group);
+        return GroupSummary.Fit(group.Id, group.Record.Epoch, held.Select(static pair => (pair.Key, (IEnumerable<SequenceRange>)pair.Value)));
+    }
+
+    internal bool HasUnheld(Group group, IReadOnlyList<(Ed25519PublicKey AuthorKey, SequenceRange Range)> advertised)
+    {
+        ArgumentNullException.ThrowIfNull(group);
+        ArgumentNullException.ThrowIfNull(advertised);
+
+        if (advertised.Count == 0)
+        {
+            return false;
+        }
+
+        Dictionary<Ed25519PublicKey, List<SequenceRange>> held = HeldByAuthor(group);
+        foreach ((Ed25519PublicKey authorKey, SequenceRange range) in advertised)
+        {
+            if (group.Find(authorKey) is null)
+            {
+                continue;
+            }
+
+            if (!held.TryGetValue(authorKey, out List<SequenceRange>? ranges) || !Covers(ranges, range))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    internal IReadOnlyList<GroupChatMessage> MissingFrom(Group group, Ed25519PublicKey peerKey, GroupSummary peerSummary)
+    {
+        ArgumentNullException.ThrowIfNull(group);
+        ArgumentNullException.ThrowIfNull(peerKey);
+        ArgumentNullException.ThrowIfNull(peerSummary);
+
+        lock (gate)
+        {
+            if (!conversations.TryGetValue(group.Id, out Conversation? conversation))
+            {
+                return [];
+            }
+
+            return
+            [
+                .. conversation.Messages.Where(message =>
+                    message.Envelope.Epoch == group.Record.Epoch
+                    && group.Find(message.AuthorKey) is not null
+                    && !message.AuthorKey.Equals(peerKey)
+                    && !message.IsWaitingFor(peerKey)
+                    && !peerSummary.Contains(message.AuthorKey, message.Sequence)),
+            ];
+        }
+    }
+
+    internal bool TryGetStoredEnvelope(GroupId groupId, MessageId id, [NotNullWhen(true)] out GroupMessage? envelope)
+    {
+        lock (gate)
+        {
+            if (messagesById.TryGetValue(id, out GroupChatMessage? found) && found.GroupId.Equals(groupId))
+            {
+                envelope = found.Envelope;
+                return true;
+            }
+        }
+
+        envelope = null;
+        return false;
+    }
+
+    internal bool TryFindMessage(MessageId id, [NotNullWhen(true)] out GroupChatMessage? message)
+    {
+        lock (gate)
+        {
+            return messagesById.TryGetValue(id, out message);
+        }
+    }
+
+    private static bool Covers(List<SequenceRange> merged, SequenceRange target)
+    {
+        int low = 0;
+        int high = merged.Count - 1;
+        while (low <= high)
+        {
+            int middle = low + ((high - low) / 2);
+            SequenceRange range = merged[middle];
+            if (target.First < range.First)
+            {
+                high = middle - 1;
+            }
+            else if (target.First > range.Last)
+            {
+                low = middle + 1;
+            }
+            else
+            {
+                return range.Covers(target);
+            }
+        }
+
+        return false;
+    }
+
+    private Dictionary<Ed25519PublicKey, List<SequenceRange>> HeldByAuthor(Group group)
+    {
+        lock (gate)
+        {
+            if (!conversations.TryGetValue(group.Id, out Conversation? conversation))
+            {
+                return [];
+            }
+
+            return conversation.HeldByAuthor(group);
         }
     }
 
@@ -384,22 +539,6 @@ public sealed class GroupChats : IDisposable
         return turns;
     }
 
-    private GroupChatMessage? Find(Func<GroupChatMessage, bool> match)
-    {
-        lock (gate)
-        {
-            foreach (Conversation conversation in conversations.Values)
-            {
-                if (conversation.Messages.Find(message => match(message)) is { } found)
-                {
-                    return found;
-                }
-            }
-
-            return null;
-        }
-    }
-
     private Conversation ConversationOf(GroupId groupId)
     {
         if (!conversations.TryGetValue(groupId, out Conversation? conversation))
@@ -413,11 +552,17 @@ public sealed class GroupChats : IDisposable
 
     private sealed class Conversation
     {
+        private int cachedEpoch;
+        private long cachedVersion = -1;
+        private Dictionary<Ed25519PublicKey, List<SequenceRange>> cachedHeld = [];
+
         public List<GroupChatMessage> Messages { get; } = [];
 
         public long LastSentSequence { get; private set; }
 
         public int Unread { get; set; }
+
+        public long Version { get; private set; }
 
         public DeletedRanges Deleted { get; private set; } = DeletedRanges.Empty;
 
@@ -425,6 +570,7 @@ public sealed class GroupChats : IDisposable
         {
             Deleted = deleted;
             LastSentSequence = Math.Max(LastSentSequence, deleted.HighestOf(ownKey));
+            Version++;
         }
 
         public void Clear(DeletedRanges deleted)
@@ -432,6 +578,7 @@ public sealed class GroupChats : IDisposable
             Messages.Clear();
             Unread = 0;
             Deleted = deleted;
+            Version++;
         }
 
         public void Insert(GroupChatMessage message, Ed25519PublicKey ownKey)
@@ -447,6 +594,16 @@ public sealed class GroupChats : IDisposable
             {
                 LastSentSequence = message.Sequence;
             }
+
+            Version++;
+        }
+
+        public void Remove(GroupChatMessage message)
+        {
+            if (Messages.Remove(message))
+            {
+                Version++;
+            }
         }
 
         public void Replace(GroupChatMessage old, GroupChatMessage replacement)
@@ -456,6 +613,54 @@ public sealed class GroupChats : IDisposable
             {
                 Messages[index] = replacement;
             }
+        }
+
+        public Dictionary<Ed25519PublicKey, List<SequenceRange>> HeldByAuthor(Group group)
+        {
+            int epoch = group.Record.Epoch;
+            if (cachedVersion == Version && cachedEpoch == epoch)
+            {
+                return cachedHeld;
+            }
+
+            Dictionary<Ed25519PublicKey, List<SequenceRange>> collected = [];
+            foreach (GroupChatMessage message in Messages)
+            {
+                if (message.Envelope.Epoch == epoch && group.Find(message.AuthorKey) is not null)
+                {
+                    AddHeld(collected, message.AuthorKey, new SequenceRange(message.Sequence, message.Sequence));
+                }
+            }
+
+            foreach (AuthorSequenceRange deleted in Deleted.ToList())
+            {
+                if (group.Find(deleted.AuthorKey) is not null)
+                {
+                    AddHeld(collected, deleted.AuthorKey, deleted.Range);
+                }
+            }
+
+            Dictionary<Ed25519PublicKey, List<SequenceRange>> merged = [];
+            foreach ((Ed25519PublicKey authorKey, List<SequenceRange> ranges) in collected)
+            {
+                merged.Add(authorKey, SequenceRange.Merge(ranges));
+            }
+
+            cachedEpoch = epoch;
+            cachedVersion = Version;
+            cachedHeld = merged;
+            return merged;
+        }
+
+        private static void AddHeld(Dictionary<Ed25519PublicKey, List<SequenceRange>> map, Ed25519PublicKey authorKey, SequenceRange range)
+        {
+            if (!map.TryGetValue(authorKey, out List<SequenceRange>? list))
+            {
+                list = [];
+                map.Add(authorKey, list);
+            }
+
+            list.Add(range);
         }
 
         private static bool ComesAfter(GroupChatMessage earlier, GroupChatMessage message) =>

@@ -65,26 +65,14 @@ internal sealed class DatabaseGroupStore : IGroupStore
     public async ValueTask<bool> MarkReceivedAsync(GroupId groupId, Ed25519PublicKey memberKey, MessageId id, CancellationToken cancellationToken) =>
         await messages.MarkReceivedAsync(groupId, memberKey, id, cancellationToken).ConfigureAwait(false);
 
-    public async ValueTask<IReadOnlyDictionary<GroupId, IReadOnlyList<DeletedRange>>> LoadDeletedAsync(CancellationToken cancellationToken)
-    {
-        IReadOnlyDictionary<GroupId, IReadOnlyList<StoredSequenceRange>> stored = await messages.LoadDeletedRangesAsync(cancellationToken).ConfigureAwait(false);
-        return stored.ToDictionary(
-            static pair => pair.Key,
-            static pair => (IReadOnlyList<DeletedRange>)[.. pair.Value.Select(static range => new DeletedRange(range.AuthorKey, range.First, range.Last))]);
-    }
+    public async ValueTask<IReadOnlyDictionary<GroupId, IReadOnlyList<AuthorSequenceRange>>> LoadDeletedAsync(CancellationToken cancellationToken) =>
+        await messages.LoadDeletedRangesAsync(cancellationToken).ConfigureAwait(false);
 
-    public async ValueTask<int> DeleteChatAsync(GroupId groupId, IReadOnlyList<DeletedRange> deleted, CancellationToken cancellationToken) =>
-        await messages.DeleteConversationAsync(groupId, ToStored(deleted), cancellationToken).ConfigureAwait(false);
+    public async ValueTask<int> DeleteChatAsync(GroupId groupId, IReadOnlyList<AuthorSequenceRange> deleted, CancellationToken cancellationToken) =>
+        await messages.DeleteConversationAsync(groupId, deleted, cancellationToken).ConfigureAwait(false);
 
-    public async ValueTask<bool> DeleteWaitingAsync(GroupId groupId, MessageId id, IReadOnlyList<DeletedRange> deleted, CancellationToken cancellationToken) =>
-        await messages.DeleteWaitingAsync(groupId, id, ToStored(deleted), cancellationToken).ConfigureAwait(false);
-
-    private static List<StoredSequenceRange> ToStored(IReadOnlyList<DeletedRange> deleted)
-    {
-        ArgumentNullException.ThrowIfNull(deleted);
-
-        return [.. deleted.Select(static range => new StoredSequenceRange(range.AuthorKey, range.First, range.Last))];
-    }
+    public async ValueTask<bool> DeleteWaitingAsync(GroupId groupId, MessageId id, IReadOnlyList<AuthorSequenceRange> deleted, CancellationToken cancellationToken) =>
+        await messages.DeleteWaitingAsync(groupId, id, deleted, cancellationToken).ConfigureAwait(false);
 
     private static GroupMemberStatus ToStatus(GroupRecord record, StoredGroupMember member) =>
         new(

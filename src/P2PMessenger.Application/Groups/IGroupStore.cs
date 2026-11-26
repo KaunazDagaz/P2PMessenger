@@ -18,9 +18,9 @@ public interface IGroupStore
 
     ValueTask<bool> MarkReceivedAsync(GroupId groupId, Ed25519PublicKey memberKey, MessageId id, CancellationToken cancellationToken);
 
-    ValueTask<IReadOnlyDictionary<GroupId, IReadOnlyList<DeletedRange>>> LoadDeletedAsync(CancellationToken cancellationToken);
+    ValueTask<IReadOnlyDictionary<GroupId, IReadOnlyList<AuthorSequenceRange>>> LoadDeletedAsync(CancellationToken cancellationToken);
 
-    ValueTask<int> DeleteChatAsync(GroupId groupId, IReadOnlyList<DeletedRange> deleted, CancellationToken cancellationToken);
+    ValueTask<int> DeleteChatAsync(GroupId groupId, IReadOnlyList<AuthorSequenceRange> deleted, CancellationToken cancellationToken);
 
-    ValueTask<bool> DeleteWaitingAsync(GroupId groupId, MessageId id, IReadOnlyList<DeletedRange> deleted, CancellationToken cancellationToken);
+    ValueTask<bool> DeleteWaitingAsync(GroupId groupId, MessageId id, IReadOnlyList<AuthorSequenceRange> deleted, CancellationToken cancellationToken);
 }

@@ -904,7 +904,7 @@
     <value>No other member's app has confirmed this message yet; it is sent again automatically to each member until their app does, and it may already have arrived.</value>
   </data>
   <data name="GroupDeliveryReceivedExplanation" xml:space="preserve">
-    <value>This many members' apps confirmed that they have stored the message; it does not show whether anyone has read it. The others get it when their app is reachable. Because a member's app has it, it can no longer be deleted on its own.</value>
+    <value>This many members' apps confirmed directly to this device that they have stored the message; it does not show whether anyone has read it. Other members may already have received it through another member, and this count updates when their app connects to yours. Because a member's app has it and can pass it on, it can no longer be deleted on its own.</value>
   </data>
   <data name="NotificationGroupMessageFromFormat" xml:space="preserve">
     <value>New message from {0}</value>
@@ -913,16 +913,16 @@
     <value>{0}: {1}</value>
   </data>
   <data name="GroupDeleteChatQuestionFormat" xml:space="preserve">
-    <value>Delete the chat of {0}? Its messages are removed from this device, and your messages that are still waiting are no longer sent from it. You stay a member and keep receiving new messages. The members' apps keep their copies.</value>
+    <value>Delete the chat of {0}? Its messages are removed from this device, and your messages that are still waiting are no longer sent from it. You stay a member and keep receiving new messages. The members' apps keep their copies and can pass them on to other members.</value>
   </data>
   <data name="GroupChatDeleted" xml:space="preserve">
-    <value>The chat was deleted on this device only. You are still a member, and the members' apps still have their copies.</value>
+    <value>The chat was deleted on this device only. You are still a member, and the members' apps still have their copies and can pass them on to other members.</value>
   </data>
   <data name="GroupMessageDeleteQuestion" xml:space="preserve">
     <value>Delete this waiting message? This device will not send it again.</value>
   </data>
   <data name="GroupMessageDeleted" xml:space="preserve">
-    <value>The waiting message was deleted on this device and will not be sent again. If it reached a member's app before that app's confirmation came back, it stays there.</value>
+    <value>The waiting message was deleted on this device and will not be sent again. If it reached a member's app before that app's confirmation came back, it stays there and that app can pass it on to other members.</value>
   </data>
   <data name="GroupMessageNotDeletable" xml:space="preserve">
     <value>A member's app has already received the message, so it was not deleted.</value>

@@ -86,6 +86,9 @@ internal static class MessageCodec
             case SessionMessageType.GroupMessage when GroupMessage.TryDecodeBody(body, out GroupMessage? groupMessage):
                 message = groupMessage;
                 return true;
+            case SessionMessageType.GroupSummary when GroupSummary.TryDecodeBody(body, out GroupSummary? groupSummary):
+                message = groupSummary;
+                return true;
             default:
                 return false;
         }

@@ -460,7 +460,7 @@ public sealed class DatabaseLocalDataTests
         var envelope = GroupMessage.Seal(key, record.GroupId, 1, bobKeys, text);
         var message = new GroupChatMessage(envelope, text.Id, 2, text.WrittenAt, text.Text, DateTimeOffset.UnixEpoch, new Dictionary<Ed25519PublicKey, DeliveryState>());
         Assert.True(await result.Stores.Groups.AddMessageAsync(message, cancellationToken));
-        Assert.Equal(1, await result.Stores.Groups.DeleteChatAsync(record.GroupId, [new DeletedRange(bobKeys.IdentityKey, 1, 2)], cancellationToken));
+        Assert.Equal(1, await result.Stores.Groups.DeleteChatAsync(record.GroupId, [new AuthorSequenceRange(bobKeys.IdentityKey, 1, 2)], cancellationToken));
         Assert.True(await result.Stores.Groups.AddMessageAsync(Again(key, record, bobKeys), cancellationToken));
     }
 

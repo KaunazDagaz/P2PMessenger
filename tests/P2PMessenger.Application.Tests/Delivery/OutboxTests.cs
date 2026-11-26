@@ -18,14 +18,23 @@ public sealed class OutboxTests
 
         Assert.Equal(TimeSpan.FromSeconds(10), options.WakeUpInterval);
         Assert.Equal(TimeSpan.FromSeconds(30), options.ResendAfter);
+        Assert.Equal(TimeSpan.FromSeconds(2), options.PassOnSummaryDelay);
+        Assert.Equal(16, options.PassOnBatchSize);
+        Assert.Equal(256, options.PassOnRoundLimit);
     }
 
     [Theory]
-    [InlineData(0, 30)]
-    [InlineData(10, 0)]
-    [InlineData(-1, 30)]
-    [InlineData(10, 86_401)]
-    public async Task StartAsync_DeliveryTimesOutOfRange_AreRefused(int wakeUpSeconds, int resendSeconds)
+    [InlineData(0, 30, 2, 16, 256)]
+    [InlineData(10, 0, 2, 16, 256)]
+    [InlineData(-1, 30, 2, 16, 256)]
+    [InlineData(10, 86_401, 2, 16, 256)]
+    [InlineData(10, 30, 0, 16, 256)]
+    [InlineData(10, 30, 86_401, 16, 256)]
+    [InlineData(10, 30, 2, 0, 256)]
+    [InlineData(10, 30, 2, 1025, 256)]
+    [InlineData(10, 30, 2, 16, 0)]
+    [InlineData(10, 30, 2, 16, 10_001)]
+    public async Task StartAsync_DeliveryTimesOutOfRange_AreRefused(int wakeUpSeconds, int resendSeconds, int summaryDelaySeconds, int batchSize, int roundLimit)
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         using var identity = TestKeys.NewIdentity("Alice");
@@ -33,7 +42,14 @@ public sealed class OutboxTests
         {
             ListenAddress = IPAddress.Loopback,
             ListenPort = 0,
-            Delivery = new DeliveryOptions { WakeUpInterval = TimeSpan.FromSeconds(wakeUpSeconds), ResendAfter = TimeSpan.FromSeconds(resendSeconds) },
+            Delivery = new DeliveryOptions
+            {
+                WakeUpInterval = TimeSpan.FromSeconds(wakeUpSeconds),
+                ResendAfter = TimeSpan.FromSeconds(resendSeconds),
+                PassOnSummaryDelay = TimeSpan.FromSeconds(summaryDelaySeconds),
+                PassOnBatchSize = batchSize,
+                PassOnRoundLimit = roundLimit,
+            },
         };
 
         await Assert.ThrowsAsync<ArgumentException>(() => Messenger.StartAsync(identity, setup, cancellationToken));

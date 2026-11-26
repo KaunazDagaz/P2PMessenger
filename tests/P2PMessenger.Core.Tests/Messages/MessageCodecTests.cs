@@ -141,7 +141,7 @@ public sealed class MessageCodecTests
     [Theory]
     [Trait("NFR", "NFR-09")]
     [InlineData(0, 1)]
-    [InlineData(7, 1)]
+    [InlineData(8, 1)]
     [InlineData(255, 1)]
     [InlineData(3, 0)]
     [InlineData(3, 2)]

@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using P2PMessenger.Application;
@@ -163,6 +165,65 @@ public sealed class GroupViewTests
         Assert.Same(page, harness.Shell.CurrentPage);
         Assert.Equal(UiText.NewGroupInvalidName, UiHarness.Find<TextBlock>(view, "ErrorText").Text);
         Assert.Empty(harness.Messenger.Groups.All);
+        await UiHarness.StopPeerAsync(bob);
+        harness.Messenger.Identity.Dispose();
+    }
+
+    [AvaloniaFact]
+    [Trait("Story", "US-13")]
+    public async Task GroupConversation_PassedOnMessage_ShowsWithOriginalAuthorAndUpdatesUnreadCount()
+    {
+        await using var harness = await UiHarness.StartAsync("Carol");
+        var alice = await harness.ConnectPeerAsync("Alice");
+        var bob = await harness.ConnectPeerAsync("Bob");
+        await KnowEachOtherAsync(alice, bob);
+        var created = await alice.CreateGroupAsync("Field team", [bob.Identity.Keys.IdentityKey, harness.Messenger.Identity.Keys.IdentityKey], CancellationToken.None);
+        Assert.True(created.IsCreated);
+        var groupId = created.Group.Id;
+        await UiHarness.WaitUntilAsync(() =>
+            harness.Messenger.Groups.TryGet(groupId, out var atCarol) && atCarol.State == GroupState.Created
+            && alice.Groups.TryGet(groupId, out var atAlice) && atAlice.State == GroupState.Created
+            && bob.Groups.TryGet(groupId, out var atBob) && atBob.State == GroupState.Created);
+
+        var list = harness.Shell.Pages.ContactList();
+        var listView = new ContactListView { DataContext = list };
+        harness.Shell.Push(list);
+        harness.Show(listView);
+        await UiHarness.WaitUntilAsync(() => list.Groups.Count == 1);
+
+        var bobKey = bob.Identity.Keys.IdentityKey;
+        var aliceKey = alice.Identity.Keys.IdentityKey;
+        harness.Node.InRange = false;
+        await UiHarness.WaitUntilAsync(() => !alice.Connections.IsHeard(harness.Messenger.Identity.Keys.IdentityKey) && !bob.Connections.IsHeard(harness.Messenger.Identity.Keys.IdentityKey));
+        if (harness.Messenger.Connections.TryGetConnection(aliceKey, out var toAlice))
+        {
+            toAlice.Close();
+        }
+
+        if (harness.Messenger.Connections.TryGetConnection(bobKey, out var toBob))
+        {
+            toBob.Close();
+        }
+
+        await UiHarness.WaitUntilAsync(() => !harness.Messenger.Connections.IsConnected(aliceKey) && !harness.Messenger.Connections.IsConnected(bobKey));
+        Assert.Equal(GroupSendOutcome.Queued, (await alice.SendToGroupAsync(groupId, "Passed on by Bob", CancellationToken.None)).Outcome);
+        await UiHarness.WaitUntilAsync(() => bob.GroupChats.MessagesIn(groupId).Count == 1);
+        await UiHarness.StopPeerAsync(alice);
+        await UiHarness.WaitUntilAsync(() => !bob.Connections.IsConnected(aliceKey));
+
+        harness.Node.InRange = true;
+        var expectedUnread = string.Format(CultureInfo.InvariantCulture, CompositeFormat.Parse(UiText.ContactUnreadFormat), 1);
+        await UiHarness.WaitUntilAsync(() => list.Groups[0].UnreadText == expectedUnread);
+        list.Groups[0].OpenCommand.Execute(null);
+        UiHarness.Flush();
+        var conversation = Assert.IsType<GroupConversationViewModel>(harness.Shell.CurrentPage);
+        var conversationView = new GroupConversationView { DataContext = conversation };
+        harness.Show(conversationView);
+
+        var message = Assert.Single(conversation.Messages);
+        Assert.Equal("Alice", message.Sender);
+        Assert.Equal("Passed on by Bob", message.Text);
+        Assert.Contains("Passed on by Bob", UiHarness.Texts(conversationView));
         await UiHarness.StopPeerAsync(bob);
         harness.Messenger.Identity.Dispose();
     }
