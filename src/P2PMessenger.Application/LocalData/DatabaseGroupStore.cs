@@ -74,6 +74,15 @@ internal sealed class DatabaseGroupStore : IGroupStore
     public async ValueTask<bool> DeleteWaitingAsync(GroupId groupId, MessageId id, IReadOnlyList<AuthorSequenceRange> deleted, CancellationToken cancellationToken) =>
         await messages.DeleteWaitingAsync(groupId, id, deleted, cancellationToken).ConfigureAwait(false);
 
+    public async ValueTask<IReadOnlyList<GroupAcknowledgement>> LoadAcknowledgementsAsync(CancellationToken cancellationToken) =>
+        await messages.LoadAcknowledgementsAsync(cancellationToken).ConfigureAwait(false);
+
+    public async ValueTask<bool> AddAcknowledgementAsync(GroupAcknowledgement acknowledgement, CancellationToken cancellationToken) =>
+        await messages.AddAcknowledgementAsync(acknowledgement, cancellationToken).ConfigureAwait(false);
+
+    public async ValueTask<bool> RemoveAcknowledgementAsync(GroupId groupId, Ed25519PublicKey recipientKey, MessageId messageId, CancellationToken cancellationToken) =>
+        await messages.RemoveAcknowledgementAsync(groupId, recipientKey, messageId, cancellationToken).ConfigureAwait(false);
+
     private static GroupMemberStatus ToStatus(GroupRecord record, StoredGroupMember member) =>
         new(
             member.IdentityKey,

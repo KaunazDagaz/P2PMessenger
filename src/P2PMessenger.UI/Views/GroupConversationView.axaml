@@ -155,7 +155,8 @@
                                     </TextBlock>
                                     <SelectableTextBlock Text="{Binding Text}" TextWrapping="Wrap" />
                                     <StackPanel Spacing="2" IsVisible="{Binding IsOwn}">
-                                        <Button HorizontalAlignment="Right"
+                                        <Button Name="DeliveryStateButton"
+                                                HorizontalAlignment="Right"
                                                 Padding="0"
                                                 FontSize="12"
                                                 Background="Transparent"
@@ -163,12 +164,28 @@
                                                 Content="{Binding StateText}"
                                                 Command="{Binding ToggleExplanationCommand}"
                                                 AutomationProperties.HelpText="{Binding StateExplanation}" />
-                                        <TextBlock Text="{Binding StateExplanation}"
-                                                   IsVisible="{Binding IsExplanationShown}"
-                                                   FontSize="12"
-                                                   MaxWidth="400"
-                                                   HorizontalAlignment="Right"
-                                                   TextWrapping="Wrap" />
+                                        <StackPanel Name="DeliveryDetailsPanel"
+                                                    Spacing="4"
+                                                    HorizontalAlignment="Right"
+                                                    IsVisible="{Binding IsExplanationShown}">
+                                            <ItemsControl Name="DeliveryMemberItems"
+                                                          ItemsSource="{Binding MemberDeliveries}"
+                                                          HorizontalAlignment="Right">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="vm:GroupDeliveryMemberViewModel">
+                                                        <TextBlock FontSize="12"
+                                                                   HorizontalAlignment="Right"
+                                                                   Text="{Binding SummaryText}"
+                                                                   TextWrapping="Wrap" />
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <TextBlock Text="{Binding StateExplanation}"
+                                                       FontSize="12"
+                                                       MaxWidth="400"
+                                                       HorizontalAlignment="Right"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
                                         <Button Name="DeleteMessageButton"
                                                 HorizontalAlignment="Right"
                                                 FontSize="12"

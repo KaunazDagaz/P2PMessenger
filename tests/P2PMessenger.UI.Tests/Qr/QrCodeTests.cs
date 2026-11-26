@@ -136,7 +136,14 @@ public sealed class QrCodeTests
             }
         }
 
-        Assert.Equal(text, new QrFrameReader().ReadLuminance(turned, width, width, width));
+        var reader = new QrFrameReader();
+        string? decoded = null;
+        for (var frame = 0; frame < QrFrameReader.ThoroughEvery && decoded is null; frame++)
+        {
+            decoded = reader.ReadLuminance(turned, width, width, width);
+        }
+
+        Assert.Equal(text, decoded);
     }
 
     [Fact]

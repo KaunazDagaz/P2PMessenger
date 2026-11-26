@@ -236,7 +236,11 @@ public sealed partial class GroupConversationViewModel : PageViewModel
         }
     }
 
-    private void OnContactChanged(object? sender, ContactChangedEventArgs e) => uiThread.Post(RefreshGroup);
+    private void OnContactChanged(object? sender, ContactChangedEventArgs e) => uiThread.Post(() =>
+    {
+        RefreshGroup();
+        RefreshMessages();
+    });
 
     private void OnGroupChatChanged(object? sender, GroupChatChangedEventArgs e)
     {
@@ -315,17 +319,18 @@ public sealed partial class GroupConversationViewModel : PageViewModel
             }
         }
 
+        Func<Ed25519PublicKey, string> resolveName = group is null ? static _ => string.Empty : key => NameOf(group, key);
         for (int index = 0; index < all.Count; index++)
         {
             GroupChatMessage message = all[index];
             if (index < Messages.Count && Messages[index].Id.Equals(message.Id))
             {
-                Messages[index].Update(message);
+                Messages[index].Update(message, resolveName);
                 continue;
             }
 
-            string sender = group is null ? string.Empty : NameOf(group, message.AuthorKey);
-            Messages.Insert(index, new GroupMessageItemViewModel(message, sender, timeZone, DeleteMessageAsync));
+            string sender = resolveName(message.AuthorKey);
+            Messages.Insert(index, new GroupMessageItemViewModel(message, sender, timeZone, DeleteMessageAsync, resolveName));
         }
 
         IsEmpty = Messages.Count == 0;

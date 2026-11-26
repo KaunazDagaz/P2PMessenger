@@ -69,6 +69,7 @@ internal sealed class Outbox : IAsyncDisposable
         IEnumerable<Ed25519PublicKey> waiting = chats.ContactsWithWaitingMessages()
             .Concat(groups.ContactsWithPendingNotices())
             .Concat(groupChats.MembersWithWaitingMessages())
+            .Concat(groupChats.AuthorsWithRelayedAcknowledgements())
             .Concat(groupPassOn.ContactsWithPendingWork())
             .Distinct();
         foreach (Ed25519PublicKey contactKey in waiting)
@@ -144,6 +145,7 @@ internal sealed class Outbox : IAsyncDisposable
         private readonly Lock gate = new();
         private readonly Dictionary<MessageId, Attempt> attempts = [];
         private readonly Dictionary<MessageId, Attempt> passOnAttempts = [];
+        private readonly Dictionary<MessageId, Attempt> relayedAckAttempts = [];
         private ContactConnection? roundConnection;
         private int passedInRound;
         private bool resetRound;
@@ -248,6 +250,7 @@ internal sealed class Outbox : IAsyncDisposable
             }
 
             PrunePassOnAttempts(connection);
+            PruneRelayedAckAttempts(connection);
 
             IReadOnlyList<ChatMessage> waiting = outbox.chats.WaitingFor(contactKey);
             IReadOnlyList<PendingSend> groupItems = [.. outbox.groups.PendingNoticesFor(contactKey), .. outbox.groupChats.WaitingFor(contactKey)];
@@ -331,7 +334,64 @@ internal sealed class Outbox : IAsyncDisposable
                 }
             }
 
+            foreach (GroupAcknowledgement ownAck in outbox.groupPassOn.PendingOwnAcknowledgementsFor(contactKey))
+            {
+                if (stop.IsCancellationRequested || connection.IsClosed)
+                {
+                    return;
+                }
+
+                if (IsRelayedAckRecent(ownAck.NoticeId, connection))
+                {
+                    continue;
+                }
+
+                if (!await connection.SendAsync(ownAck, stop).ConfigureAwait(false))
+                {
+                    return;
+                }
+
+                relayedAckAttempts[ownAck.NoticeId] = new Attempt(connection, outbox.timeProvider.GetTimestamp());
+            }
+
             int sentInBatch = 0;
+            bool hasMoreAuthorAcks = false;
+            foreach (RelayedGroupAcknowledgement relayed in outbox.groupChats.RelayedAcknowledgementsForAuthor(contactKey))
+            {
+                if (stop.IsCancellationRequested || connection.IsClosed)
+                {
+                    return;
+                }
+
+                if (IsRelayedAckRecent(relayed.NoticeId, connection))
+                {
+                    continue;
+                }
+
+                if (sentInBatch >= outbox.options.PassOnBatchSize || passedInRound >= outbox.options.PassOnRoundLimit)
+                {
+                    hasMoreAuthorAcks = true;
+                    break;
+                }
+
+                using (await outbox.chats.EnterDeliveryAsync(contactKey, stop).ConfigureAwait(false))
+                {
+                    if (!outbox.groupChats.TryGetRelayedAcknowledgement(relayed.NoticeId, out RelayedGroupAcknowledgement? current))
+                    {
+                        continue;
+                    }
+
+                    if (!await connection.SendAsync(current.Acknowledgement, stop).ConfigureAwait(false))
+                    {
+                        return;
+                    }
+                }
+
+                relayedAckAttempts[relayed.NoticeId] = new Attempt(connection, outbox.timeProvider.GetTimestamp());
+                sentInBatch++;
+                passedInRound++;
+            }
+
             while (sentInBatch < outbox.options.PassOnBatchSize && passedInRound < outbox.options.PassOnRoundLimit)
             {
                 if (stop.IsCancellationRequested || connection.IsClosed)
@@ -367,7 +427,45 @@ internal sealed class Outbox : IAsyncDisposable
                 passedInRound++;
             }
 
-            if (passedInRound < outbox.options.PassOnRoundLimit && outbox.groupPassOn.HasPendingMessages(contactKey, connection))
+            bool hasMorePassOnAcks = false;
+            foreach (MessageId noticeId in outbox.groupPassOn.PendingAcknowledgementsFor(contactKey, connection))
+            {
+                if (stop.IsCancellationRequested || connection.IsClosed)
+                {
+                    return;
+                }
+
+                if (IsRelayedAckRecent(noticeId, connection))
+                {
+                    continue;
+                }
+
+                if (sentInBatch >= outbox.options.PassOnBatchSize || passedInRound >= outbox.options.PassOnRoundLimit)
+                {
+                    hasMorePassOnAcks = true;
+                    break;
+                }
+
+                using (await outbox.chats.EnterDeliveryAsync(contactKey, stop).ConfigureAwait(false))
+                {
+                    if (!outbox.groupChats.TryGetRelayedAcknowledgement(noticeId, out RelayedGroupAcknowledgement? current))
+                    {
+                        outbox.groupPassOn.ForgetAcknowledgement(noticeId);
+                        continue;
+                    }
+
+                    if (!await connection.SendAsync(current.Acknowledgement, stop).ConfigureAwait(false))
+                    {
+                        return;
+                    }
+                }
+
+                relayedAckAttempts[noticeId] = new Attempt(connection, outbox.timeProvider.GetTimestamp());
+                sentInBatch++;
+                passedInRound++;
+            }
+
+            if (passedInRound < outbox.options.PassOnRoundLimit && (hasMoreAuthorAcks || hasMorePassOnAcks || outbox.groupPassOn.HasPendingMessages(contactKey, connection)))
             {
                 ContinueSoon();
             }
@@ -409,6 +507,17 @@ internal sealed class Outbox : IAsyncDisposable
             }
         }
 
+        private void PruneRelayedAckAttempts(ContactConnection connection)
+        {
+            foreach (MessageId expired in relayedAckAttempts
+                .Where(pair => !ReferenceEquals(pair.Value.Connection, connection) || outbox.timeProvider.GetElapsedTime(pair.Value.SentAt) >= outbox.options.ResendAfter)
+                .Select(static pair => pair.Key)
+                .ToList())
+            {
+                relayedAckAttempts.Remove(expired);
+            }
+        }
+
         private bool IsRecent(MessageId id, ContactConnection connection) =>
             attempts.TryGetValue(id, out Attempt attempt)
             && ReferenceEquals(attempt.Connection, connection)
@@ -416,6 +525,11 @@ internal sealed class Outbox : IAsyncDisposable
 
         private bool IsPassOnRecent(MessageId id, ContactConnection connection) =>
             passOnAttempts.TryGetValue(id, out Attempt attempt)
+            && ReferenceEquals(attempt.Connection, connection)
+            && outbox.timeProvider.GetElapsedTime(attempt.SentAt) < outbox.options.ResendAfter;
+
+        private bool IsRelayedAckRecent(MessageId id, ContactConnection connection) =>
+            relayedAckAttempts.TryGetValue(id, out Attempt attempt)
             && ReferenceEquals(attempt.Connection, connection)
             && outbox.timeProvider.GetElapsedTime(attempt.SentAt) < outbox.options.ResendAfter;
     }

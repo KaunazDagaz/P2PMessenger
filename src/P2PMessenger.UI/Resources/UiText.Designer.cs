@@ -1489,7 +1489,34 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to This many members&apos; apps confirmed directly to this device that they have stored the message; it does not show whether anyone has read it. Other members may already have received it through another member, and this count updates when their app connects to yours. Because a member&apos;s app has it and can pass it on, it can no longer be deleted on its own..
+        ///   Looks up a localized string similar to {0}: {1}.
+        /// </summary>
+        public static string GroupDeliveryMemberFormat {
+            get {
+                return ResourceManager.GetString("GroupDeliveryMemberFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Received by their app.
+        /// </summary>
+        public static string GroupDeliveryMemberReceived {
+            get {
+                return ResourceManager.GetString("GroupDeliveryMemberReceived", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Waiting.
+        /// </summary>
+        public static string GroupDeliveryMemberWaiting {
+            get {
+                return ResourceManager.GetString("GroupDeliveryMemberWaiting", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Each member marked received sent a signed confirmation from their app, directly or through another member, that it stored the message; this does not show whether anyone has read it. Because a member&apos;s app has it and can pass it on, it can no longer be deleted on its own..
         /// </summary>
         public static string GroupDeliveryReceivedExplanation {
             get {
@@ -1507,7 +1534,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to No other member&apos;s app has confirmed this message yet; it is sent again automatically to each member until their app does, and it may already have arrived..
+        ///   Looks up a localized string similar to No other member&apos;s app has confirmed this message yet. Each member shows as received once their app&apos;s signed confirmation reaches this device, directly or through another member. Until then it is sent again automatically, and it may already have arrived..
         /// </summary>
         public static string GroupDeliveryWaitingExplanation {
             get {

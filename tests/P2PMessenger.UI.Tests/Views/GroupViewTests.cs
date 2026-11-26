@@ -228,6 +228,128 @@ public sealed class GroupViewTests
         harness.Messenger.Identity.Dispose();
     }
 
+    [AvaloniaFact]
+    [Trait("Story", "US-17")]
+    [Trait("NFR", "NFR-07")]
+    public async Task GroupConversation_MessageDetails_ShowsEachMemberSortedAndUpdatesLiveWhenRelayedAckArrives()
+    {
+        await using var harness = await UiHarness.StartAsync("Alice");
+        var bob = await harness.ConnectPeerAsync("Bob");
+        var carol = await harness.ConnectPeerAsync("Carol");
+        await KnowEachOtherAsync(bob, carol);
+        var created = await harness.Messenger.CreateGroupAsync("Field team", [bob.Identity.Keys.IdentityKey, carol.Identity.Keys.IdentityKey], CancellationToken.None);
+        Assert.True(created.IsCreated);
+        var groupId = created.Group.Id;
+        await UiHarness.WaitUntilAsync(() =>
+            harness.Messenger.Groups.TryGet(groupId, out var atAlice) && atAlice.State == GroupState.Created
+            && bob.Groups.TryGet(groupId, out var atBob) && atBob.State == GroupState.Created
+            && carol.Groups.TryGet(groupId, out var atCarol) && atCarol.State == GroupState.Created);
+
+        var conversation = harness.Shell.Pages.GroupConversation(groupId);
+        var conversationView = new GroupConversationView { DataContext = conversation };
+        harness.Shell.Push(conversation);
+        harness.Show(conversationView);
+
+        var carolKey = carol.Identity.Keys.IdentityKey;
+        var bobKey = bob.Identity.Keys.IdentityKey;
+        var aliceKey = harness.Messenger.Identity.Keys.IdentityKey;
+        await carol.DisposeAsync();
+        await UiHarness.WaitUntilAsync(() => !harness.Messenger.Connections.IsConnected(carolKey) && !bob.Connections.IsConnected(carolKey));
+
+        conversation.Draft = "North gate is clear";
+        await conversation.SendCommand.ExecuteAsync(null);
+        await UiHarness.WaitUntilAsync(() => conversation.Messages.Count == 1 && conversation.Messages[0].StateText == "Received by 1 of 2 members' apps");
+
+        var item = Assert.Single(conversation.Messages);
+        item.ToggleExplanationCommand.Execute(null);
+        UiHarness.Flush();
+
+        Assert.True(item.IsExplanationShown);
+        Assert.Equal(["Bob: Received by their app", "Carol: Waiting"], item.MemberDeliveries.Select(static member => member.SummaryText));
+        Assert.Equal(UiText.GroupDeliveryReceivedExplanation, item.StateExplanation);
+        Assert.DoesNotContain("read", item.StateText!, StringComparison.OrdinalIgnoreCase);
+        Assert.All(item.MemberDeliveries, static member => Assert.DoesNotContain("read", member.StatusText, StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("Bob: Received by their app", UiHarness.Texts(conversationView));
+        Assert.Contains("Carol: Waiting", UiHarness.Texts(conversationView));
+        Assert.False(item.CanDelete);
+
+        harness.Node.InRange = false;
+        await UiHarness.WaitUntilAsync(() => !bob.Connections.IsHeard(aliceKey) && !harness.Messenger.Connections.IsHeard(bobKey));
+        if (harness.Messenger.Connections.TryGetConnection(bobKey, out var toBob))
+        {
+            toBob.Close();
+        }
+
+        await UiHarness.WaitUntilAsync(() => !harness.Messenger.Connections.IsConnected(bobKey));
+        Assert.True(bob.GroupChats.MessagesIn(groupId).Count == 1);
+
+        var carolAck = Core.Groups.GroupAcknowledgement.Create(groupId, 1, item.Id, carol.Identity.Keys);
+        carol.Identity.Dispose();
+        await bob.GroupChats.ReceiveAcknowledgementAsync(carolKey, carolAck, CancellationToken.None);
+
+        harness.Node.InRange = true;
+        await UiHarness.WaitUntilAsync(() => item.StateText == "Received by 2 of 2 members' apps");
+        UiHarness.Flush();
+
+        Assert.Equal(["Bob: Received by their app", "Carol: Received by their app"], item.MemberDeliveries.Select(static member => member.SummaryText));
+        Assert.Contains("Carol: Received by their app", UiHarness.Texts(conversationView));
+        await UiHarness.StopPeerAsync(bob);
+        harness.Messenger.Identity.Dispose();
+    }
+
+    [AvaloniaFact]
+    [Trait("Story", "US-17")]
+    [Trait("Story", "US-15")]
+    public async Task GroupConversation_WaitingMessageDetails_ShowsAllMembersWaitingAndIncomingHasNoDeliveryDetails()
+    {
+        await using var harness = await UiHarness.StartAsync("Alice");
+        var bob = await harness.ConnectPeerAsync("Bob");
+        var carol = await harness.ConnectPeerAsync("Carol");
+        await KnowEachOtherAsync(bob, carol);
+        var created = await harness.Messenger.CreateGroupAsync("Field team", [bob.Identity.Keys.IdentityKey, carol.Identity.Keys.IdentityKey], CancellationToken.None);
+        Assert.True(created.IsCreated);
+        var groupId = created.Group.Id;
+        await UiHarness.WaitUntilAsync(() =>
+            harness.Messenger.Groups.TryGet(groupId, out var atAlice) && atAlice.State == GroupState.Created
+            && bob.Groups.TryGet(groupId, out var atBob) && atBob.State == GroupState.Created
+            && carol.Groups.TryGet(groupId, out var atCarol) && atCarol.State == GroupState.Created);
+
+        Assert.Equal(GroupSendOutcome.Queued, (await bob.SendToGroupAsync(groupId, "From Bob", CancellationToken.None)).Outcome);
+        await UiHarness.WaitUntilAsync(() => harness.Messenger.GroupChats.MessagesIn(groupId).Count == 1);
+
+        var bobKey = bob.Identity.Keys.IdentityKey;
+        var carolKey = carol.Identity.Keys.IdentityKey;
+        await UiHarness.StopPeerAsync(bob);
+        await UiHarness.StopPeerAsync(carol);
+        await UiHarness.WaitUntilAsync(() => !harness.Messenger.Connections.IsConnected(bobKey) && !harness.Messenger.Connections.IsConnected(carolKey));
+
+        var conversation = harness.Shell.Pages.GroupConversation(groupId);
+        var conversationView = new GroupConversationView { DataContext = conversation };
+        harness.Shell.Push(conversation);
+        harness.Show(conversationView);
+
+        conversation.Draft = "Still waiting";
+        await conversation.SendCommand.ExecuteAsync(null);
+        UiHarness.Flush();
+
+        var incoming = conversation.Messages[0];
+        var outgoing = conversation.Messages[1];
+        Assert.Empty(incoming.MemberDeliveries);
+        Assert.Null(incoming.StateText);
+
+        outgoing.ToggleExplanationCommand.Execute(null);
+        UiHarness.Flush();
+        Assert.Equal(UiText.DeliveryWaiting, outgoing.StateText);
+        Assert.Equal(UiText.GroupDeliveryWaitingExplanation, outgoing.StateExplanation);
+        Assert.DoesNotContain("read", outgoing.StateText!, StringComparison.OrdinalIgnoreCase);
+        Assert.All(outgoing.MemberDeliveries, static member => Assert.DoesNotContain("read", member.StatusText, StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(["Bob: Waiting", "Carol: Waiting"], outgoing.MemberDeliveries.Select(static member => member.SummaryText));
+        Assert.Contains("Bob: Waiting", UiHarness.Texts(conversationView));
+        Assert.Contains("Carol: Waiting", UiHarness.Texts(conversationView));
+        Assert.True(outgoing.IsDeleteVisible);
+        harness.Messenger.Identity.Dispose();
+    }
+
     private static async Task KnowEachOtherAsync(Messenger first, Messenger second)
     {
         Assert.True((await first.Contacts.AddAsync(first.Contacts.Check(second.Identity.CodeText), CancellationToken.None)).IsSaved);

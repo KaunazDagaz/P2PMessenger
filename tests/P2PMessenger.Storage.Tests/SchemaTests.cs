@@ -14,6 +14,7 @@ public sealed class SchemaTests
         "copied_conversation",
         "copied_message",
         "data_key",
+        "group_acknowledgement",
         "group_key",
         "group_member",
         "identity",

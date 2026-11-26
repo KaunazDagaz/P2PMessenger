@@ -9,6 +9,7 @@ namespace P2PMessenger.Application.Groups;
 internal sealed class GroupPassOn : IDisposable
 {
     private const int EarlySummaryLimit = 256;
+    private const int PendingOwnAcknowledgementLimit = 4096;
     private const int SummaryBurst = 4;
     private const int DelayedTriggerCap = 64;
     private static readonly TimeSpan MaxRefillInterval = TimeSpan.FromSeconds(2);
@@ -22,6 +23,7 @@ internal sealed class GroupPassOn : IDisposable
     private readonly Lock gate = new();
     private readonly Dictionary<Ed25519PublicKey, PeerSession> sessions = [];
     private readonly Dictionary<(Ed25519PublicKey Peer, GroupId Group), EarlySummary> earlySummaries = [];
+    private readonly Dictionary<Ed25519PublicKey, List<GroupAcknowledgement>> pendingOwnAcknowledgements = [];
     private int disposed;
 
     public GroupPassOn(GroupBook groups, GroupChats groupChats, DeliveryOptions options, TimeProvider timeProvider)
@@ -38,6 +40,7 @@ internal sealed class GroupPassOn : IDisposable
             Timeout.InfiniteTimeSpan);
         groups.Changed += OnGroupChanged;
         groupChats.MessageArrived += OnMessageArrived;
+        groupChats.AcknowledgementArrived += OnAcknowledgementArrived;
     }
 
     public event EventHandler<Ed25519PublicKey>? DeliveryNeeded;
@@ -150,16 +153,51 @@ internal sealed class GroupPassOn : IDisposable
         }
 
         Ed25519PublicKey peerKey = connection.Contact.IdentityKey;
+        IReadOnlyList<RelayedGroupAcknowledgement> relayedAcks = groupChats.RelayedAcknowledgementsIn(message.GroupId);
+        bool notify = false;
         lock (gate)
         {
             if (sessions.TryGetValue(peerKey, out PeerSession? session) && ReferenceEquals(session.Connection, connection))
             {
                 session.MarkPeerHas(message.GroupId, message.Id, message.AuthorKey, message.Sequence);
+                foreach (RelayedGroupAcknowledgement relayed in relayedAcks)
+                {
+                    if (relayed.MessageId.Equals(id)
+                        && !relayed.AuthorKey.Equals(peerKey)
+                        && !relayed.RecipientKey.Equals(peerKey)
+                        && session.EnqueueAcknowledgement(relayed.NoticeId))
+                    {
+                        notify = true;
+                    }
+                }
             }
+        }
+
+        if (notify)
+        {
+            DeliveryNeeded?.Invoke(this, peerKey);
         }
     }
 
-    public void MarkAcknowledged(ContactConnection connection, MessageId id) => MarkPeerHas(connection, id);
+    public void MarkRelayedAcknowledgementConfirmed(ContactConnection connection, MessageId noticeId)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+        ArgumentNullException.ThrowIfNull(noticeId);
+
+        if (Volatile.Read(ref disposed) != 0)
+        {
+            return;
+        }
+
+        Ed25519PublicKey peerKey = connection.Contact.IdentityKey;
+        lock (gate)
+        {
+            if (sessions.TryGetValue(peerKey, out PeerSession? session) && ReferenceEquals(session.Connection, connection))
+            {
+                session.MarkPeerHasAcknowledgement(noticeId);
+            }
+        }
+    }
 
     public IReadOnlyList<GroupSummary> TakeSummaries(Ed25519PublicKey peerKey, ContactConnection connection)
     {
@@ -214,6 +252,164 @@ internal sealed class GroupPassOn : IDisposable
         }
     }
 
+    public IReadOnlyList<MessageId> PendingAcknowledgementsFor(Ed25519PublicKey peerKey, ContactConnection connection)
+    {
+        lock (gate)
+        {
+            return sessions.TryGetValue(peerKey, out PeerSession? session) && ReferenceEquals(session.Connection, connection)
+                ? session.SnapshotPendingAcknowledgements()
+                : [];
+        }
+    }
+
+    public void ForgetAcknowledgement(MessageId noticeId)
+    {
+        ArgumentNullException.ThrowIfNull(noticeId);
+
+        if (Volatile.Read(ref disposed) != 0)
+        {
+            return;
+        }
+
+        lock (gate)
+        {
+            if (Volatile.Read(ref disposed) != 0)
+            {
+                return;
+            }
+
+            foreach (PeerSession session in sessions.Values)
+            {
+                session.RemovePendingAcknowledgement(noticeId);
+            }
+        }
+    }
+
+    public void QueueOwnAcknowledgement(Ed25519PublicKey peerKey, GroupAcknowledgement acknowledgement)
+    {
+        ArgumentNullException.ThrowIfNull(peerKey);
+        ArgumentNullException.ThrowIfNull(acknowledgement);
+
+        if (Volatile.Read(ref disposed) != 0)
+        {
+            return;
+        }
+
+        bool notify = false;
+        lock (gate)
+        {
+            if (Volatile.Read(ref disposed) != 0)
+            {
+                return;
+            }
+
+            if (!pendingOwnAcknowledgements.TryGetValue(peerKey, out List<GroupAcknowledgement>? pending))
+            {
+                if (TotalPendingOwnAcknowledgementsLocked() >= PendingOwnAcknowledgementLimit)
+                {
+                    return;
+                }
+
+                pending = [];
+                pendingOwnAcknowledgements.Add(peerKey, pending);
+            }
+
+            if (!pending.Exists(existing => existing.NoticeId.Equals(acknowledgement.NoticeId))
+                && TotalPendingOwnAcknowledgementsLocked() < PendingOwnAcknowledgementLimit)
+            {
+                pending.Add(acknowledgement);
+                notify = true;
+            }
+        }
+
+        if (notify)
+        {
+            DeliveryNeeded?.Invoke(this, peerKey);
+        }
+    }
+
+    public bool ConfirmOwnAcknowledgement(Ed25519PublicKey peerKey, MessageId noticeId)
+    {
+        ArgumentNullException.ThrowIfNull(peerKey);
+        ArgumentNullException.ThrowIfNull(noticeId);
+
+        if (Volatile.Read(ref disposed) != 0)
+        {
+            return false;
+        }
+
+        lock (gate)
+        {
+            if (!pendingOwnAcknowledgements.TryGetValue(peerKey, out List<GroupAcknowledgement>? pending))
+            {
+                return false;
+            }
+
+            int removed = pending.RemoveAll(existing => existing.NoticeId.Equals(noticeId));
+            if (pending.Count == 0)
+            {
+                pendingOwnAcknowledgements.Remove(peerKey);
+            }
+
+            return removed > 0;
+        }
+    }
+
+    public IReadOnlyList<GroupAcknowledgement> PendingOwnAcknowledgementsFor(Ed25519PublicKey peerKey)
+    {
+        ArgumentNullException.ThrowIfNull(peerKey);
+
+        if (Volatile.Read(ref disposed) != 0)
+        {
+            return [];
+        }
+
+        GroupAcknowledgement[] snapshot;
+        lock (gate)
+        {
+            if (!pendingOwnAcknowledgements.TryGetValue(peerKey, out List<GroupAcknowledgement>? pending) || pending.Count == 0)
+            {
+                return [];
+            }
+
+            snapshot = [.. pending];
+        }
+
+        List<GroupAcknowledgement> valid = new(snapshot.Length);
+        HashSet<MessageId>? stale = null;
+        foreach (GroupAcknowledgement acknowledgement in snapshot)
+        {
+            if (groups.TryGet(acknowledgement.GroupId, out Group? group)
+                && group.State == GroupState.Created
+                && IsOtherMember(group, peerKey))
+            {
+                valid.Add(acknowledgement);
+            }
+            else
+            {
+                stale ??= [];
+                stale.Add(acknowledgement.NoticeId);
+            }
+        }
+
+        if (stale is { Count: > 0 })
+        {
+            lock (gate)
+            {
+                if (pendingOwnAcknowledgements.TryGetValue(peerKey, out List<GroupAcknowledgement>? pending))
+                {
+                    pending.RemoveAll(existing => stale.Contains(existing.NoticeId));
+                    if (pending.Count == 0)
+                    {
+                        pendingOwnAcknowledgements.Remove(peerKey);
+                    }
+                }
+            }
+        }
+
+        return valid;
+    }
+
     public bool HasPendingMessages(Ed25519PublicKey peerKey, ContactConnection connection)
     {
         lock (gate)
@@ -231,8 +427,11 @@ internal sealed class GroupPassOn : IDisposable
             return
             [
                 .. sessions
-                    .Where(static pair => !pair.Value.Connection.IsClosed && (pair.Value.PendingSummaries.Count > 0 || pair.Value.PendingMessageSet.Count > 0))
-                    .Select(static pair => pair.Key),
+                    .Where(static pair => !pair.Value.Connection.IsClosed
+                        && (pair.Value.PendingSummaries.Count > 0 || pair.Value.PendingMessageSet.Count > 0 || pair.Value.PendingAcknowledgementSet.Count > 0))
+                    .Select(static pair => pair.Key)
+                    .Concat(pendingOwnAcknowledgements.Keys)
+                    .Distinct(),
             ];
         }
     }
@@ -246,16 +445,21 @@ internal sealed class GroupPassOn : IDisposable
 
         groups.Changed -= OnGroupChanged;
         groupChats.MessageArrived -= OnMessageArrived;
+        groupChats.AcknowledgementArrived -= OnAcknowledgementArrived;
         summaryTimer.Dispose();
         lock (gate)
         {
             sessions.Clear();
             earlySummaries.Clear();
+            pendingOwnAcknowledgements.Clear();
         }
     }
 
     private static bool IsOtherMember(Group group, Ed25519PublicKey key) =>
         !key.Equals(group.OwnKey) && group.Find(key) is not null;
+
+    private int TotalPendingOwnAcknowledgementsLocked() =>
+        pendingOwnAcknowledgements.Values.Sum(static list => list.Count);
 
     private bool ApplySummary(ContactConnection connection, Group group, GroupSummary summary)
     {
@@ -300,6 +504,7 @@ internal sealed class GroupPassOn : IDisposable
         }
 
         IReadOnlyList<GroupChatMessage> missing = groupChats.MissingFrom(group, senderKey, summary);
+        IReadOnlyList<RelayedGroupAcknowledgement> relayedAcks = groupChats.RelayedAcknowledgementsIn(group.Id);
         bool requestMissing = newlyAdvertised.Count > 0 && groupChats.HasUnheld(group, newlyAdvertised);
         lock (gate)
         {
@@ -318,6 +523,17 @@ internal sealed class GroupPassOn : IDisposable
             {
                 if (!session.PeerHolds(group.Id, message.AuthorKey, message.Sequence)
                     && session.EnqueueMessage(new PassOnItem(group.Id, message.Id, message.AuthorKey, message.Sequence)))
+                {
+                    queued = true;
+                }
+            }
+
+            foreach (RelayedGroupAcknowledgement relayed in relayedAcks)
+            {
+                if (!relayed.AuthorKey.Equals(senderKey)
+                    && !relayed.RecipientKey.Equals(senderKey)
+                    && session.PeerHolds(group.Id, relayed.AuthorKey, relayed.Sequence)
+                    && session.EnqueueAcknowledgement(relayed.NoticeId))
                 {
                     queued = true;
                 }
@@ -347,6 +563,16 @@ internal sealed class GroupPassOn : IDisposable
                 foreach ((Ed25519PublicKey Peer, GroupId Group) key in earlySummaries.Keys.Where(entry => entry.Group.Equals(group.Id)).ToList())
                 {
                     earlySummaries.Remove(key);
+                }
+
+                foreach (Ed25519PublicKey peerKey in pendingOwnAcknowledgements.Keys.ToList())
+                {
+                    List<GroupAcknowledgement> pending = pendingOwnAcknowledgements[peerKey];
+                    pending.RemoveAll(acknowledgement => acknowledgement.GroupId.Equals(group.Id));
+                    if (pending.Count == 0)
+                    {
+                        pendingOwnAcknowledgements.Remove(peerKey);
+                    }
                 }
             }
 
@@ -455,6 +681,68 @@ internal sealed class GroupPassOn : IDisposable
         }
     }
 
+    private void OnAcknowledgementArrived(object? sender, GroupAcknowledgementArrivedEventArgs e)
+    {
+        if (Volatile.Read(ref disposed) != 0)
+        {
+            return;
+        }
+
+        RelayedGroupAcknowledgement relayed = e.Relayed;
+        if (!groups.TryGet(relayed.GroupId, out Group? group) || group.State != GroupState.Created)
+        {
+            return;
+        }
+
+        List<Ed25519PublicKey> notify = [];
+        lock (gate)
+        {
+            if (Volatile.Read(ref disposed) != 0)
+            {
+                return;
+            }
+
+            if (sessions.TryGetValue(e.SenderKey, out PeerSession? senderSession))
+            {
+                senderSession.MarkPeerHasAcknowledgement(relayed.NoticeId);
+            }
+
+            if (sessions.TryGetValue(relayed.RecipientKey, out PeerSession? recipientSession))
+            {
+                recipientSession.MarkPeerHas(relayed.GroupId, relayed.MessageId, relayed.AuthorKey, relayed.Sequence);
+            }
+
+            if (sessions.TryGetValue(relayed.AuthorKey, out PeerSession? authorSession) && !authorSession.Connection.IsClosed)
+            {
+                notify.Add(relayed.AuthorKey);
+            }
+
+            foreach (GroupMemberStatus member in group.Others)
+            {
+                Ed25519PublicKey memberKey = member.IdentityKey;
+                if (memberKey.Equals(e.SenderKey)
+                    || memberKey.Equals(relayed.AuthorKey)
+                    || memberKey.Equals(relayed.RecipientKey)
+                    || !sessions.TryGetValue(memberKey, out PeerSession? peerSession)
+                    || peerSession.Connection.IsClosed
+                    || !peerSession.PeerHolds(relayed.GroupId, relayed.AuthorKey, relayed.Sequence))
+                {
+                    continue;
+                }
+
+                if (peerSession.EnqueueAcknowledgement(relayed.NoticeId))
+                {
+                    notify.Add(memberKey);
+                }
+            }
+        }
+
+        foreach (Ed25519PublicKey peerKey in notify.Distinct())
+        {
+            DeliveryNeeded?.Invoke(this, peerKey);
+        }
+    }
+
     private void OnSummaryTimer()
     {
         List<Ed25519PublicKey> notify = [];
@@ -528,6 +816,8 @@ internal sealed class GroupPassOn : IDisposable
         private readonly Dictionary<GroupId, PeerHeld> peerHeld = [];
         private readonly Dictionary<GroupId, SummaryGate> summaryGates = [];
         private readonly Dictionary<GroupId, DelayedSummary> delayedSummaries = [];
+        private readonly List<MessageId> pendingAcknowledgements = [];
+        private readonly HashSet<MessageId> peerHasAcknowledgements = [];
 
         public PeerSession(ContactConnection connection)
         {
@@ -543,6 +833,8 @@ internal sealed class GroupPassOn : IDisposable
         public Queue<PassOnItem> PendingMessages { get; } = [];
 
         public HashSet<MessageId> PendingMessageSet { get; } = [];
+
+        public HashSet<MessageId> PendingAcknowledgementSet { get; } = [];
 
         public bool EnqueueInitialSummary(GroupId groupId) =>
             summarizedGroups.Add(groupId) && EnqueueSummaryUpdate(groupId);
@@ -568,6 +860,33 @@ internal sealed class GroupPassOn : IDisposable
             PendingMessages.Enqueue(item);
             return true;
         }
+
+        public bool EnqueueAcknowledgement(MessageId noticeId)
+        {
+            if (peerHasAcknowledgements.Contains(noticeId) || !PendingAcknowledgementSet.Add(noticeId))
+            {
+                return false;
+            }
+
+            pendingAcknowledgements.Add(noticeId);
+            return true;
+        }
+
+        public void MarkPeerHasAcknowledgement(MessageId noticeId)
+        {
+            RemovePendingAcknowledgement(noticeId);
+            peerHasAcknowledgements.Add(noticeId);
+        }
+
+        public void RemovePendingAcknowledgement(MessageId noticeId)
+        {
+            if (PendingAcknowledgementSet.Remove(noticeId))
+            {
+                pendingAcknowledgements.Remove(noticeId);
+            }
+        }
+
+        public IReadOnlyList<MessageId> SnapshotPendingAcknowledgements() => [.. pendingAcknowledgements];
 
         public bool TryAcceptSummary(
             GroupId groupId,

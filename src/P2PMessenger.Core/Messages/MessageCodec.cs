@@ -89,6 +89,9 @@ internal static class MessageCodec
             case SessionMessageType.GroupSummary when GroupSummary.TryDecodeBody(body, out GroupSummary? groupSummary):
                 message = groupSummary;
                 return true;
+            case SessionMessageType.GroupAcknowledgement when GroupAcknowledgement.TryDecodeBody(body, out GroupAcknowledgement? groupAcknowledgement):
+                message = groupAcknowledgement;
+                return true;
             default:
                 return false;
         }

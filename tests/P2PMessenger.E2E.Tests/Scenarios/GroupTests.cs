@@ -132,6 +132,72 @@ public sealed class GroupTests
         Assert.DoesNotContain("Bob", senders);
     }
 
+    [AvaloniaFact]
+    [Trait("Story", "US-17")]
+    [Trait("Story", "US-13")]
+    [Trait("NFR", "NFR-07")]
+    public async Task AliceWritesWhileCarolIsClosed_CarolGetsMessageFromBobAndAliceRejoinsBob_AlicesMessageDetailsShowCarolReceived()
+    {
+        LoopbackDiscovery hub = new();
+        await using Device alice = new(hub, "Alice");
+        await using Device bob = new(hub, "Bob");
+        await using Device carol = new(hub, "Carol");
+        foreach (Device device in new[] { alice, bob, carol })
+        {
+            await device.LaunchAsync();
+            await Flows.CreateIdentityAsync(device);
+        }
+
+        foreach ((Device first, Device second) in new[] { (alice, bob), (alice, carol), (bob, carol) })
+        {
+            await Flows.AddEachOtherAsync(first, second);
+            await Flows.WaitUntilConnectedAsync(first, second);
+            await Flows.GoBackToContactsAsync(first);
+            await Flows.GoBackToContactsAsync(second);
+        }
+
+        alice.ClickButton("NewGroupButton");
+        await alice.WaitForTitleAsync(UiText.NewGroupTitle);
+        alice.Type("NameBox", "Field team");
+        alice.Click(Candidate(alice, "Bob"));
+        alice.Click(Candidate(alice, "Carol"));
+        alice.ClickButton("CreateButton");
+        await alice.WaitForTitleAsync("Field team");
+        await alice.WaitUntilAsync(() => alice.TryNamed<TextBox>("DraftBox") is not null, "Alice can write once Bob and Carol have joined");
+        foreach (Device member in new[] { bob, carol })
+        {
+            await OpenGroupAsync(member, "Field team");
+            await member.WaitUntilAsync(() => member.TryNamed<TextBox>("DraftBox") is not null, $"{member.Name} can write once everyone has joined");
+        }
+
+        await carol.QuitAsync();
+        await Flows.SendAsync(alice, "North gate is open.");
+        await alice.WaitForTextAsync(string.Format(CultureInfo.InvariantCulture, ReceivedFormat, 1, 2));
+        await bob.WaitForTextAsync("North gate is open.");
+
+        alice.Click(DeliveryButton(alice));
+        await alice.WaitForTextAsync("Bob: Received by their app");
+        Assert.True(alice.Shows("Carol: Waiting"));
+
+        await alice.QuitAsync();
+        await carol.LaunchAsync();
+        await OpenGroupAsync(carol, "Field team");
+        await carol.WaitForTextAsync("North gate is open.");
+        await Task.Delay(300);
+        await carol.QuitAsync();
+
+        await alice.LaunchAsync();
+        await OpenGroupAsync(alice, "Field team");
+        await alice.WaitForTextAsync(string.Format(CultureInfo.InvariantCulture, ReceivedFormat, 2, 2));
+        alice.Click(DeliveryButton(alice));
+        await alice.WaitForTextAsync("Carol: Received by their app");
+        Assert.True(alice.Shows("Bob: Received by their app"));
+    }
+
+    private static Button DeliveryButton(Device device) =>
+        device.Named<ItemsControl>("MessageItems").GetVisualDescendants().OfType<Button>()
+            .First(button => string.Equals(button.Name, "DeliveryStateButton", StringComparison.Ordinal) && button.IsEffectivelyVisible);
+
     private static CheckBox Candidate(Device device, string name) =>
         device.Named<ItemsControl>("CandidateItems").GetVisualDescendants().OfType<CheckBox>()
             .First(box => string.Equals(AutomationProperties.GetName(box), name, StringComparison.Ordinal));
