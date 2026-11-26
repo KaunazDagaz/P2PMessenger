@@ -84,6 +84,43 @@ public sealed class GroupMessageRepository
 
     private const string DeleteMessage = "DELETE FROM message WHERE id = $id;";
 
+    private const string SelectAcknowledgements =
+        "SELECT ack.message_id, ack.recipient_person_id, ack.ack_enc, message.author_person_id, "
+        + "message.message_id_mac, message.message_id_enc, message.group_envelope_enc, "
+        + "chat_group.id, chat_group.shared_id_mac, chat_group.shared_id_enc, "
+        + "recipient.identity_key_mac, recipient.identity_key_enc, "
+        + "author.identity_key_mac, author.identity_key_enc "
+        + "FROM group_acknowledgement AS ack "
+        + "JOIN message ON message.id = ack.message_id "
+        + "JOIN conversation ON conversation.id = message.conversation_id "
+        + "LEFT JOIN chat_group ON chat_group.id = conversation.group_id "
+        + "JOIN person AS recipient ON recipient.id = ack.recipient_person_id "
+        + "JOIN person AS author ON author.id = message.author_person_id "
+        + "ORDER BY ack.message_id, ack.recipient_person_id;";
+
+    private const string SelectMessageForAcknowledgement =
+        "SELECT message.id, message.author_person_id, message.message_id_mac, message.message_id_enc, message.group_envelope_enc, "
+        + "chat_group.id, chat_group.shared_id_mac, chat_group.shared_id_enc, "
+        + "author.identity_key_mac, author.identity_key_enc "
+        + "FROM message "
+        + "JOIN conversation ON conversation.id = message.conversation_id "
+        + "JOIN chat_group ON chat_group.id = conversation.group_id "
+        + "JOIN person AS author ON author.id = message.author_person_id "
+        + "WHERE conversation.id = $conversation_id AND message.message_id_mac = $message_id_mac;";
+
+    private const string InsertAcknowledgement =
+        "INSERT INTO group_acknowledgement (message_id, recipient_person_id, ack_enc) "
+        + "VALUES ($message_id, $recipient_person_id, $ack_enc) "
+        + "ON CONFLICT (message_id, recipient_person_id) DO NOTHING;";
+
+    private const string DeleteAcknowledgement =
+        "DELETE FROM group_acknowledgement "
+        + "WHERE message_id = ("
+        + "SELECT message.id FROM message JOIN conversation ON conversation.id = message.conversation_id "
+        + "JOIN chat_group ON chat_group.id = conversation.group_id "
+        + "WHERE message.message_id_mac = $message_id_mac AND chat_group.shared_id_mac = $shared_id_mac) "
+        + "AND recipient_person_id = (SELECT id FROM person WHERE identity_key_mac = $identity_key_mac);";
+
     private const int RangeLength = Ed25519PublicKey.Length + (2 * sizeof(long));
 
     private readonly SqliteGate gate;
@@ -219,6 +256,45 @@ public sealed class GroupMessageRepository
         }
 
         return removed;
+    }
+
+    public Task<IReadOnlyList<GroupAcknowledgement>> LoadAcknowledgementsAsync(CancellationToken cancellationToken) =>
+        gate.ReadAsync(LoadAcknowledgementsAsync, cancellationToken);
+
+    public Task<bool> AddAcknowledgementAsync(GroupAcknowledgement acknowledgement, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(acknowledgement);
+        if (!acknowledgement.HasValidSignature())
+        {
+            throw new ArgumentException("The group acknowledgement does not carry a valid signature.", nameof(acknowledgement));
+        }
+
+        return gate.WriteAsync((connection, transaction, token) => AddAcknowledgementAsync(connection, transaction, acknowledgement, token), cancellationToken);
+    }
+
+    public Task<bool> RemoveAcknowledgementAsync(GroupId groupId, Ed25519PublicKey recipientKey, MessageId messageId, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(groupId);
+        ArgumentNullException.ThrowIfNull(recipientKey);
+        ArgumentNullException.ThrowIfNull(messageId);
+
+        byte[] groupLookup = keys.Lookup(LookupDomain.GroupId, groupId.Bytes);
+        byte[] recipientLookup = keys.Lookup(LookupDomain.IdentityKey, recipientKey.Bytes);
+        byte[] idLookup = keys.Lookup(LookupDomain.MessageId, messageId.Bytes);
+        return gate.WriteAsync(
+            async (connection, transaction, token) =>
+            {
+                int changed = await Sql.ExecuteAsync(
+                    connection,
+                    transaction,
+                    DeleteAcknowledgement,
+                    token,
+                    ("$message_id_mac", idLookup),
+                    ("$shared_id_mac", groupLookup),
+                    ("$identity_key_mac", recipientLookup)).ConfigureAwait(false);
+                return changed == 1;
+            },
+            cancellationToken);
     }
 
     private static byte[] EncodeRanges(IReadOnlyList<AuthorSequenceRange> ranges)
@@ -504,6 +580,162 @@ public sealed class GroupMessageRepository
 
         await Sql.ExecuteAsync(connection, transaction, InsertSeen, cancellationToken, ("$message_id_mac", idLookup)).ConfigureAwait(false);
         return true;
+    }
+
+    private async Task<IReadOnlyList<GroupAcknowledgement>> LoadAcknowledgementsAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        long? ownPersonId = await Sql.LongAsync(connection, null, SelectOwnPerson, cancellationToken).ConfigureAwait(false);
+        List<GroupAcknowledgement> loaded = [];
+        using SqliteCommand command = Sql.Command(connection, null, SelectAcknowledgements);
+        using SqliteDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+        {
+            long messageRow = reader.GetInt64(0);
+            long recipientId = reader.GetInt64(1);
+            long authorId = reader.GetInt64(3);
+            if (reader.IsDBNull(7))
+            {
+                throw StoredValues.Inconsistent("a group acknowledgement belongs to a one-to-one message");
+            }
+
+            if (authorId == recipientId)
+            {
+                throw StoredValues.Inconsistent("a group acknowledgement names the message author");
+            }
+
+            if (ownPersonId is { } ownId && (authorId == ownId || recipientId == ownId))
+            {
+                throw StoredValues.Inconsistent("a relayed group acknowledgement belongs to the user's own message or recipient");
+            }
+
+            long groupRow = reader.GetInt64(7);
+            RecordLocation groupLocation = Locations.GroupSharedId(groupRow);
+            byte[] groupBytes = StoredValues.Open(keys, groupLocation, reader.GetFieldValue<byte[]>(9));
+            if (!GroupId.TryCreate(groupBytes, out GroupId? groupId) || !keys.MatchesLookup(LookupDomain.GroupId, groupBytes, reader.GetFieldValue<byte[]>(8)))
+            {
+                throw StoredValues.Damaged(groupLocation);
+            }
+
+            RecordLocation idLocation = Locations.MessageId(messageRow);
+            byte[] idBytes = StoredValues.Open(keys, idLocation, reader.GetFieldValue<byte[]>(5));
+            if (!MessageId.TryCreate(idBytes, out MessageId? messageId) || !keys.MatchesLookup(LookupDomain.MessageId, idBytes, reader.GetFieldValue<byte[]>(4)))
+            {
+                throw StoredValues.Damaged(idLocation);
+            }
+
+            Ed25519PublicKey authorKey = StoredValues.IdentityKey(keys, authorId, reader.GetFieldValue<byte[]>(12), reader.GetFieldValue<byte[]>(13));
+
+            RecordLocation envelopeLocation = Locations.MessageGroupEnvelope(messageRow);
+            if (reader.IsDBNull(6)
+                || !GroupMessage.TryParse(StoredValues.Open(keys, envelopeLocation, reader.GetFieldValue<byte[]>(6)), out GroupMessage? envelope)
+                || !envelope.GroupId.Equals(groupId)
+                || !envelope.AuthorKey.Equals(authorKey))
+            {
+                throw StoredValues.Damaged(envelopeLocation);
+            }
+
+            Ed25519PublicKey recipientKey = StoredValues.IdentityKey(keys, recipientId, reader.GetFieldValue<byte[]>(10), reader.GetFieldValue<byte[]>(11));
+            RecordLocation ackLocation = Locations.GroupAcknowledgement(messageRow, recipientId);
+            byte[] ackBytes = StoredValues.Open(keys, ackLocation, reader.GetFieldValue<byte[]>(2));
+            if (!GroupAcknowledgement.TryParse(ackBytes, out GroupAcknowledgement? ack)
+                || !ack.GroupId.Equals(groupId)
+                || ack.Epoch != envelope.Epoch
+                || !ack.MessageId.Equals(messageId)
+                || !ack.RecipientKey.Equals(recipientKey)
+                || !ack.HasValidSignature())
+            {
+                throw StoredValues.Damaged(ackLocation);
+            }
+
+            loaded.Add(ack);
+        }
+
+        return loaded;
+    }
+
+    private async Task<bool> AddAcknowledgementAsync(SqliteConnection connection, SqliteTransaction transaction, GroupAcknowledgement acknowledgement, CancellationToken cancellationToken)
+    {
+        byte[] groupLookup = keys.Lookup(LookupDomain.GroupId, acknowledgement.GroupId.Bytes);
+        if (await Sql.LongAsync(connection, transaction, SelectGroupByLookup, cancellationToken, ("$shared_id_mac", groupLookup)).ConfigureAwait(false) is not { } groupRow
+            || await Sql.LongAsync(connection, transaction, SelectConversation, cancellationToken, ("$group_id", groupRow)).ConfigureAwait(false) is not { } conversationId)
+        {
+            return false;
+        }
+
+        long? ownPersonId = await Sql.LongAsync(connection, transaction, SelectOwnPerson, cancellationToken).ConfigureAwait(false);
+        byte[] idLookup = keys.Lookup(LookupDomain.MessageId, acknowledgement.MessageId.Bytes);
+        long messageRow;
+        long authorId;
+        byte[] messageIdMac;
+        byte[] messageIdEnc;
+        byte[]? envelopeBlob;
+        long storedGroupRow;
+        byte[] groupIdMac;
+        byte[] groupIdEnc;
+        byte[] authorKeyMac;
+        byte[] authorKeyEnc;
+        using (SqliteCommand command = Sql.Command(connection, transaction, SelectMessageForAcknowledgement, ("$conversation_id", conversationId), ("$message_id_mac", idLookup)))
+        using (SqliteDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
+        {
+            if (!await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+            {
+                return false;
+            }
+
+            messageRow = reader.GetInt64(0);
+            authorId = reader.GetInt64(1);
+            messageIdMac = reader.GetFieldValue<byte[]>(2);
+            messageIdEnc = reader.GetFieldValue<byte[]>(3);
+            envelopeBlob = reader.IsDBNull(4) ? null : reader.GetFieldValue<byte[]>(4);
+            storedGroupRow = reader.GetInt64(5);
+            groupIdMac = reader.GetFieldValue<byte[]>(6);
+            groupIdEnc = reader.GetFieldValue<byte[]>(7);
+            authorKeyMac = reader.GetFieldValue<byte[]>(8);
+            authorKeyEnc = reader.GetFieldValue<byte[]>(9);
+        }
+
+        byte[] storedGroupBytes = StoredValues.Open(keys, Locations.GroupSharedId(storedGroupRow), groupIdEnc);
+        byte[] storedMessageIdBytes = StoredValues.Open(keys, Locations.MessageId(messageRow), messageIdEnc);
+        byte[] storedAuthorKeyBytes = StoredValues.Open(keys, Locations.PersonIdentityKey(authorId), authorKeyEnc);
+        if (storedGroupRow != groupRow
+            || !GroupId.TryCreate(storedGroupBytes, out GroupId? storedGroupId)
+            || !keys.MatchesLookup(LookupDomain.GroupId, storedGroupBytes, groupIdMac)
+            || !storedGroupId.Equals(acknowledgement.GroupId)
+            || !MessageId.TryCreate(storedMessageIdBytes, out MessageId? storedMessageId)
+            || !keys.MatchesLookup(LookupDomain.MessageId, storedMessageIdBytes, messageIdMac)
+            || !storedMessageId.Equals(acknowledgement.MessageId)
+            || !Ed25519PublicKey.TryCreate(storedAuthorKeyBytes, out Ed25519PublicKey? authorKey)
+            || !keys.MatchesLookup(LookupDomain.IdentityKey, storedAuthorKeyBytes, authorKeyMac)
+            || envelopeBlob is null
+            || !GroupMessage.TryParse(StoredValues.Open(keys, Locations.MessageGroupEnvelope(messageRow), envelopeBlob), out GroupMessage? envelope)
+            || !envelope.GroupId.Equals(acknowledgement.GroupId)
+            || envelope.Epoch != acknowledgement.Epoch
+            || !envelope.AuthorKey.Equals(authorKey))
+        {
+            return false;
+        }
+
+        if (ownPersonId is { } ownId && authorId == ownId)
+        {
+            return false;
+        }
+
+        if (await MemberAsync(connection, transaction, groupRow, acknowledgement.RecipientKey, cancellationToken).ConfigureAwait(false) is not { } recipientId
+            || recipientId == authorId
+            || (ownPersonId is { } ownRecipient && recipientId == ownRecipient))
+        {
+            return false;
+        }
+
+        int inserted = await Sql.ExecuteAsync(
+            connection,
+            transaction,
+            InsertAcknowledgement,
+            cancellationToken,
+            ("$message_id", messageRow),
+            ("$recipient_person_id", recipientId),
+            ("$ack_enc", keys.Seal(Locations.GroupAcknowledgement(messageRow, recipientId), acknowledgement.ToBytes()))).ConfigureAwait(false);
+        return inserted == 1;
     }
 
     private Task<long?> MemberAsync(SqliteConnection connection, SqliteTransaction transaction, long groupRow, Ed25519PublicKey identityKey, CancellationToken cancellationToken) =>

@@ -688,9 +688,19 @@ public sealed class ConnectionService : IAsyncDisposable
                 case Acknowledgement acknowledgement:
                     if (!await service.chats.MarkReceivedAsync(contactKey, acknowledgement.Id, cancellationToken).ConfigureAwait(false)
                         && !await service.groups.MarkNoticeReceivedAsync(contactKey, acknowledgement.Id, cancellationToken).ConfigureAwait(false)
-                        && !await service.groupChats.MarkReceivedAsync(contactKey, acknowledgement.Id, cancellationToken).ConfigureAwait(false))
+                        && !service.groupPassOn.ConfirmOwnAcknowledgement(contactKey, acknowledgement.Id))
                     {
-                        service.groupPassOn.MarkAcknowledged(connection, acknowledgement.Id);
+                        RelayedAckConfirmation confirmation = await service.groupChats
+                            .MarkRelayedAcknowledgementConfirmedAsync(contactKey, acknowledgement.Id, cancellationToken)
+                            .ConfigureAwait(false);
+                        if (confirmation == RelayedAckConfirmation.ConfirmedByAuthor)
+                        {
+                            service.groupPassOn.ForgetAcknowledgement(acknowledgement.Id);
+                        }
+                        else if (confirmation == RelayedAckConfirmation.ConfirmedByPeer)
+                        {
+                            service.groupPassOn.MarkRelayedAcknowledgementConfirmed(connection, acknowledgement.Id);
+                        }
                     }
 
                     break;
@@ -712,12 +722,36 @@ public sealed class ConnectionService : IAsyncDisposable
                     if (await service.groupChats.ReceiveAsync(contactKey, groupMessage, cancellationToken).ConfigureAwait(false) is { } received)
                     {
                         service.groupPassOn.MarkPeerHas(connection, received);
-                        _ = connection.SendAsync(Acknowledgement.Create(received), CancellationToken.None);
+                        GroupAcknowledgement groupAck = GroupAcknowledgement.Create(groupMessage.GroupId, groupMessage.Epoch, received, service.own.Keys);
+                        if (groupMessage.AuthorKey.Equals(contactKey))
+                        {
+                            _ = connection.SendAsync(groupAck, CancellationToken.None);
+                        }
+                        else
+                        {
+                            service.groupPassOn.QueueOwnAcknowledgement(contactKey, groupAck);
+                        }
                     }
 
                     break;
                 case GroupSummary summary:
                     service.groupPassOn.ReceiveSummary(connection, summary);
+                    break;
+                case GroupAcknowledgement groupAcknowledgement:
+                    GroupAcknowledgementResult ackResult = await service.groupChats
+                        .ReceiveAcknowledgementAsync(contactKey, groupAcknowledgement, cancellationToken)
+                        .ConfigureAwait(false);
+                    if (ackResult.MarksSenderHasMessage)
+                    {
+                        service.groupPassOn.MarkPeerHas(connection, groupAcknowledgement.MessageId);
+                    }
+
+                    if (ackResult.ReplyWithNoticeAck)
+                    {
+                        service.groupPassOn.MarkRelayedAcknowledgementConfirmed(connection, groupAcknowledgement.NoticeId);
+                        _ = connection.SendAsync(Acknowledgement.Create(groupAcknowledgement.NoticeId), CancellationToken.None);
+                    }
+
                     break;
             }
         }

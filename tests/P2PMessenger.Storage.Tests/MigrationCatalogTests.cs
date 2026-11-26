@@ -82,8 +82,18 @@ public sealed class MigrationCatalogTests
     {
         var migrations = MigrationCatalog.Load();
 
-        Assert.Equal(7, migrations.Count);
         Assert.Equal("0007_copied_conversation_origin", migrations[6].Name);
         Assert.Contains("ADD COLUMN origin_enc", migrations[6].Script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("Story", "US-17")]
+    public void Load_EighthScript_AddsTheGroupAcknowledgementTable()
+    {
+        var migrations = MigrationCatalog.Load();
+
+        Assert.Equal(8, migrations.Count);
+        Assert.Equal("0008_group_acknowledgements", migrations[7].Name);
+        Assert.Contains("CREATE TABLE group_acknowledgement", migrations[7].Script, StringComparison.Ordinal);
     }
 }

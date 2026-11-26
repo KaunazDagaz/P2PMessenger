@@ -253,14 +253,20 @@ public sealed class GroupTests
         var fromAlice = GroupMessage.Seal(key, record.GroupId, 1, aliceKeys, Text(1, "Welcome"));
         var welcome = OpenText(fromAlice, key);
         await alice.SendAsync(fromAlice, cancellationToken);
-        Assert.Equal(welcome.Id, (await alice.NextAsync<Acknowledgement>(cancellationToken)).Id);
+        var welcomeAck = await alice.NextAsync<GroupAcknowledgement>(cancellationToken);
+        Assert.Equal(welcome.Id, welcomeAck.MessageId);
+        Assert.Equal(Key(bob), welcomeAck.RecipientKey);
+        Assert.True(welcomeAck.HasValidSignature());
 
         using var otherKey = GroupKey.Create();
         await alice.SendAsync(GroupMessage.Seal(otherKey, record.GroupId, 1, aliceKeys, Text(2, "under another key")), cancellationToken);
         await alice.SendAsync(GroupMessage.Seal(key, GroupId.Create(), 1, aliceKeys, Text(3, "in an unknown group")), cancellationToken);
         await alice.SendAsync(GroupMessage.Seal(key, record.GroupId, 1, aliceKeys, Text(1, "the same sequence again")), cancellationToken);
         await alice.SendAsync(fromAlice, cancellationToken);
-        Assert.Equal(welcome.Id, (await alice.NextAsync<Acknowledgement>(cancellationToken)).Id);
+        var duplicateAck = await alice.NextAsync<GroupAcknowledgement>(cancellationToken);
+        Assert.Equal(welcome.Id, duplicateAck.MessageId);
+        Assert.Equal(Key(bob), duplicateAck.RecipientKey);
+        Assert.True(duplicateAck.HasValidSignature());
         Assert.Null(await alice.NextWithinAsync(TimeSpan.FromMilliseconds(500), cancellationToken));
 
         var shown = Assert.Single(bob.Messenger.GroupChats.MessagesIn(record.GroupId));

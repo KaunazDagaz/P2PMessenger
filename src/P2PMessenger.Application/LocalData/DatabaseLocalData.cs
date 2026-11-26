@@ -695,6 +695,7 @@ public sealed class DatabaseLocalData : ILocalData
 
             await data.GroupMessages.LoadAllAsync(cancellationToken).ConfigureAwait(false);
             await data.GroupMessages.LoadDeletedRangesAsync(cancellationToken).ConfigureAwait(false);
+            await data.GroupMessages.LoadAcknowledgementsAsync(cancellationToken).ConfigureAwait(false);
             await data.CopiedConversations.LoadAllAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (StoredDataException)

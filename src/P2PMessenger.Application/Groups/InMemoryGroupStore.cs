@@ -13,6 +13,7 @@ public sealed class InMemoryGroupStore : IGroupStore, IDisposable
     private readonly Dictionary<GroupId, (GroupRecord Record, byte[] Key, List<GroupMemberStatus> Members)> groups = [];
     private readonly List<GroupChatMessage> messages = [];
     private readonly Dictionary<GroupId, IReadOnlyList<AuthorSequenceRange>> deletedByGroup = [];
+    private readonly Dictionary<(GroupId GroupId, MessageId MessageId, Ed25519PublicKey RecipientKey), GroupAcknowledgement> acknowledgements = [];
 
     public InMemoryGroupStore(ISeenMessageIds seen)
     {
@@ -141,6 +142,11 @@ public sealed class InMemoryGroupStore : IGroupStore, IDisposable
         lock (gate)
         {
             int removed = messages.RemoveAll(message => message.GroupId.Equals(groupId));
+            foreach ((GroupId GroupId, MessageId MessageId, Ed25519PublicKey RecipientKey) key in acknowledgements.Keys.Where(entry => entry.GroupId.Equals(groupId)).ToList())
+            {
+                acknowledgements.Remove(key);
+            }
+
             Keep(groupId, deleted);
             return ValueTask.FromResult(removed);
         }
@@ -166,6 +172,49 @@ public sealed class InMemoryGroupStore : IGroupStore, IDisposable
             messages.RemoveAt(index);
             Keep(groupId, deleted);
             return ValueTask.FromResult(true);
+        }
+    }
+
+    public ValueTask<IReadOnlyList<GroupAcknowledgement>> LoadAcknowledgementsAsync(CancellationToken cancellationToken)
+    {
+        lock (gate)
+        {
+            return ValueTask.FromResult<IReadOnlyList<GroupAcknowledgement>>([.. acknowledgements.Values]);
+        }
+    }
+
+    public ValueTask<bool> AddAcknowledgementAsync(GroupAcknowledgement acknowledgement, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(acknowledgement);
+        if (!acknowledgement.HasValidSignature())
+        {
+            throw new ArgumentException("The group acknowledgement does not carry a valid signature.", nameof(acknowledgement));
+        }
+
+        lock (gate)
+        {
+            GroupChatMessage? message = messages.Find(kept =>
+                kept.GroupId.Equals(acknowledgement.GroupId)
+                && kept.Id.Equals(acknowledgement.MessageId)
+                && kept.Envelope.Epoch == acknowledgement.Epoch);
+            if (message is null || message.Direction != MessageDirection.Incoming || message.AuthorKey.Equals(acknowledgement.RecipientKey))
+            {
+                return ValueTask.FromResult(false);
+            }
+
+            return ValueTask.FromResult(acknowledgements.TryAdd((acknowledgement.GroupId, acknowledgement.MessageId, acknowledgement.RecipientKey), acknowledgement));
+        }
+    }
+
+    public ValueTask<bool> RemoveAcknowledgementAsync(GroupId groupId, Ed25519PublicKey recipientKey, MessageId messageId, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(groupId);
+        ArgumentNullException.ThrowIfNull(recipientKey);
+        ArgumentNullException.ThrowIfNull(messageId);
+
+        lock (gate)
+        {
+            return ValueTask.FromResult(acknowledgements.Remove((groupId, messageId, recipientKey)));
         }
     }
 

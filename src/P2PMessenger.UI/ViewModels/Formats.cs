@@ -46,6 +46,7 @@ internal static class Formats
     public static readonly CompositeFormat GroupListsDiffer = CompositeFormat.Parse(UiText.GroupListsDifferFormat);
     public static readonly CompositeFormat GroupCreatedBy = CompositeFormat.Parse(UiText.GroupCreatedByFormat);
     public static readonly CompositeFormat GroupDeliveryReceived = CompositeFormat.Parse(UiText.GroupDeliveryReceivedFormat);
+    public static readonly CompositeFormat GroupDeliveryMember = CompositeFormat.Parse(UiText.GroupDeliveryMemberFormat);
     public static readonly CompositeFormat GroupDeleteChatQuestion = CompositeFormat.Parse(UiText.GroupDeleteChatQuestionFormat);
     public static readonly CompositeFormat CopiedChatItemSummary = CompositeFormat.Parse(UiText.CopiedChatItemSummaryFormat);
     public static readonly CompositeFormat CopiedChatItemSummaryOne = CompositeFormat.Parse(UiText.CopiedChatItemSummaryOneFormat);

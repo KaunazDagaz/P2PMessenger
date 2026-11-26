@@ -154,7 +154,7 @@ public sealed class GroupPassOnTests
 
             var message = GroupMessage.Seal(key, record.GroupId, 1, aliceKeys, Text(1, "Relayed over open session"));
             await aliceToBob.SendAsync(message, cancellationToken);
-            await WaitForAckAsync(aliceToBob, OpenText(message, key).Id, cancellationToken);
+            await WaitForGroupAckAsync(aliceToBob, OpenText(message, key).Id, Key(bob), cancellationToken);
 
             await Eventually.HoldsAsync(() => carol.Messenger.GroupChats.MessagesIn(record.GroupId).Count == 1, cancellationToken);
             var arrived = Single(carol, record.GroupId);
@@ -273,7 +273,10 @@ public sealed class GroupPassOnTests
         Assert.Empty(carol.Messenger.GroupChats.MessagesIn(record.GroupId));
 
         await bob.SendAsync(genuine, cancellationToken);
-        Assert.Equal(OpenText(genuine, key).Id, (await bob.NextAsync<Acknowledgement>(cancellationToken)).Id);
+        var carolAck = await bob.NextAsync<GroupAcknowledgement>(cancellationToken);
+        Assert.Equal(OpenText(genuine, key).Id, carolAck.MessageId);
+        Assert.Equal(Key(carol), carolAck.RecipientKey);
+        Assert.True(carolAck.HasValidSignature());
         var arrived = Single(carol, record.GroupId);
         Assert.Equal("From Alice", arrived.Text);
         Assert.Equal(aliceKeys.IdentityKey, arrived.AuthorKey);
@@ -310,7 +313,7 @@ public sealed class GroupPassOnTests
 
         var fromAlice = GroupMessage.Seal(key, record.GroupId, 1, aliceKeys, Text(1, "Members only"));
         await alice.SendAsync(fromAlice, cancellationToken);
-        await WaitForAckAsync(alice, OpenText(fromAlice, key).Id, cancellationToken);
+        await WaitForGroupAckAsync(alice, OpenText(fromAlice, key).Id, Key(bob), cancellationToken);
 
         await dave.SendAsync(GroupSummary.Create(record.GroupId, 1, []), cancellationToken);
         Assert.Null(await dave.NextWithinAsync(TimeSpan.FromMilliseconds(500), cancellationToken));
@@ -354,7 +357,7 @@ public sealed class GroupPassOnTests
 
         var fromAlice = GroupMessage.Seal(key, record.GroupId, 1, aliceKeys, Text(1, "Before Carol joined"));
         await alice.SendAsync(fromAlice, cancellationToken);
-        await WaitForAckAsync(alice, OpenText(fromAlice, key).Id, cancellationToken);
+        await WaitForGroupAckAsync(alice, OpenText(fromAlice, key).Id, Key(bob), cancellationToken);
 
         await carol.SendAsync(GroupSummary.Create(record.GroupId, 1, []), cancellationToken);
         await carol.SendAsync(GroupSummary.Create(GroupId.Create(), 1, []), cancellationToken);
@@ -379,7 +382,7 @@ public sealed class GroupPassOnTests
         var passedAgain = await carol.NextAsync<GroupMessage>(cancellationToken);
         Assert.Equal(fromAlice, passedAgain);
 
-        await carol.SendAsync(Acknowledgement.Create(OpenText(fromAlice, key).Id), cancellationToken);
+        await carol.SendAsync(GroupAcknowledgement.Create(record.GroupId, 1, OpenText(fromAlice, key).Id, carolKeys), cancellationToken);
         await Task.Delay(TimeSpan.FromMilliseconds(900), cancellationToken);
         await carol.SendAsync(GroupSummary.Create(record.GroupId, 1, []), cancellationToken);
         Assert.Null(await NextGroupMessageWithinAsync(carol, TimeSpan.FromMilliseconds(350), cancellationToken));
@@ -400,7 +403,7 @@ public sealed class GroupPassOnTests
 
         var fromAlice2 = GroupMessage.Seal(key, record.GroupId, 1, aliceKeys, Text(2, "After burst"));
         await alice.SendAsync(fromAlice2, cancellationToken);
-        await WaitForAckAsync(alice, OpenText(fromAlice2, key).Id, cancellationToken);
+        await WaitForGroupAckAsync(alice, OpenText(fromAlice2, key).Id, Key(bob), cancellationToken);
         await carol.SendAsync(GroupSummary.Create(record.GroupId, 1, [new GroupSummaryAuthor(aliceKeys.IdentityKey, [new SequenceRange(1, 1)])]), cancellationToken);
         Assert.Null(await NextGroupMessageWithinAsync(carol, TimeSpan.FromMilliseconds(350), cancellationToken));
 
@@ -452,7 +455,7 @@ public sealed class GroupPassOnTests
         {
             var burstMessage = GroupMessage.Seal(key, record.GroupId, 1, aliceKeys, Text(sequence, $"Message {sequence}"));
             await alice.SendAsync(burstMessage, cancellationToken);
-            await WaitForAckAsync(alice, OpenText(burstMessage, key).Id, cancellationToken);
+            await WaitForGroupAckAsync(alice, OpenText(burstMessage, key).Id, Key(bob), cancellationToken);
         }
 
         List<SessionMessage> fromBobDuringBurst = [];
@@ -483,7 +486,7 @@ public sealed class GroupPassOnTests
 
         var missed = GroupMessage.Seal(key, record.GroupId, 1, aliceKeys, Text(6, "Missed while partitioned"));
         await alice.SendAsync(missed, cancellationToken);
-        await WaitForAckAsync(alice, OpenText(missed, key).Id, cancellationToken);
+        await WaitForGroupAckAsync(alice, OpenText(missed, key).Id, Key(bob), cancellationToken);
 
         var nextSummary = await carol.NextAsync<GroupSummary>(cancellationToken);
         Assert.True(nextSummary.Contains(aliceKeys.IdentityKey, 6));
@@ -583,9 +586,9 @@ public sealed class GroupPassOnTests
         var first = GroupMessage.Seal(key, record.GroupId, 1, aliceKeys, Text(1, "Already held by Carol"));
         var second = GroupMessage.Seal(key, record.GroupId, 1, aliceKeys, Text(2, "Missing at Carol"));
         await alice.SendAsync(first, cancellationToken);
-        await WaitForAckAsync(alice, OpenText(first, key).Id, cancellationToken);
+        await WaitForGroupAckAsync(alice, OpenText(first, key).Id, Key(bob), cancellationToken);
         await alice.SendAsync(second, cancellationToken);
-        await WaitForAckAsync(alice, OpenText(second, key).Id, cancellationToken);
+        await WaitForGroupAckAsync(alice, OpenText(second, key).Id, Key(bob), cancellationToken);
 
         var summaryWithRemovedAuthor = GroupSummary.Create(
             record.GroupId,
@@ -642,6 +645,35 @@ public sealed class GroupPassOnTests
         }
 
         Assert.Fail($"Expected acknowledgement for {expectedId} within 20 s.");
+    }
+
+    private static async Task WaitForGroupAckAsync(
+        RawContact contact,
+        MessageId expectedMessageId,
+        Ed25519PublicKey expectedRecipientKey,
+        CancellationToken cancellationToken)
+    {
+        var deadline = Stopwatch.StartNew();
+        var limit = TimeSpan.FromSeconds(20);
+        while (deadline.Elapsed < limit)
+        {
+            var remaining = limit - deadline.Elapsed;
+            var message = await contact.NextWithinAsync(remaining, cancellationToken);
+            if (message is null)
+            {
+                break;
+            }
+
+            if (message is GroupAcknowledgement ack
+                && ack.MessageId.Equals(expectedMessageId)
+                && ack.RecipientKey.Equals(expectedRecipientKey))
+            {
+                Assert.True(ack.HasValidSignature());
+                return;
+            }
+        }
+
+        Assert.Fail($"Expected signed group acknowledgement for {expectedMessageId} within 20 s.");
     }
 
     private static async Task<GroupJoin> WaitForAckJoinAndSummaryAsync(RawContact contact, MessageId expectedAckId, GroupId groupId, CancellationToken cancellationToken)

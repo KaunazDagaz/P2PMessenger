@@ -4,7 +4,7 @@ Each device keeps its data in one SQLite database of its own. There is no server
 
 This file documents the database: the design rules, the logical schema, how stored data is protected, the data dictionary, normalisation, migrations, and how to create and inspect a database. The schema is created and changed only by the numbered scripts in [`Migrations`](Migrations); nothing is created by hand.
 
-**Status:** the schema, its migrations, the encryption described in [How stored data is protected](#how-stored-data-is-protected) and the repositories exist, with their tests. The app keeps its identity, contacts, messages, its groups with their signed member lists, keys and messages, the delivery state of its own messages for each recipient, the IDs of seen messages and read-only chats copied from a phone to a PC here, on Windows, Linux and Android, and deletes a chat (one-to-one or group), a waiting message, a copied chat or all its data here, keeping what a deleted group chat had so that it does not come back. On Android the data key is wrapped by the Android Keystore.
+**Status:** the schema, its migrations, the encryption described in [How stored data is protected](#how-stored-data-is-protected) and the repositories exist, with their tests. The app keeps its identity, contacts, messages, its groups with their signed member lists, keys and messages, the delivery state of its own messages for each recipient, relayed signed group acknowledgements for other members' messages, the IDs of seen messages and read-only chats copied from a phone to a PC here, on Windows, Linux and Android, and deletes a chat (one-to-one or group), a waiting message, a copied chat or all its data here, keeping what a deleted group chat had so that it does not come back. On Android the data key is wrapped by the Android Keystore.
 
 ## Contents
 
@@ -20,7 +20,7 @@ This file documents the database: the design rules, the logical schema, how stor
 
 - **Engine:** SQLite through Microsoft.Data.Sqlite, which brings its own SQLite build (SQLitePCLRaw `e_sqlite3`), so Windows, Linux and Android run the same SQLite version.
 - **Types are enforced:** every table is `STRICT`, so SQLite refuses a value of the wrong type, for example text in a `BLOB` column.
-- **Keys:** an entity table has a surrogate key, `id INTEGER PRIMARY KEY` (SQLite's row ID). Tables that only connect or depend on other rows (`group_member`, `group_key`, `message_delivery`, `copied_message`, `seen_message`) use their natural key, composite where needed, and are `WITHOUT ROWID`. The two single-row tables (`data_key`, `identity`) allow only `id = 1`.
+- **Keys:** an entity table has a surrogate key, `id INTEGER PRIMARY KEY` (SQLite's row ID). Tables that only connect or depend on other rows (`group_member`, `group_key`, `message_delivery`, `group_acknowledgement`, `copied_message`, `seen_message`) use their natural key, composite where needed, and are `WITHOUT ROWID`. The two single-row tables (`data_key`, `identity`) allow only `id = 1`.
 - **Foreign keys are enforced:** every connection is opened with `PRAGMA foreign_keys = ON`. `ON DELETE CASCADE` is used where a child row means nothing without its parent (the messages of a chat, the members and keys of a group); everywhere else the default, `NO ACTION`, refuses a delete that would leave rows without their parent.
 - **Coded values** are small integers limited by `CHECK` constraints. The codes are listed with each column in the [data dictionary](#data-dictionary).
 - **Encrypted values and MACs** are `BLOB` columns whose length is checked: an encrypted value has at least 40 bytes, a MAC exactly 32.
@@ -42,6 +42,8 @@ erDiagram
     person ||--o{ message : "writes"
     message ||--o{ message_delivery : "is delivered to"
     person ||--o{ message_delivery : "receives"
+    message ||--o{ group_acknowledgement : "carries relayed ack for"
+    person ||--o{ group_acknowledgement : "signed"
     copied_conversation ||--o{ copied_message : "contains"
 
     data_key {
@@ -118,6 +120,11 @@ erDiagram
         INTEGER recipient_person_id PK, FK
         INTEGER state "1 or 2"
     }
+    group_acknowledgement {
+        INTEGER message_id PK, FK
+        INTEGER recipient_person_id PK, FK
+        BLOB ack_enc "encrypted"
+    }
     seen_message {
         BLOB message_id_mac PK "MAC"
     }
@@ -143,7 +150,7 @@ The model in words:
 - A **person** is anyone the app knows by an identity key: the user of this device (through `identity`), the user's contacts (through `contact`), and members of the user's groups whom the user has not added as contacts yet. Messages, group memberships and deliveries refer to persons, so the user and everyone else are handled the same way, and a group message keeps its author when the author is not, or no longer, a contact.
 - A **contact** is a person whose contact code the user has added. A **chat** (`conversation`) belongs either to one contact or to one group, never both.
 - A **group** (`chat_group`) has members (`group_member`) and one key per epoch (`group_key`). Removing a member starts a new epoch with a new key.
-- A **message** belongs to a chat and has an author. For the user's own messages, `message_delivery` holds one state per recipient. The **outbox** is a view: the deliveries still waiting.
+- A **message** belongs to a chat and has an author. For the user's own messages, `message_delivery` holds one state per recipient. The **outbox** is a view: the deliveries still waiting. For an incoming group message written by another member, `group_acknowledgement` holds signed confirmations from other recipients while this device passes them back toward the author or through other members, deleted once the author confirms receipt.
 - `seen_message` remembers the IDs of received messages, and `data_key` holds the key that encrypts everything else. Both stand alone.
 - `copied_conversation` and `copied_message` exist on the user's PC only: a read-only copy of chats from the user's phone, kept apart from the PC's own chats and not linked to its contacts.
 
@@ -165,10 +172,10 @@ The data key is 32 random bytes made on the device. It is never stored unwrapped
 All cryptography comes from libsodium through NSec (`Protection/RecordKeys.cs`).
 
 - **Two keys from the data key.** HKDF-SHA-256 extracts a pseudorandom key from the data key with the salt `P2PM/storage/v1` and expands two keys from it: with the info `P2PM/storage/v1/record-key` the XChaCha20-Poly1305 key for `_enc` values, and with `P2PM/storage/v1/lookup-key` the BLAKE2b-256 key for `_mac` values. The data key itself is cleared from memory once the two keys exist.
-- **An encrypted value** is a random 24-byte nonce, then the ciphertext, then the 16-byte tag. The associated data is the ASCII text `P2PM/storage/v1`, a zero byte, the table name, a zero byte, the column name, a zero byte and the row's key as a big-endian 64-bit integer. For example, the name in row 2 of `person` is bound to the bytes of `P2PM/storage/v1`, `00`, `person`, `00`, `display_name_enc`, `00` and `00 00 00 00 00 00 00 02`. For `copied_message`, the 64-bit row key packs `(copied_conversation_id << 32) | (written_by_owner << 31) | position`, so moving a message between copied chats, reordering it or flipping `written_by_owner` fails authentication too. A value copied to another row, column or table does not decrypt.
+- **An encrypted value** is a random 24-byte nonce, then the ciphertext, then the 16-byte tag. The associated data is the ASCII text `P2PM/storage/v1`, a zero byte, the table name, a zero byte, the column name, a zero byte and the row's key as a big-endian 64-bit integer. For example, the name in row 2 of `person` is bound to the bytes of `P2PM/storage/v1`, `00`, `person`, `00`, `display_name_enc`, `00` and `00 00 00 00 00 00 00 02`. For `group_acknowledgement`, the 64-bit row key packs `(message_id << 32) | recipient_person_id`, so moving a relayed acknowledgement to another message or recipient fails authentication. For `copied_message`, the 64-bit row key packs `(copied_conversation_id << 32) | (written_by_owner << 31) | position`, so moving a message between copied chats, reordering it or flipping `written_by_owner` fails authentication too. A value copied to another row, column or table does not decrypt.
 - **A MAC** is BLAKE2b-256 under the lookup key of `P2PM/lookup/v1/` and a domain name (`identity-key`, `static-key`, `message-id`, `group-id` or `copy-origin`), a zero byte and the value. The same message ID gives the same MAC in `message` and in `seen_message`.
 - **What is inside an encrypted value:** public keys as their 32 bytes, the user's private keys as one 97-byte block (a version byte and the three 32-byte private keys), a copied conversation's origin ID as its 32 bytes, names and texts as UTF-8, a contact code's signature as its 64 bytes, a message ID as its 16 bytes, times as an 8-byte big-endian count of 100-nanosecond ticks since 0001-01-01 UTC, and a sequence number as an 8-byte big-endian integer of at least 1.
-- **Reading checks everything.** Every value must decrypt with its own associated data, every MAC (including `copied_conversation.origin_mac` against `origin_enc`) must match the value it was made from, every copied message list must have contiguous positions from 1, and a contact code rebuilt from its parts must carry a valid signature. If anything fails, the app reads nothing and says that the stored data was changed or damaged.
+- **Reading checks everything.** Every value must decrypt with its own associated data, every MAC (including `copied_conversation.origin_mac` against `origin_enc`) must match the value it was made from, every copied message list must have contiguous positions from 1, every relayed group acknowledgement must match its message, group, epoch and recipient and carry a valid Ed25519 signature, and a contact code rebuilt from its parts must carry a valid signature. If anything fails, the app reads nothing and says that the stored data was changed or damaged.
 
 ### How the data key is wrapped
 
@@ -325,6 +332,16 @@ Index `ix_message_delivery_waiting (recipient_person_id) WHERE state = 1`: the w
 
 In a one-to-one chat, every message the user writes gets exactly one row, for the contact, in the same transaction that stores the message, in state 1. The state becomes 2 only when that contact's app acknowledges the message's ID in an encrypted session with this device, and it never goes back. A received message has no row. When the app reads its data, a message of the user without exactly this row, or a received message with a row, counts as damaged, like a value that does not decrypt.
 
+### `group_acknowledgement`
+
+Signed group acknowledgements held temporarily for incoming group messages so this device can pass them to the message's author or through other members. Accepted only for a locally stored incoming group message of the same group and epoch where the signer is a member distinct from the author and the user; deleted by `ON DELETE CASCADE` when the group chat's messages are deleted, and deleted permanently once the author confirms receipt. `WITHOUT ROWID`.
+
+| Column | Type | Null | Key | Class | Description |
+| --- | --- | --- | --- | --- | --- |
+| `message_id` | INTEGER | No | PK, FK `message.id` | Plain | The group message; deleting the message deletes its relayed acknowledgements (`ON DELETE CASCADE`) |
+| `recipient_person_id` | INTEGER | No | PK, FK `person.id` | Plain | The group member who signed the acknowledgement |
+| `ack_enc` | BLOB | No | | Encrypted | The 132-byte signed group acknowledgement (group ID, epoch, message ID, recipient identity key and Ed25519 signature), bound to `(message_id << 32) \| recipient_person_id` |
+
 ### `seen_message`
 
 The IDs of messages already received or sent, so that a repeated, replayed or reflected message is dropped. An ID is added in the same transaction that stores its message, so a message is never stored without its ID being seen. Kept when a chat is deleted. `WITHOUT ROWID`.
@@ -378,7 +395,7 @@ Every primary key and `UNIQUE` constraint has its own index as well.
 The schema is in third normal form:
 
 - **1NF:** every column holds one value. A contact code is not stored as one blob: its parts are columns of `person` and `contact`, and the code is rebuilt from them.
-- **2NF:** in the tables with composite keys (`group_member`, `group_key`, `message_delivery`, `copied_message`), every other column depends on the whole key.
+- **2NF:** in the tables with composite keys (`group_member`, `group_key`, `message_delivery`, `group_acknowledgement`, `copied_message`), every other column depends on the whole key.
 - **3NF:** no column depends on another non-key column. Facts that follow from other rows are queried, not stored: whether a group member still has to be added (no `contact` row), whether the user is in a group (the user's `group_member` row), whether a chat is one-to-one or a group chat (which foreign key is set), and which messages wait (the `outbox` view).
 
 Two kinds of derived values are kept on purpose:
@@ -399,6 +416,7 @@ Two kinds of derived values are kept on purpose:
   | `0005_groups.sql` | Adds `group_key.record_enc` and `group_member.joined`, `invitation_state` and `join_state`. No earlier version stored a group, so no row needs a value |
   | `0006_deleted_group_messages.sql` | Adds `conversation.deleted_ranges_enc`, empty for every existing chat |
   | `0007_copied_conversation_origin.sql` | Adds `copied_conversation.origin_enc`, storing the encrypted 32-byte copy origin ID so `origin_mac` is verified on every load. No earlier version wrote rows to `copied_conversation` |
+  | `0008_group_acknowledgements.sql` | Creates the `group_acknowledgement` table (`STRICT, WITHOUT ROWID`) to persist verified relayed signed group acknowledgements keyed by `(message_id, recipient_person_id)` with `ON DELETE CASCADE` on `message (id)` |
 
 - `MigrationRunner.MigrateAsync` reads the schema version from `PRAGMA user_version`, applies every newer script in order, and records the new version. Each script runs in one transaction together with the version update, so a failing script leaves the database at the previous version.
 - A database whose version is newer than the newest script is refused, not changed.
@@ -417,7 +435,7 @@ A database can be built from the scripts in two ways: with the SQLite command-li
 ### Create a database
 
 ```
-sqlite3 review.db ".read src/P2PMessenger.Storage/Migrations/0001_initial.sql" ".read src/P2PMessenger.Storage/Migrations/0002_message_id.sql" ".read src/P2PMessenger.Storage/Migrations/0003_outgoing_delivery.sql" ".read src/P2PMessenger.Storage/Migrations/0004_sent_sequence.sql" ".read src/P2PMessenger.Storage/Migrations/0005_groups.sql" ".read src/P2PMessenger.Storage/Migrations/0006_deleted_group_messages.sql" ".read src/P2PMessenger.Storage/Migrations/0007_copied_conversation_origin.sql"
+sqlite3 review.db ".read src/P2PMessenger.Storage/Migrations/0001_initial.sql" ".read src/P2PMessenger.Storage/Migrations/0002_message_id.sql" ".read src/P2PMessenger.Storage/Migrations/0003_outgoing_delivery.sql" ".read src/P2PMessenger.Storage/Migrations/0004_sent_sequence.sql" ".read src/P2PMessenger.Storage/Migrations/0005_groups.sql" ".read src/P2PMessenger.Storage/Migrations/0006_deleted_group_messages.sql" ".read src/P2PMessenger.Storage/Migrations/0007_copied_conversation_origin.sql" ".read src/P2PMessenger.Storage/Migrations/0008_group_acknowledgements.sql"
 ```
 
 Read the scripts in number order. The shell leaves `user_version` at 0, because the migration runner, not the script, records the version.
@@ -501,6 +519,7 @@ The tests build temporary databases with `MigrationRunner` and `SqliteDatabase`,
 - a message is stored together with its ID among the seen IDs and, if the user wrote it, its waiting delivery; the delivery becomes received only for the contact the message was sent to, and only once;
 - a message of the user without its delivery, a delivery for another person, and a received message with a delivery are refused as damaged;
 - a group comes back with the same signed record, key and member states, a member who is not a contact is stored as a person with the name from the record, a group key that does not fit the record or that was moved to another group's row is refused, and a group message keeps its signed envelope and one delivery per member, of which only the one for the member who confirmed it becomes received; a second message with an author's used sequence number is not stored;
+- relayed signed group acknowledgements save only for locally stored incoming group messages of a matching epoch from another group member, round-trip across reopen, cascade-delete on group chat deletion leaving no plaintext or sealed bytes in the database files, refuse every flipped bit, moved row or re-sealed forged signature on load, and are erased by `EraseEverything` (`GroupAcknowledgementRepositoryTests`, `0008_group_acknowledgements.sql`);
 - copied conversations and copied messages save, replace atomically by origin ID, delete cleanly with `secure_delete` and journal truncation leaving no plaintext in the database files, refuse any flipped bit of any encrypted column or `origin_mac`, refuse a value moved to another row, column or position, refuse a flipped `written_by_owner` flag, and refuse gaps in message positions (`CopiedConversationRepositoryTests`, `CopiedFilesTests`, `0007_copied_conversation_origin.sql`);
 - the key derivation and XChaCha20-Poly1305 give the published test vectors (RFC 5869, draft-irtf-cfrg-xchacha), and the associated data, two encrypted values and the MACs match an independent Python implementation;
 - every flipped bit of every stored encrypted value and MAC, and a value moved to another row or column, is refused;

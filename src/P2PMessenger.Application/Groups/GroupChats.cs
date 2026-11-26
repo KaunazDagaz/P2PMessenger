@@ -20,6 +20,8 @@ public sealed class GroupChats : IDisposable
     private readonly Lock gate = new();
     private readonly Dictionary<GroupId, Conversation> conversations = [];
     private readonly Dictionary<MessageId, GroupChatMessage> messagesById = [];
+    private readonly Dictionary<MessageId, RelayedGroupAcknowledgement> relayedByNoticeId = [];
+    private readonly Dictionary<GroupId, Dictionary<(MessageId MessageId, Ed25519PublicKey RecipientKey), RelayedGroupAcknowledgement>> relayedByGroup = [];
 
     internal GroupChats(
         GroupBook groups,
@@ -29,6 +31,7 @@ public sealed class GroupChats : IDisposable
         TimeProvider timeProvider,
         IEnumerable<GroupChatMessage> loaded,
         IReadOnlyDictionary<GroupId, IReadOnlyList<AuthorSequenceRange>> deleted,
+        IEnumerable<GroupAcknowledgement> loadedAcknowledgements,
         Func<Ed25519PublicKey, CancellationToken, Task<IDisposable>> enterDelivery)
     {
         this.groups = groups;
@@ -48,6 +51,19 @@ public sealed class GroupChats : IDisposable
         {
             ConversationOf(groupId).KeepDeleted(DeletedRanges.From(ranges), own.Keys.IdentityKey);
         }
+
+        foreach (GroupAcknowledgement ack in loadedAcknowledgements)
+        {
+            if (messagesById.TryGetValue(ack.MessageId, out GroupChatMessage? message)
+                && message.Direction == MessageDirection.Incoming
+                && message.GroupId.Equals(ack.GroupId)
+                && message.Envelope.Epoch == ack.Epoch
+                && !ack.RecipientKey.Equals(message.AuthorKey)
+                && !ack.RecipientKey.Equals(own.Keys.IdentityKey))
+            {
+                TrackRelayedLocked(new RelayedGroupAcknowledgement(ack, message.AuthorKey, message.Sequence));
+            }
+        }
     }
 
     public event EventHandler<GroupChatChangedEventArgs>? Changed;
@@ -55,6 +71,8 @@ public sealed class GroupChats : IDisposable
     internal event EventHandler<Ed25519PublicKey>? DeliveryNeeded;
 
     internal event EventHandler<GroupMessageArrivedEventArgs>? MessageArrived;
+
+    internal event EventHandler<GroupAcknowledgementArrivedEventArgs>? AcknowledgementArrived;
 
     public IReadOnlyList<GroupChatMessage> MessagesIn(GroupId groupId)
     {
@@ -123,6 +141,14 @@ public sealed class GroupChats : IDisposable
                     foreach (GroupChatMessage message in conversation.Messages)
                     {
                         messagesById.Remove(message.Id);
+                    }
+
+                    if (relayedByGroup.Remove(groupId, out Dictionary<(MessageId MessageId, Ed25519PublicKey RecipientKey), RelayedGroupAcknowledgement>? removedAcks))
+                    {
+                        foreach (RelayedGroupAcknowledgement ack in removedAcks.Values)
+                        {
+                            relayedByNoticeId.Remove(ack.NoticeId);
+                        }
                     }
 
                     conversation.Clear(updated);
@@ -346,6 +372,229 @@ public sealed class GroupChats : IDisposable
         return true;
     }
 
+    internal async Task<GroupAcknowledgementResult> ReceiveAcknowledgementAsync(
+        Ed25519PublicKey senderKey,
+        GroupAcknowledgement acknowledgement,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(senderKey);
+        ArgumentNullException.ThrowIfNull(acknowledgement);
+
+        if (!groups.TryGet(acknowledgement.GroupId, out Group? group)
+            || group.State == GroupState.ListsDiffer
+            || group.Find(senderKey) is null
+            || group.Find(acknowledgement.RecipientKey) is null
+            || acknowledgement.RecipientKey.Equals(own.Keys.IdentityKey))
+        {
+            return default;
+        }
+
+        bool isRelayed = !senderKey.Equals(acknowledgement.RecipientKey);
+        GroupChatMessage? message;
+        bool alreadyStoredSameAck;
+        lock (gate)
+        {
+            messagesById.TryGetValue(acknowledgement.MessageId, out message);
+            alreadyStoredSameAck = relayedByNoticeId.TryGetValue(acknowledgement.NoticeId, out RelayedGroupAcknowledgement? existing)
+                && existing.Acknowledgement.Equals(acknowledgement);
+        }
+
+        if (message is null)
+        {
+            if (acknowledgement.Epoch != group.Record.Epoch
+                || !await seen.ContainsAsync(acknowledgement.MessageId, cancellationToken).ConfigureAwait(false)
+                || !acknowledgement.HasValidSignature())
+            {
+                return default;
+            }
+
+            return new GroupAcknowledgementResult(true, false);
+        }
+
+        if (!message.GroupId.Equals(acknowledgement.GroupId)
+            || message.Envelope.Epoch != acknowledgement.Epoch
+            || acknowledgement.RecipientKey.Equals(message.AuthorKey))
+        {
+            return default;
+        }
+
+        if (message.AuthorKey.Equals(own.Keys.IdentityKey))
+        {
+            if (!acknowledgement.HasValidSignature())
+            {
+                return default;
+            }
+
+            if (message.IsWaitingFor(acknowledgement.RecipientKey))
+            {
+                await MarkReceivedAsync(acknowledgement.RecipientKey, message.Id, cancellationToken).ConfigureAwait(false);
+            }
+
+            return new GroupAcknowledgementResult(isRelayed, !isRelayed);
+        }
+
+        if (alreadyStoredSameAck)
+        {
+            return new GroupAcknowledgementResult(true, !isRelayed);
+        }
+
+        if (!acknowledgement.HasValidSignature())
+        {
+            return default;
+        }
+
+        RelayedGroupAcknowledgement? added = null;
+        await writing.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            GroupChatMessage? current;
+            bool existsNow;
+            lock (gate)
+            {
+                messagesById.TryGetValue(acknowledgement.MessageId, out current);
+                existsNow = relayedByNoticeId.ContainsKey(acknowledgement.NoticeId);
+            }
+
+            if (current is null)
+            {
+                return new GroupAcknowledgementResult(true, false);
+            }
+
+            if (!existsNow && await store.AddAcknowledgementAsync(acknowledgement, cancellationToken).ConfigureAwait(false))
+            {
+                added = new RelayedGroupAcknowledgement(acknowledgement, current.AuthorKey, current.Sequence);
+                lock (gate)
+                {
+                    TrackRelayedLocked(added);
+                }
+            }
+        }
+        finally
+        {
+            writing.Release();
+        }
+
+        if (added is not null)
+        {
+            AcknowledgementArrived?.Invoke(this, new GroupAcknowledgementArrivedEventArgs(senderKey, added));
+        }
+
+        return new GroupAcknowledgementResult(true, !isRelayed);
+    }
+
+    internal async Task<RelayedAckConfirmation> MarkRelayedAcknowledgementConfirmedAsync(
+        Ed25519PublicKey peerKey,
+        MessageId noticeId,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(peerKey);
+        ArgumentNullException.ThrowIfNull(noticeId);
+
+        RelayedGroupAcknowledgement? relayed;
+        lock (gate)
+        {
+            if (!relayedByNoticeId.TryGetValue(noticeId, out relayed))
+            {
+                return RelayedAckConfirmation.None;
+            }
+        }
+
+        if (!relayed.AuthorKey.Equals(peerKey))
+        {
+            return RelayedAckConfirmation.ConfirmedByPeer;
+        }
+
+        await writing.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await store.RemoveAcknowledgementAsync(relayed.GroupId, relayed.RecipientKey, relayed.MessageId, cancellationToken).ConfigureAwait(false);
+            lock (gate)
+            {
+                if (relayedByNoticeId.Remove(noticeId, out RelayedGroupAcknowledgement? removed)
+                    && relayedByGroup.TryGetValue(removed.GroupId, out Dictionary<(MessageId MessageId, Ed25519PublicKey RecipientKey), RelayedGroupAcknowledgement>? byGroup))
+                {
+                    byGroup.Remove((removed.MessageId, removed.RecipientKey));
+                    if (byGroup.Count == 0)
+                    {
+                        relayedByGroup.Remove(removed.GroupId);
+                    }
+                }
+            }
+        }
+        finally
+        {
+            writing.Release();
+        }
+
+        return RelayedAckConfirmation.ConfirmedByAuthor;
+    }
+
+    internal IReadOnlyList<RelayedGroupAcknowledgement> RelayedAcknowledgementsForAuthor(Ed25519PublicKey authorKey)
+    {
+        ArgumentNullException.ThrowIfNull(authorKey);
+
+        List<RelayedGroupAcknowledgement> candidates;
+        lock (gate)
+        {
+            candidates =
+            [
+                .. relayedByNoticeId.Values
+                    .Where(relayed => relayed.AuthorKey.Equals(authorKey))
+                    .OrderBy(static relayed => relayed.Sequence),
+            ];
+        }
+
+        return
+        [
+            .. candidates.Where(relayed =>
+                groups.TryGet(relayed.GroupId, out Group? group)
+                && group.State == GroupState.Created
+                && group.Find(authorKey) is not null
+                && group.Find(relayed.RecipientKey) is not null),
+        ];
+    }
+
+    internal IReadOnlyList<RelayedGroupAcknowledgement> RelayedAcknowledgementsIn(GroupId groupId)
+    {
+        ArgumentNullException.ThrowIfNull(groupId);
+
+        lock (gate)
+        {
+            return relayedByGroup.TryGetValue(groupId, out Dictionary<(MessageId MessageId, Ed25519PublicKey RecipientKey), RelayedGroupAcknowledgement>? byGroup)
+                ? [.. byGroup.Values.OrderBy(static relayed => relayed.Sequence)]
+                : [];
+        }
+    }
+
+    internal bool TryGetRelayedAcknowledgement(MessageId noticeId, [NotNullWhen(true)] out RelayedGroupAcknowledgement? relayed)
+    {
+        lock (gate)
+        {
+            return relayedByNoticeId.TryGetValue(noticeId, out relayed);
+        }
+    }
+
+    internal IReadOnlyList<Ed25519PublicKey> AuthorsWithRelayedAcknowledgements()
+    {
+        List<RelayedGroupAcknowledgement> snapshot;
+        lock (gate)
+        {
+            snapshot = [.. relayedByNoticeId.Values];
+        }
+
+        return
+        [
+            .. snapshot
+                .Where(relayed =>
+                    groups.TryGet(relayed.GroupId, out Group? group)
+                    && group.State == GroupState.Created
+                    && group.Find(relayed.AuthorKey) is not null
+                    && group.Find(relayed.RecipientKey) is not null)
+                .Select(static relayed => relayed.AuthorKey)
+                .Distinct(),
+        ];
+    }
+
     internal IReadOnlyList<PendingSend> WaitingFor(Ed25519PublicKey memberKey)
     {
         lock (gate)
@@ -548,6 +797,18 @@ public sealed class GroupChats : IDisposable
         }
 
         return conversation;
+    }
+
+    private void TrackRelayedLocked(RelayedGroupAcknowledgement relayed)
+    {
+        relayedByNoticeId[relayed.NoticeId] = relayed;
+        if (!relayedByGroup.TryGetValue(relayed.GroupId, out Dictionary<(MessageId MessageId, Ed25519PublicKey RecipientKey), RelayedGroupAcknowledgement>? byGroup))
+        {
+            byGroup = [];
+            relayedByGroup.Add(relayed.GroupId, byGroup);
+        }
+
+        byGroup[(relayed.MessageId, relayed.RecipientKey)] = relayed;
     }
 
     private sealed class Conversation

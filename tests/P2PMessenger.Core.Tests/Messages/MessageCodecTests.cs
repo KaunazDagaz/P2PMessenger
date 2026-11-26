@@ -141,12 +141,14 @@ public sealed class MessageCodecTests
     [Theory]
     [Trait("NFR", "NFR-09")]
     [InlineData(0, 1)]
-    [InlineData(8, 1)]
+    [InlineData(9, 1)]
     [InlineData(255, 1)]
     [InlineData(3, 0)]
     [InlineData(3, 2)]
     [InlineData(1, 0)]
     [InlineData(1, 2)]
+    [InlineData(8, 0)]
+    [InlineData(8, 2)]
     public void Decode_UnknownTypeOrVersion_IsRefused(int type, int version)
     {
         var plaintext = MessageCodec.Encode(KeepAlive.Instance);

@@ -86,12 +86,14 @@ public sealed class Messenger : IAsyncDisposable
         IReadOnlyList<LoadedGroup> loadedGroups = await groupStore.LoadGroupsAsync(cancellationToken).ConfigureAwait(false);
         IReadOnlyList<GroupChatMessage> groupMessages;
         IReadOnlyDictionary<GroupId, IReadOnlyList<AuthorSequenceRange>> deletedGroupMessages;
+        IReadOnlyList<GroupAcknowledgement> groupAcknowledgements;
         IReadOnlyList<CopiedConversation> loadedCopiedChats;
         ICopiedChatStore copiedChatStore = setup.CopiedChatStore ?? new InMemoryCopiedChatStore();
         try
         {
             groupMessages = await groupStore.LoadMessagesAsync(cancellationToken).ConfigureAwait(false);
             deletedGroupMessages = await groupStore.LoadDeletedAsync(cancellationToken).ConfigureAwait(false);
+            groupAcknowledgements = await groupStore.LoadAcknowledgementsAsync(cancellationToken).ConfigureAwait(false);
             loadedCopiedChats = await copiedChatStore.LoadAllAsync(cancellationToken).ConfigureAwait(false);
         }
         catch
@@ -107,7 +109,7 @@ public sealed class Messenger : IAsyncDisposable
         ContactBook contactBook = new(identity, setup.ContactStore, contacts);
         ChatLog chatLog = new(setup.ChatStore, setup.SeenMessageIds, setup.TimeProvider, messages, sentSequences);
         GroupBook groupBook = new(identity, contactBook, groupStore, loadedGroups, setup.Loggers.CreateLogger<GroupBook>(), setup.Failures);
-        GroupChats groupChats = new(groupBook, identity, groupStore, setup.SeenMessageIds, setup.TimeProvider, groupMessages, deletedGroupMessages, chatLog.EnterDeliveryAsync);
+        GroupChats groupChats = new(groupBook, identity, groupStore, setup.SeenMessageIds, setup.TimeProvider, groupMessages, deletedGroupMessages, groupAcknowledgements, chatLog.EnterDeliveryAsync);
         CopiedChatBook copiedChatBook = new(copiedChatStore, loadedCopiedChats);
         ILocalInterfaceSource interfaceSource = setup.Discovery?.Interfaces ?? new SystemInterfaceSource();
         Func<IReadOnlyList<Ipv4Address>> readCopyAddresses = setup.CopyAddressSource ?? (() => PcCopyService.ReadAddresses(interfaceSource));

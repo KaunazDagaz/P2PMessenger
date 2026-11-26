@@ -900,11 +900,20 @@
   <data name="GroupDeliveryReceivedFormat" xml:space="preserve">
     <value>Received by {0} of {1} members' apps</value>
   </data>
+  <data name="GroupDeliveryMemberWaiting" xml:space="preserve">
+    <value>Waiting</value>
+  </data>
+  <data name="GroupDeliveryMemberReceived" xml:space="preserve">
+    <value>Received by their app</value>
+  </data>
+  <data name="GroupDeliveryMemberFormat" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
   <data name="GroupDeliveryWaitingExplanation" xml:space="preserve">
-    <value>No other member's app has confirmed this message yet; it is sent again automatically to each member until their app does, and it may already have arrived.</value>
+    <value>No other member's app has confirmed this message yet. Each member shows as received once their app's signed confirmation reaches this device, directly or through another member. Until then it is sent again automatically, and it may already have arrived.</value>
   </data>
   <data name="GroupDeliveryReceivedExplanation" xml:space="preserve">
-    <value>This many members' apps confirmed directly to this device that they have stored the message; it does not show whether anyone has read it. Other members may already have received it through another member, and this count updates when their app connects to yours. Because a member's app has it and can pass it on, it can no longer be deleted on its own.</value>
+    <value>Each member marked received sent a signed confirmation from their app, directly or through another member, that it stored the message; this does not show whether anyone has read it. Because a member's app has it and can pass it on, it can no longer be deleted on its own.</value>
   </data>
   <data name="NotificationGroupMessageFromFormat" xml:space="preserve">
     <value>New message from {0}</value>
