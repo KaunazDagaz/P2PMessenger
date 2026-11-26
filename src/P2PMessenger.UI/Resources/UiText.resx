@@ -807,4 +807,124 @@
   <data name="BackgroundOpenSettings" xml:space="preserve">
     <value>Open app settings</value>
   </data>
+  <data name="ContactListNewGroup" xml:space="preserve">
+    <value>New group</value>
+  </data>
+  <data name="ContactListGroupsHeading" xml:space="preserve">
+    <value>Groups</value>
+  </data>
+  <data name="ContactListContactsHeading" xml:space="preserve">
+    <value>Contacts</value>
+  </data>
+  <data name="GroupItemMembersFormat" xml:space="preserve">
+    <value>{0} members</value>
+  </data>
+  <data name="GroupItemJoining" xml:space="preserve">
+    <value>Not joined yet: open it to see whom to add</value>
+  </data>
+  <data name="GroupItemWaitingFormat" xml:space="preserve">
+    <value>Waiting for {0} of {1} members to join</value>
+  </data>
+  <data name="GroupItemListsDiffer" xml:space="preserve">
+    <value>The member lists do not match</value>
+  </data>
+  <data name="NewGroupTitle" xml:space="preserve">
+    <value>New group</value>
+  </data>
+  <data name="NewGroupIntro" xml:space="preserve">
+    <value>Choose contacts who have all added each other. Each invited member joins once they have every other member as a contact. Nobody can write in the group until every member has joined, so that everyone sees the same member list.</value>
+  </data>
+  <data name="NewGroupNameLabel" xml:space="preserve">
+    <value>Group name</value>
+  </data>
+  <data name="NewGroupNamePlaceholder" xml:space="preserve">
+    <value>Name of the group</value>
+  </data>
+  <data name="NewGroupMembersLabel" xml:space="preserve">
+    <value>Members</value>
+  </data>
+  <data name="NewGroupNoContacts" xml:space="preserve">
+    <value>You have no contacts to invite yet. Only contacts whose first connection is complete can be invited.</value>
+  </data>
+  <data name="NewGroupCreate" xml:space="preserve">
+    <value>Create group</value>
+  </data>
+  <data name="NewGroupInvalidName" xml:space="preserve">
+    <value>Enter a group name of up to 64 bytes (fewer letters in some alphabets) without control characters.</value>
+  </data>
+  <data name="NewGroupNoMembers" xml:space="preserve">
+    <value>Choose at least one contact.</value>
+  </data>
+  <data name="NewGroupTooManyFormat" xml:space="preserve">
+    <value>A group can have at most {0} members, you included.</value>
+  </data>
+  <data name="NewGroupNotAdded" xml:space="preserve">
+    <value>A chosen contact is no longer an added contact. Choose again.</value>
+  </data>
+  <data name="NewGroupFailed" xml:space="preserve">
+    <value>The group could not be saved on this device. Try again.</value>
+  </data>
+  <data name="GroupMembersFormat" xml:space="preserve">
+    <value>Members: {0}</value>
+  </data>
+  <data name="GroupYouFormat" xml:space="preserve">
+    <value>{0} (you)</value>
+  </data>
+  <data name="GroupJoiningIntro" xml:space="preserve">
+    <value>You have not joined this group yet. To join, add these members as contacts, in person or with codes sent through another channel, and compare fingerprints with them. Your app joins by itself once you have added them all.</value>
+  </data>
+  <data name="GroupJoiningNone" xml:space="preserve">
+    <value>You have every member as a contact. Your app joins as soon as each first connection is complete.</value>
+  </data>
+  <data name="GroupWaitingFormat" xml:space="preserve">
+    <value>Waiting for these members to join: {0}. Nobody can write in the group until every member has joined.</value>
+  </data>
+  <data name="GroupListsDifferFormat" xml:space="preserve">
+    <value>The member lists of this group do not match: {0} joined with a different list than yours. Nobody can write in this group; create a new one with the people you trust.</value>
+  </data>
+  <data name="GroupCreatedBy" xml:space="preserve">
+    <value>Created by you.</value>
+  </data>
+  <data name="GroupCreatedByFormat" xml:space="preserve">
+    <value>Created by {0}.</value>
+  </data>
+  <data name="GroupNotCreatedYet" xml:space="preserve">
+    <value>Not sent: you can write once every member has joined.</value>
+  </data>
+  <data name="GroupTooLong" xml:space="preserve">
+    <value>Not sent: the message is too long for a group.</value>
+  </data>
+  <data name="GroupNotAGroup" xml:space="preserve">
+    <value>Not sent: this group is no longer on this device.</value>
+  </data>
+  <data name="GroupDeliveryReceivedFormat" xml:space="preserve">
+    <value>Received by {0} of {1} members' apps</value>
+  </data>
+  <data name="GroupDeliveryWaitingExplanation" xml:space="preserve">
+    <value>No other member's app has confirmed this message yet; it is sent again automatically to each member until their app does, and it may already have arrived.</value>
+  </data>
+  <data name="GroupDeliveryReceivedExplanation" xml:space="preserve">
+    <value>This many members' apps confirmed that they have stored the message; it does not show whether anyone has read it. The others get it when their app is reachable. Because a member's app has it, it can no longer be deleted on its own.</value>
+  </data>
+  <data name="NotificationGroupMessageFromFormat" xml:space="preserve">
+    <value>New message from {0}</value>
+  </data>
+  <data name="NotificationGroupPreviewFormat" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
+  <data name="GroupDeleteChatQuestionFormat" xml:space="preserve">
+    <value>Delete the chat of {0}? Its messages are removed from this device, and your messages that are still waiting are no longer sent from it. You stay a member and keep receiving new messages. The members' apps keep their copies.</value>
+  </data>
+  <data name="GroupChatDeleted" xml:space="preserve">
+    <value>The chat was deleted on this device only. You are still a member, and the members' apps still have their copies.</value>
+  </data>
+  <data name="GroupMessageDeleteQuestion" xml:space="preserve">
+    <value>Delete this waiting message? This device will not send it again.</value>
+  </data>
+  <data name="GroupMessageDeleted" xml:space="preserve">
+    <value>The waiting message was deleted on this device and will not be sent again. If it reached a member's app before that app's confirmation came back, it stays there.</value>
+  </data>
+  <data name="GroupMessageNotDeletable" xml:space="preserve">
+    <value>A member's app has already received the message, so it was not deleted.</value>
+  </data>
 </root>

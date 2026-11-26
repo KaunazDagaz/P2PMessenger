@@ -42,6 +42,19 @@ public sealed class BackgroundRulesTests
 
     [Fact]
     [Trait("Story", "US-19")]
+    public void MessageNotificationId_SixteenByteGroupId_IsAboveTheFixedIdsAndCountsForTheLockScreenNotice()
+    {
+        byte[] groupId = [0xFF, 0xFF, 0xFF, 0xFF, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+        int id = BackgroundRules.MessageNotificationId(groupId);
+
+        Assert.Equal(id, BackgroundRules.MessageNotificationId(groupId));
+        Assert.InRange(id, BackgroundRules.FirstMessageNotificationId, int.MaxValue);
+        Assert.Equal(LockScreenNotice.Show, BackgroundRules.NoticeFor(BackgroundRules.ScreenOff, [id]));
+    }
+
+    [Fact]
+    [Trait("Story", "US-19")]
     public void NoticeFor_ScreenOffWithAMessageShown_ShowsTheNoticeWithoutTheSender() =>
         Assert.Equal(LockScreenNotice.Show, BackgroundRules.NoticeFor("android.intent.action.SCREEN_OFF", [BackgroundRules.ServiceNotificationId, 123456789]));
 

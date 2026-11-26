@@ -1,4 +1,6 @@
 using P2PMessenger.Application.Background;
+using P2PMessenger.Application.Tests.Groups;
+using P2PMessenger.Core.Groups;
 using P2PMessenger.Core.Identity;
 using P2PMessenger.Core.Messages;
 using static P2PMessenger.Application.Tests.TestKeys;
@@ -131,6 +133,81 @@ public sealed class MessageAlertsTests
         alerts.Dispose();
         Assert.True(await messenger.Chats.ReceiveAsync(bob.IdentityKey, Text(1, "hello"), cancellationToken));
 
+        Assert.Empty(notifier.Shown);
+        messenger.Identity.Dispose();
+    }
+
+    [Fact]
+    [Trait("Story", "US-19")]
+    public async Task IncomingGroupMessage_AppInTheBackground_ShowsTheGroupAndWhoWroteItWithoutText()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var messenger = await TestMessengers.StartAsync("Alice", cancellationToken);
+        using var bob = KeySet.Create();
+        using var key = GroupKey.Create();
+        await AddAsync(messenger, bob, "Bob", cancellationToken);
+        var record = await TestGroups.InvitedByAsync(messenger, bob, "Bob", "Field team", key, cancellationToken);
+        var notifier = new FakeNotifier();
+        using var alerts = new MessageAlerts(messenger, notifier, new BackgroundSettings(new MemorySettings()), () => false);
+
+        var message = TestGroups.From(bob, record, key, 1, "secret plan");
+        Assert.NotNull(await messenger.GroupChats.ReceiveAsync(bob.IdentityKey, message, cancellationToken));
+        Assert.NotNull(await messenger.GroupChats.ReceiveAsync(bob.IdentityKey, message, cancellationToken));
+
+        var notice = Assert.Single(notifier.ShownGroups);
+        Assert.Equal(record.GroupId, notice.GroupId);
+        Assert.Equal("Field team", notice.GroupName);
+        Assert.Equal("Bob", notice.AuthorName);
+        Assert.Null(notice.Preview);
+        Assert.DoesNotContain("secret", notice.ToString(), StringComparison.Ordinal);
+        Assert.Empty(notifier.Shown);
+        messenger.Identity.Dispose();
+    }
+
+    [Fact]
+    [Trait("Story", "US-19")]
+    public async Task IncomingGroupMessage_PreviewsTurnedOn_ShowsTheText()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var messenger = await TestMessengers.StartAsync("Alice", cancellationToken);
+        using var bob = KeySet.Create();
+        using var key = GroupKey.Create();
+        await AddAsync(messenger, bob, "Bob", cancellationToken);
+        var record = await TestGroups.InvitedByAsync(messenger, bob, "Bob", "Field team", key, cancellationToken);
+        var notifier = new FakeNotifier();
+        var settings = new BackgroundSettings(new MemorySettings()) { ShowPreviews = true };
+        using var alerts = new MessageAlerts(messenger, notifier, settings, () => false);
+
+        Assert.NotNull(await messenger.GroupChats.ReceiveAsync(bob.IdentityKey, TestGroups.From(bob, record, key, 1, "see you at noon"), cancellationToken));
+
+        Assert.Equal("see you at noon", Assert.Single(notifier.ShownGroups).Preview);
+        messenger.Identity.Dispose();
+    }
+
+    [Fact]
+    [Trait("Story", "US-19")]
+    public async Task GroupMessages_AppVisibleOrOwnOrNotAllowedOrAfterDispose_ShowNothing()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var messenger = await TestMessengers.StartAsync("Alice", cancellationToken);
+        using var bob = KeySet.Create();
+        using var key = GroupKey.Create();
+        await AddAsync(messenger, bob, "Bob", cancellationToken);
+        var record = await TestGroups.InvitedByAsync(messenger, bob, "Bob", "Field team", key, cancellationToken);
+        var visible = true;
+        var notifier = new FakeNotifier();
+        var alerts = new MessageAlerts(messenger, notifier, new BackgroundSettings(new MemorySettings()), () => visible);
+
+        Assert.NotNull(await messenger.GroupChats.ReceiveAsync(bob.IdentityKey, TestGroups.From(bob, record, key, 1, "while visible"), cancellationToken));
+        visible = false;
+        Assert.True((await messenger.SendToGroupAsync(record.GroupId, "my own text", cancellationToken)).IsQueued);
+        notifier.IsAllowed = false;
+        Assert.NotNull(await messenger.GroupChats.ReceiveAsync(bob.IdentityKey, TestGroups.From(bob, record, key, 2, "not allowed"), cancellationToken));
+        notifier.IsAllowed = true;
+        alerts.Dispose();
+        Assert.NotNull(await messenger.GroupChats.ReceiveAsync(bob.IdentityKey, TestGroups.From(bob, record, key, 3, "after dispose"), cancellationToken));
+
+        Assert.Empty(notifier.ShownGroups);
         Assert.Empty(notifier.Shown);
         messenger.Identity.Dispose();
     }

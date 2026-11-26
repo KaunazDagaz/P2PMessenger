@@ -237,6 +237,7 @@ public sealed class AppServices : IAsyncDisposable
         {
             ContactStore = stores.Contacts,
             ChatStore = stores.Chats,
+            GroupStore = stores.Groups,
             SeenMessageIds = stores.SeenMessageIds,
         };
         identities = new IdentityService(stores.Identity);

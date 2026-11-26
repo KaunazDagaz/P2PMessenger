@@ -8,6 +8,8 @@ internal sealed class FakeNotifier : IMessageNotifier
 
     public List<MessageNotice> Shown { get; } = [];
 
+    public List<GroupMessageNotice> ShownGroups { get; } = [];
+
     public Task<bool> RequestPermissionAsync(CancellationToken cancellationToken) => Task.FromResult(IsAllowed);
 
     public void Show(MessageNotice notice)
@@ -15,6 +17,14 @@ internal sealed class FakeNotifier : IMessageNotifier
         lock (Shown)
         {
             Shown.Add(notice);
+        }
+    }
+
+    public void ShowGroup(GroupMessageNotice notice)
+    {
+        lock (ShownGroups)
+        {
+            ShownGroups.Add(notice);
         }
     }
 }

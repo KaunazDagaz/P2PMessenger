@@ -5,6 +5,7 @@ using P2PMessenger.Application.Chats;
 using P2PMessenger.Application.Connections;
 using P2PMessenger.Application.Contacts;
 using P2PMessenger.Application.Delivery;
+using P2PMessenger.Application.Groups;
 using P2PMessenger.Application.Internet;
 using P2PMessenger.Core;
 using P2PMessenger.Core.Messages;
@@ -19,6 +20,8 @@ public sealed record MessengerSetup
     public required IChatStore ChatStore { get; init; }
 
     public required ISeenMessageIds SeenMessageIds { get; init; }
+
+    public IGroupStore? GroupStore { get; init; }
 
     public ConnectionOptions Connection { get; init; } = new();
 
@@ -46,6 +49,7 @@ public sealed record MessengerSetup
         {
             ContactStore = new InMemoryContactStore(),
             ChatStore = new InMemoryChatStore(seen),
+            GroupStore = new InMemoryGroupStore(seen),
             SeenMessageIds = seen,
         };
     }

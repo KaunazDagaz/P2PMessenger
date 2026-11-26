@@ -4,9 +4,11 @@ using P2PMessenger.Application.Chats;
 using P2PMessenger.Application.Connections;
 using P2PMessenger.Application.Contacts;
 using P2PMessenger.Application.Delivery;
+using P2PMessenger.Application.Groups;
 using P2PMessenger.Application.Identity;
 using P2PMessenger.Application.Internet;
 using P2PMessenger.Core.Crypto;
+using P2PMessenger.Core.Groups;
 using P2PMessenger.Core.Messages;
 
 namespace P2PMessenger.Application;
@@ -17,11 +19,21 @@ public sealed class Messenger : IAsyncDisposable
     private readonly Outbox outbox;
     private int disposed;
 
-    private Messenger(OwnIdentity identity, ContactBook contacts, ChatLog chats, ConnectionService connections, Outbox outbox, TimeProvider timeProvider)
+    private Messenger(
+        OwnIdentity identity,
+        ContactBook contacts,
+        ChatLog chats,
+        GroupBook groups,
+        GroupChats groupChats,
+        ConnectionService connections,
+        Outbox outbox,
+        TimeProvider timeProvider)
     {
         Identity = identity;
         Contacts = contacts;
         Chats = chats;
+        Groups = groups;
+        GroupChats = groupChats;
         Connections = connections;
         InternetRoute = InternetRoute.Off(connections);
         this.outbox = outbox;
@@ -33,6 +45,10 @@ public sealed class Messenger : IAsyncDisposable
     public ContactBook Contacts { get; }
 
     public ChatLog Chats { get; }
+
+    public GroupBook Groups { get; }
+
+    public GroupChats GroupChats { get; }
 
     public ConnectionService Connections { get; }
 
@@ -52,14 +68,36 @@ public sealed class Messenger : IAsyncDisposable
         IReadOnlyList<ChatMessage> messages = await setup.ChatStore.LoadAllAsync(cancellationToken).ConfigureAwait(false);
         IReadOnlyDictionary<Ed25519PublicKey, long> sentSequences = await setup.ChatStore.LoadSentSequencesAsync(cancellationToken).ConfigureAwait(false);
 
-        ContactBook contactBook = new(identity, setup.ContactStore, contacts);
-        ChatLog chatLog = new(setup.ChatStore, setup.SeenMessageIds, setup.TimeProvider, messages, sentSequences);
-        ConnectionService connections = new(identity, contactBook, chatLog, setup.Connection, setup.TimeProvider, setup.Loggers, setup.Failures);
-        IWakeUpScheduler scheduler = setup.WakeUps ?? new TimerWakeUpScheduler(setup.TimeProvider);
-        Outbox outbox = new(chatLog, connections, scheduler, setup.Delivery, setup.TimeProvider, setup.Loggers.CreateLogger<Outbox>(), setup.Failures);
-        Messenger messenger = new(identity, contactBook, chatLog, connections, outbox, setup.TimeProvider);
+        IGroupStore groupStore = setup.GroupStore ?? new InMemoryGroupStore(setup.SeenMessageIds);
+        IReadOnlyList<LoadedGroup> loadedGroups = await groupStore.LoadGroupsAsync(cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<GroupChatMessage> groupMessages;
+        IReadOnlyDictionary<GroupId, IReadOnlyList<DeletedRange>> deletedGroupMessages;
         try
         {
+            groupMessages = await groupStore.LoadMessagesAsync(cancellationToken).ConfigureAwait(false);
+            deletedGroupMessages = await groupStore.LoadDeletedAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            foreach (LoadedGroup group in loadedGroups)
+            {
+                group.Key.Dispose();
+            }
+
+            throw;
+        }
+
+        ContactBook contactBook = new(identity, setup.ContactStore, contacts);
+        ChatLog chatLog = new(setup.ChatStore, setup.SeenMessageIds, setup.TimeProvider, messages, sentSequences);
+        GroupBook groupBook = new(identity, contactBook, groupStore, loadedGroups, setup.Loggers.CreateLogger<GroupBook>(), setup.Failures);
+        GroupChats groupChats = new(groupBook, identity, groupStore, setup.SeenMessageIds, setup.TimeProvider, groupMessages, deletedGroupMessages, chatLog.EnterDeliveryAsync);
+        ConnectionService connections = new(identity, contactBook, chatLog, groupBook, groupChats, setup.Connection, setup.TimeProvider, setup.Loggers, setup.Failures);
+        IWakeUpScheduler scheduler = setup.WakeUps ?? new TimerWakeUpScheduler(setup.TimeProvider);
+        Outbox outbox = new(chatLog, groupBook, groupChats, connections, scheduler, setup.Delivery, setup.TimeProvider, setup.Loggers.CreateLogger<Outbox>(), setup.Failures);
+        Messenger messenger = new(identity, contactBook, chatLog, groupBook, groupChats, connections, outbox, setup.TimeProvider);
+        try
+        {
+            await groupBook.JoinWhereReadyAsync(cancellationToken).ConfigureAwait(false);
             await connections.ListenAsync(setup.ListenAddress, setup.ListenPort, cancellationToken).ConfigureAwait(false);
             if (setup.Discovery is { } discovery)
             {
@@ -117,6 +155,20 @@ public sealed class Messenger : IAsyncDisposable
         return new SendResult(SendOutcome.Queued, recorded);
     }
 
+    public Task<CreateGroupResult> CreateGroupAsync(string? name, IReadOnlyCollection<Ed25519PublicKey> contactKeys, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(contactKeys);
+
+        return Groups.CreateAsync(name, contactKeys, cancellationToken);
+    }
+
+    public Task<GroupSendResult> SendToGroupAsync(GroupId groupId, string? text, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(groupId);
+
+        return GroupChats.SendAsync(groupId, text, cancellationToken);
+    }
+
     public Task<int> DeleteChatAsync(Ed25519PublicKey contactKey, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(contactKey);
@@ -132,6 +184,21 @@ public sealed class Messenger : IAsyncDisposable
         return Chats.DeleteWaitingAsync(contactKey, id, cancellationToken);
     }
 
+    public Task<int> DeleteGroupChatAsync(GroupId groupId, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(groupId);
+
+        return GroupChats.DeleteChatAsync(groupId, cancellationToken);
+    }
+
+    public Task<bool> DeleteWaitingGroupMessageAsync(GroupId groupId, MessageId id, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(groupId);
+        ArgumentNullException.ThrowIfNull(id);
+
+        return GroupChats.DeleteWaitingAsync(groupId, id, cancellationToken);
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (Interlocked.Exchange(ref disposed, 1) != 0)
@@ -142,6 +209,8 @@ public sealed class Messenger : IAsyncDisposable
         await InternetRoute.DisposeAsync().ConfigureAwait(false);
         await outbox.DisposeAsync().ConfigureAwait(false);
         await Connections.DisposeAsync().ConfigureAwait(false);
+        GroupChats.Dispose();
+        Groups.Dispose();
         Chats.Dispose();
         Contacts.Dispose();
     }

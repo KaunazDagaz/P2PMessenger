@@ -49,8 +49,31 @@ public sealed class MigrationCatalogTests
     {
         var migrations = MigrationCatalog.Load();
 
-        Assert.Equal(4, migrations.Count);
         Assert.Equal("0004_sent_sequence", migrations[3].Name);
         Assert.Contains("ADD COLUMN sent_sequence_enc", migrations[3].Script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("Story", "US-12")]
+    public void Load_FifthScript_AddsTheGroupRecordAndTheJoinAndNoticeStates()
+    {
+        var migrations = MigrationCatalog.Load();
+
+        Assert.Equal("0005_groups", migrations[4].Name);
+        Assert.Contains("ADD COLUMN record_enc", migrations[4].Script, StringComparison.Ordinal);
+        Assert.Contains("ADD COLUMN joined", migrations[4].Script, StringComparison.Ordinal);
+        Assert.Contains("ADD COLUMN invitation_state", migrations[4].Script, StringComparison.Ordinal);
+        Assert.Contains("ADD COLUMN join_state", migrations[4].Script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("Story", "US-21")]
+    public void Load_SixthScript_AddsTheDeletedRangesOfAGroupChat()
+    {
+        var migrations = MigrationCatalog.Load();
+
+        Assert.Equal(6, migrations.Count);
+        Assert.Equal("0006_deleted_group_messages", migrations[5].Name);
+        Assert.Contains("ADD COLUMN deleted_ranges_enc", migrations[5].Script, StringComparison.Ordinal);
     }
 }

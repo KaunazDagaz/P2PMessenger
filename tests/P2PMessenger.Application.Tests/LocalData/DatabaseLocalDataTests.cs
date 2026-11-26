@@ -3,9 +3,11 @@ using System.Text;
 using Microsoft.Data.Sqlite;
 using P2PMessenger.Application.Chats;
 using P2PMessenger.Application.Contacts;
+using P2PMessenger.Application.Groups;
 using P2PMessenger.Application.Identity;
 using P2PMessenger.Application.LocalData;
 using P2PMessenger.Core.Crypto;
+using P2PMessenger.Core.Groups;
 using P2PMessenger.Core.Identity;
 using P2PMessenger.Core.Messages;
 
@@ -325,6 +327,32 @@ public sealed class DatabaseLocalDataTests
         Assert.Equal(change.Contains("protection", StringComparison.Ordinal) ? LocalDataProblem.KeyNotFound : LocalDataProblem.Damaged, result.Problem);
     }
 
+    [Theory]
+    [Trait("Story", "US-20")]
+    [Trait("Story", "US-12")]
+    [InlineData("UPDATE group_key SET record_enc = randomblob(300);")]
+    [InlineData("UPDATE message SET group_envelope_enc = randomblob(200) WHERE group_envelope_enc IS NOT NULL;")]
+    [InlineData("UPDATE conversation SET deleted_ranges_enc = randomblob(100) WHERE group_id IS NOT NULL;")]
+    public async Task Open_ChangedGroupData_SaysTheDataIsDamaged(string change)
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        using var folder = new LocalDataFolder();
+        var protector = new TestKeyProtector();
+        await FillWithGroupAsync(folder.DatabasePath, protector, cancellationToken);
+        await using (var intact = new DatabaseLocalData(folder.DatabasePath, protector))
+        {
+            Assert.True((await intact.OpenAsync(cancellationToken)).IsOpen);
+        }
+
+        await ExecuteAsync(folder.DatabasePath, change, cancellationToken);
+
+        await using var localData = new DatabaseLocalData(folder.DatabasePath, protector);
+        var result = await localData.OpenAsync(cancellationToken);
+
+        Assert.False(result.IsOpen);
+        Assert.Equal(LocalDataProblem.Damaged, result.Problem);
+    }
+
     [Fact]
     public async Task Open_FileThatIsNotADatabase_SaysTheDataIsDamaged()
     {
@@ -410,6 +438,37 @@ public sealed class DatabaseLocalDataTests
         }
 
         return new StoredSample(identity.Keys.IdentityKey, contact, messages);
+    }
+
+    private static async Task FillWithGroupAsync(string databasePath, TestKeyProtector protector, CancellationToken cancellationToken)
+    {
+        await using var localData = new DatabaseLocalData(databasePath, protector);
+        var result = await localData.CreateAsync(null, cancellationToken);
+        Assert.True(result.IsOpen);
+        var created = await new IdentityService(result.Stores.Identity).CreateAsync("Alice", cancellationToken);
+        Assert.True(created.IsCreated);
+        using var identity = created.Identity;
+        using var bobKeys = KeySet.Create();
+        await result.Stores.Contacts.SaveAsync(new Contact(TestKeys.Code(bobKeys, "Bob"), ContactState.Added, KeyComparison.CheckedByYou), cancellationToken);
+
+        using var key = GroupKey.Create();
+        GroupMember[] members = [new(identity.Keys.IdentityKey, identity.Name), new(bobKeys.IdentityKey, TestKeys.Name("Bob"))];
+        var record = GroupRecord.Create(GroupId.Create(), 1, TestKeys.Name("Team"), key, members, bobKeys);
+        GroupMemberStatus[] statuses = [.. record.Members.Select(static member => new GroupMemberStatus(member.IdentityKey, member.Name, MemberJoin.Joined, NoticeState.None, NoticeState.None))];
+        await result.Stores.Groups.AddGroupAsync(record, key, statuses, cancellationToken);
+        Assert.True(GroupText.TryCreate(MessageId.Create(), 2, DateTimeOffset.UnixEpoch, "Hello team", out var text));
+        var envelope = GroupMessage.Seal(key, record.GroupId, 1, bobKeys, text);
+        var message = new GroupChatMessage(envelope, text.Id, 2, text.WrittenAt, text.Text, DateTimeOffset.UnixEpoch, new Dictionary<Ed25519PublicKey, DeliveryState>());
+        Assert.True(await result.Stores.Groups.AddMessageAsync(message, cancellationToken));
+        Assert.Equal(1, await result.Stores.Groups.DeleteChatAsync(record.GroupId, [new DeletedRange(bobKeys.IdentityKey, 1, 2)], cancellationToken));
+        Assert.True(await result.Stores.Groups.AddMessageAsync(Again(key, record, bobKeys), cancellationToken));
+    }
+
+    private static GroupChatMessage Again(GroupKey key, GroupRecord record, KeySet author)
+    {
+        Assert.True(GroupText.TryCreate(MessageId.Create(), 3, DateTimeOffset.UnixEpoch, "Still here", out var text));
+        var envelope = GroupMessage.Seal(key, record.GroupId, 1, author, text);
+        return new GroupChatMessage(envelope, text.Id, 3, text.WrittenAt, text.Text, DateTimeOffset.UnixEpoch, new Dictionary<Ed25519PublicKey, DeliveryState>());
     }
 
     [SuppressMessage("Security", "CA2100:Review SQL queries for security vulnerabilities", Justification = "The tests pass constant SQL.")]

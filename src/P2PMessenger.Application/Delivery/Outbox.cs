@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using P2PMessenger.Application.Chats;
 using P2PMessenger.Application.Connections;
+using P2PMessenger.Application.Groups;
 using P2PMessenger.Core;
 using P2PMessenger.Core.Crypto;
 using P2PMessenger.Core.Messages;
@@ -16,6 +17,8 @@ internal sealed class Outbox : IAsyncDisposable
         "Sending waiting messages failed with {ExceptionType}; they stay waiting.");
 
     private readonly ChatLog chats;
+    private readonly GroupBook groups;
+    private readonly GroupChats groupChats;
     private readonly ConnectionService connections;
     private readonly DeliveryOptions options;
     private readonly TimeProvider timeProvider;
@@ -30,6 +33,8 @@ internal sealed class Outbox : IAsyncDisposable
 
     public Outbox(
         ChatLog chats,
+        GroupBook groups,
+        GroupChats groupChats,
         ConnectionService connections,
         IWakeUpScheduler scheduler,
         DeliveryOptions options,
@@ -38,6 +43,8 @@ internal sealed class Outbox : IAsyncDisposable
         IFailureSink? failures = null)
     {
         this.chats = chats;
+        this.groups = groups;
+        this.groupChats = groupChats;
         this.connections = connections;
         this.options = options;
         this.timeProvider = timeProvider;
@@ -45,6 +52,8 @@ internal sealed class Outbox : IAsyncDisposable
         failureSink = failures;
         stopToken = stopping.Token;
         connections.Changed += OnConnectionChanged;
+        groups.DeliveryNeeded += OnDeliveryNeeded;
+        groupChats.DeliveryNeeded += OnDeliveryNeeded;
         wakeUps = scheduler.Every(options.WakeUpInterval, WakeUp);
     }
 
@@ -70,7 +79,11 @@ internal sealed class Outbox : IAsyncDisposable
 
     public void WakeUp()
     {
-        foreach (Ed25519PublicKey contactKey in chats.ContactsWithWaitingMessages())
+        IEnumerable<Ed25519PublicKey> waiting = chats.ContactsWithWaitingMessages()
+            .Concat(groups.ContactsWithPendingNotices())
+            .Concat(groupChats.MembersWithWaitingMessages())
+            .Distinct();
+        foreach (Ed25519PublicKey contactKey in waiting)
         {
             if (connections.IsConnected(contactKey))
             {
@@ -95,6 +108,8 @@ internal sealed class Outbox : IAsyncDisposable
         }
 
         connections.Changed -= OnConnectionChanged;
+        groups.DeliveryNeeded -= OnDeliveryNeeded;
+        groupChats.DeliveryNeeded -= OnDeliveryNeeded;
         wakeUps.Dispose();
         await stopping.CancelAsync().ConfigureAwait(false);
         await Task.WhenAll(stopped.Select(static courier => courier.Stop())).ConfigureAwait(false);
@@ -108,6 +123,8 @@ internal sealed class Outbox : IAsyncDisposable
             Request(contactKey);
         }
     }
+
+    private void OnDeliveryNeeded(object? sender, Ed25519PublicKey contactKey) => Request(contactKey);
 
     private readonly record struct Attempt(ContactConnection Connection, long SentAt);
 
@@ -207,7 +224,8 @@ internal sealed class Outbox : IAsyncDisposable
             }
 
             IReadOnlyList<ChatMessage> waiting = outbox.chats.WaitingFor(contactKey);
-            HashSet<MessageId> stillWaiting = [.. waiting.Select(static message => message.Id)];
+            IReadOnlyList<PendingSend> groupItems = [.. outbox.groups.PendingNoticesFor(contactKey), .. outbox.groupChats.WaitingFor(contactKey)];
+            HashSet<MessageId> stillWaiting = [.. waiting.Select(static message => message.Id), .. groupItems.Select(static item => item.Id)];
             foreach (MessageId done in attempts.Keys.Where(id => !stillWaiting.Contains(id)).ToList())
             {
                 attempts.Remove(done);
@@ -220,9 +238,7 @@ internal sealed class Outbox : IAsyncDisposable
                     return;
                 }
 
-                if (attempts.TryGetValue(message.Id, out Attempt attempt)
-                    && ReferenceEquals(attempt.Connection, connection)
-                    && outbox.timeProvider.GetElapsedTime(attempt.SentAt) < outbox.options.ResendAfter)
+                if (IsRecent(message.Id, connection))
                 {
                     continue;
                 }
@@ -247,6 +263,39 @@ internal sealed class Outbox : IAsyncDisposable
 
                 attempts[message.Id] = new Attempt(connection, outbox.timeProvider.GetTimestamp());
             }
+
+            foreach (PendingSend item in groupItems)
+            {
+                if (stop.IsCancellationRequested || connection.IsClosed)
+                {
+                    return;
+                }
+
+                if (IsRecent(item.Id, connection))
+                {
+                    continue;
+                }
+
+                using (await outbox.chats.EnterDeliveryAsync(contactKey, stop).ConfigureAwait(false))
+                {
+                    if (!(outbox.groups.IsNoticePending(contactKey, item.Id) || outbox.groupChats.IsWaitingFor(contactKey, item.Id)))
+                    {
+                        continue;
+                    }
+
+                    if (!await connection.SendAsync(item.Message, stop).ConfigureAwait(false))
+                    {
+                        return;
+                    }
+                }
+
+                attempts[item.Id] = new Attempt(connection, outbox.timeProvider.GetTimestamp());
+            }
         }
+
+        private bool IsRecent(MessageId id, ContactConnection connection) =>
+            attempts.TryGetValue(id, out Attempt attempt)
+            && ReferenceEquals(attempt.Connection, connection)
+            && outbox.timeProvider.GetElapsedTime(attempt.SentAt) < outbox.options.ResendAfter;
     }
 }

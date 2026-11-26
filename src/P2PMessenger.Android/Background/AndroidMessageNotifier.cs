@@ -48,4 +48,12 @@ internal sealed class AndroidMessageNotifier : IMessageNotifier
         Notifications.ShowMessage(context, notice);
         MessengerService.Current?.Record("notification: a message notification was shown");
     }
+
+    public void ShowGroup(GroupMessageNotice notice)
+    {
+        ArgumentNullException.ThrowIfNull(notice);
+
+        Notifications.ShowGroupMessage(context, notice);
+        MessengerService.Current?.Record("notification: a group message notification was shown");
+    }
 }

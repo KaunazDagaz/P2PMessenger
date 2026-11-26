@@ -4,7 +4,7 @@ Each device keeps its data in one SQLite database of its own. There is no server
 
 This file documents the database: the design rules, the logical schema, how stored data is protected, the data dictionary, normalisation, migrations, and how to create and inspect a database. The schema is created and changed only by the numbered scripts in [`Migrations`](Migrations); nothing is created by hand.
 
-**Status:** the schema, its migrations, the encryption described in [How stored data is protected](#how-stored-data-is-protected) and the repositories exist, with their tests. The app keeps its identity, contacts, messages, the delivery state of its own one-to-one messages and the IDs of seen messages here, on Windows, Linux and Android, and deletes a chat, a waiting message or all its data here. On Android the data key is wrapped by the Android Keystore. Groups and the PC copy have tables but no code yet.
+**Status:** the schema, its migrations, the encryption described in [How stored data is protected](#how-stored-data-is-protected) and the repositories exist, with their tests. The app keeps its identity, contacts, messages, its groups with their signed member lists, keys and messages, the delivery state of its own messages for each recipient and the IDs of seen messages here, on Windows, Linux and Android, and deletes a chat (one-to-one or group), a waiting message or all its data here, keeping what a deleted group chat had so that it does not come back. On Android the data key is wrapped by the Android Keystore. The PC copy has tables but no code yet.
 
 ## Contents
 
@@ -84,17 +84,22 @@ erDiagram
         INTEGER group_id PK, FK
         INTEGER person_id PK, FK
         INTEGER state "1 to 3"
+        INTEGER joined "0 to 2"
+        INTEGER invitation_state "0 to 2"
+        INTEGER join_state "0 to 2"
     }
     group_key {
         INTEGER group_id PK, FK
         INTEGER epoch PK
         BLOB key_enc "encrypted"
+        BLOB record_enc "encrypted"
     }
     conversation {
         INTEGER id PK
         INTEGER contact_person_id FK, UK "or"
         INTEGER group_id FK, UK "or"
         BLOB sent_sequence_enc "encrypted, optional"
+        BLOB deleted_ranges_enc "encrypted, optional"
     }
     message {
         INTEGER id PK
@@ -160,7 +165,7 @@ All cryptography comes from libsodium through NSec (`Protection/RecordKeys.cs`).
 
 - **Two keys from the data key.** HKDF-SHA-256 extracts a pseudorandom key from the data key with the salt `P2PM/storage/v1` and expands two keys from it: with the info `P2PM/storage/v1/record-key` the XChaCha20-Poly1305 key for `_enc` values, and with `P2PM/storage/v1/lookup-key` the BLAKE2b-256 key for `_mac` values. The data key itself is cleared from memory once the two keys exist.
 - **An encrypted value** is a random 24-byte nonce, then the ciphertext, then the 16-byte tag. The associated data is the ASCII text `P2PM/storage/v1`, a zero byte, the table name, a zero byte, the column name, a zero byte and the row's key as a big-endian 64-bit integer. For example, the name in row 2 of `person` is bound to the bytes of `P2PM/storage/v1`, `00`, `person`, `00`, `display_name_enc`, `00` and `00 00 00 00 00 00 00 02`. A value copied to another row, column or table does not decrypt.
-- **A MAC** is BLAKE2b-256 under the lookup key of `P2PM/lookup/v1/` and a domain name (`identity-key`, `static-key` or `message-id`), a zero byte and the value. The same message ID gives the same MAC in `message` and in `seen_message`.
+- **A MAC** is BLAKE2b-256 under the lookup key of `P2PM/lookup/v1/` and a domain name (`identity-key`, `static-key`, `message-id` or `group-id`), a zero byte and the value. The same message ID gives the same MAC in `message` and in `seen_message`.
 - **What is inside an encrypted value:** public keys as their 32 bytes, the user's private keys as one 97-byte block (a version byte and the three 32-byte private keys), names and texts as UTF-8, a contact code's signature as its 64 bytes, a message ID as its 16 bytes, times as an 8-byte big-endian count of 100-nanosecond ticks since 0001-01-01 UTC, and a sequence number as an 8-byte big-endian integer of at least 1.
 - **Reading checks everything.** Every value must decrypt with its own associated data, every MAC must match the value it was made from, and a contact code rebuilt from its parts must carry a valid signature. If anything fails, the app reads nothing and says that the stored data was changed or damaged.
 
@@ -250,7 +255,10 @@ Who is, or was, in a group, the user included. `WITHOUT ROWID`.
 | --- | --- | --- | --- | --- | --- |
 | `group_id` | INTEGER | No | PK, FK `chat_group.id` | Plain | The group; deleting the group deletes its members |
 | `person_id` | INTEGER | No | PK, FK `person.id` | Plain | The member |
-| `state` | INTEGER | No | | Plain | 1 = member, 2 = removed by another member, 3 = left the group |
+| `state` | INTEGER | No | | Plain | 1 = member, 2 = removed by another member, 3 = left the group; this version writes and reads only 1 |
+| `joined` | INTEGER | No | | Plain | 0 = not joined yet, 1 = joined with the same member list as this device's, 2 = joined with another member list. The person who signed the group's record counts as joined. Added by `0005_groups.sql` |
+| `invitation_state` | INTEGER | No | | Plain | The invitation that this device sends that member as the group's creator: 0 = none, 1 = waiting, 2 = received by the member's app. Added by `0005_groups.sql` |
+| `join_state` | INTEGER | No | | Plain | The user's own join, sent to that member: 0 = none, 1 = waiting, 2 = received by the member's app. Added by `0005_groups.sql` |
 
 Index `ix_group_member_person (person_id)`: the groups of a person. Whether a member still has to be added as a contact is not stored: it is a member whose person has no `contact` row.
 
@@ -262,7 +270,8 @@ The keys that encrypt a group's messages, one per epoch. A removal starts a new 
 | --- | --- | --- | --- | --- | --- |
 | `group_id` | INTEGER | No | PK, FK `chat_group.id` | Plain | The group; deleting the group deletes its keys |
 | `epoch` | INTEGER | No | PK | Plain | The key's number within the group, from 1 |
-| `key_enc` | BLOB | No | | Encrypted | The group key |
+| `key_enc` | BLOB | No | | Encrypted | The group key. Its associated data names the row as the group's row times 2^32 plus the epoch |
+| `record_enc` | BLOB | No | | Encrypted | The group's record for that epoch as its signer signed it: the group ID, the epoch, the name, the members and the signature. Loading checks the signature, that the record names this group, its name and this key, and that the members match the `group_member` rows. Added by `0005_groups.sql` |
 
 ### `conversation`
 
@@ -273,12 +282,14 @@ A chat: with one contact, or in one group.
 | `id` | INTEGER | No | PK | Plain | Surrogate key |
 | `contact_person_id` | INTEGER | Yes | FK `contact.person_id`, UK | Plain | The contact of a one-to-one chat; deleting the contact deletes the chat |
 | `group_id` | INTEGER | Yes | FK `chat_group.id`, UK | Plain | The group of a group chat; deleting the group deletes the chat |
+| `sent_sequence_enc` | BLOB | Yes | | Encrypted | One-to-one chats only: the highest sequence number of the user's own messages that were deleted from this chat; empty until the user deletes a message of the chat. Added by `0004_sent_sequence.sql` |
+| `deleted_ranges_enc` | BLOB | Yes | | Encrypted | Group chats only: for each author, the ranges of sequence numbers of the messages that were deleted from this chat, the user's own included; empty until the user deletes a message of the chat. Added by `0006_deleted_group_messages.sql` |
 
-| `sent_sequence_enc` | BLOB | Yes | | Encrypted | The highest sequence number of the user's own messages that were deleted from this chat; empty until the user deletes a message of the chat. Added by `0004_sent_sequence.sql` |
-
-Constraint: exactly one of `contact_person_id` and `group_id` is set. Both are unique, so a contact or a group has at most one chat. `sent_sequence_enc` is empty or at least 40 bytes.
+Constraint: exactly one of `contact_person_id` and `group_id` is set. Both are unique, so a contact or a group has at most one chat. `sent_sequence_enc` and `deleted_ranges_enc` are empty or at least 40 bytes.
 
 Deleting a chat in the app deletes its messages, and with them their deliveries, but keeps the `conversation` row. Before the messages go, the highest sequence number among the user's own messages in the chat is stored in `sent_sequence_enc`, unless a higher one is there already; deleting a single waiting message stores it the same way. The next message to the contact then continues after the deleted ones, so the contact's app, which still has them and orders each sender's messages by number, shows it after them, and no number is used twice. When the app starts, a chat's next number is one more than the higher of `sent_sequence_enc` and its stored own messages.
+
+A group chat keeps more than that, because its messages come from several authors and the members' apps will later pass on to each other the messages that one of them lacks: deleting a group chat, or the user's own group message that no member's app has yet, stores in `deleted_ranges_enc`, for each author, which sequence numbers this device had. The value is a 4-byte count followed by that many entries of the author's 32-byte identity key and the first and last sequence number of a range (8 bytes each, big-endian), sorted by key and first number, with ranges of one author neither overlapping nor touching; it is sealed like every encrypted value, bound to its `conversation` row, and replaced as a whole. The app refuses a group message whose author and number fall in a deleted range, a resent copy of a deleted message is confirmed but not shown again (its ID stays in `seen_message`), and the user's next group message is numbered after the highest of the user's own deleted ones. Loading checks the count, the length and the order, and a value that fails any check is "damaged".
 
 ### `message`
 
@@ -383,6 +394,8 @@ Two kinds of derived values are kept on purpose:
   | `0002_message_id.sql` | Adds `message.message_id_enc` and `message.recorded_at_enc`. It is refused, and rolled back, in a database that already holds messages, because those would have no value for the new columns; no released version of the app stored messages before it |
   | `0003_outgoing_delivery.sql` | Changes no table. Gives every one-to-one message the user sent before deliveries were kept a `message_delivery` row in state 1 (waiting): the app had not been told that those messages arrived, so it sends them again under the same IDs, and the contact's app, which drops a copy it already has, confirms them |
   | `0004_sent_sequence.sql` | Adds `conversation.sent_sequence_enc`, empty in every existing row, so that a chat keeps its next sequence number when its messages are deleted (see [`conversation`](#conversation)) |
+  | `0005_groups.sql` | Adds `group_key.record_enc` and `group_member.joined`, `invitation_state` and `join_state`. No earlier version stored a group, so no row needs a value |
+  | `0006_deleted_group_messages.sql` | Adds `conversation.deleted_ranges_enc`, empty for every existing chat |
 
 - `MigrationRunner.MigrateAsync` reads the schema version from `PRAGMA user_version`, applies every newer script in order, and records the new version. Each script runs in one transaction together with the version update, so a failing script leaves the database at the previous version.
 - A database whose version is newer than the newest script is refused, not changed.
@@ -401,7 +414,7 @@ A database can be built from the scripts in two ways: with the SQLite command-li
 ### Create a database
 
 ```
-sqlite3 review.db ".read src/P2PMessenger.Storage/Migrations/0001_initial.sql" ".read src/P2PMessenger.Storage/Migrations/0002_message_id.sql" ".read src/P2PMessenger.Storage/Migrations/0003_outgoing_delivery.sql" ".read src/P2PMessenger.Storage/Migrations/0004_sent_sequence.sql"
+sqlite3 review.db ".read src/P2PMessenger.Storage/Migrations/0001_initial.sql" ".read src/P2PMessenger.Storage/Migrations/0002_message_id.sql" ".read src/P2PMessenger.Storage/Migrations/0003_outgoing_delivery.sql" ".read src/P2PMessenger.Storage/Migrations/0004_sent_sequence.sql" ".read src/P2PMessenger.Storage/Migrations/0005_groups.sql" ".read src/P2PMessenger.Storage/Migrations/0006_deleted_group_messages.sql"
 ```
 
 Read the scripts in number order. The shell leaves `user_version` at 0, because the migration runner, not the script, records the version.
@@ -484,6 +497,7 @@ The tests build temporary databases with `MigrationRunner` and `SqliteDatabase`,
 - `0003_outgoing_delivery.sql` gives the user's earlier messages, and only those, a waiting delivery, and `0004_sent_sequence.sql` adds the sequence column;
 - a message is stored together with its ID among the seen IDs and, if the user wrote it, its waiting delivery; the delivery becomes received only for the contact the message was sent to, and only once;
 - a message of the user without its delivery, a delivery for another person, and a received message with a delivery are refused as damaged;
+- a group comes back with the same signed record, key and member states, a member who is not a contact is stored as a person with the name from the record, a group key that does not fit the record or that was moved to another group's row is refused, and a group message keeps its signed envelope and one delivery per member, of which only the one for the member who confirmed it becomes received; a second message with an author's used sequence number is not stored;
 - the key derivation and XChaCha20-Poly1305 give the published test vectors (RFC 5869, draft-irtf-cfrg-xchacha), and the associated data, two encrypted values and the MACs match an independent Python implementation;
 - every flipped bit of every stored encrypted value and MAC, and a value moved to another row or column, is refused;
 - a stored identity, contacts, messages and seen IDs come back unchanged after the database is closed and opened again;

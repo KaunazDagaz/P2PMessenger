@@ -5,9 +5,11 @@ using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
 using P2PMessenger.Application.Chats;
 using P2PMessenger.Application.Contacts;
+using P2PMessenger.Application.Groups;
 using P2PMessenger.Application.Identity;
 using P2PMessenger.Core;
 using P2PMessenger.Core.Crypto;
+using P2PMessenger.Core.Groups;
 using P2PMessenger.Core.Messages;
 using P2PMessenger.Core.Sessions;
 using P2PMessenger.Transport.Connections;
@@ -27,6 +29,8 @@ public sealed class ConnectionService : IAsyncDisposable
     private readonly OwnIdentity own;
     private readonly ContactBook contacts;
     private readonly ChatLog chats;
+    private readonly GroupBook groups;
+    private readonly GroupChats groupChats;
     private readonly ConnectionOptions options;
     private readonly TimeProvider timeProvider;
     private readonly ILoggerFactory loggers;
@@ -48,6 +52,8 @@ public sealed class ConnectionService : IAsyncDisposable
         OwnIdentity own,
         ContactBook contacts,
         ChatLog chats,
+        GroupBook groups,
+        GroupChats groupChats,
         ConnectionOptions options,
         TimeProvider timeProvider,
         ILoggerFactory loggers,
@@ -56,6 +62,8 @@ public sealed class ConnectionService : IAsyncDisposable
         this.own = own;
         this.contacts = contacts;
         this.chats = chats;
+        this.groups = groups;
+        this.groupChats = groupChats;
         this.options = options;
         this.timeProvider = timeProvider;
         this.loggers = loggers;
@@ -671,7 +679,33 @@ public sealed class ConnectionService : IAsyncDisposable
                     _ = connection.SendAsync(Acknowledgement.Create(text.Id), CancellationToken.None);
                     break;
                 case Acknowledgement acknowledgement:
-                    await service.chats.MarkReceivedAsync(contactKey, acknowledgement.Id, cancellationToken).ConfigureAwait(false);
+                    if (!await service.chats.MarkReceivedAsync(contactKey, acknowledgement.Id, cancellationToken).ConfigureAwait(false)
+                        && !await service.groups.MarkNoticeReceivedAsync(contactKey, acknowledgement.Id, cancellationToken).ConfigureAwait(false))
+                    {
+                        await service.groupChats.MarkReceivedAsync(contactKey, acknowledgement.Id, cancellationToken).ConfigureAwait(false);
+                    }
+
+                    break;
+                case GroupInvitation invitation:
+                    if (await service.groups.ReceiveInvitationAsync(contactKey, invitation, cancellationToken).ConfigureAwait(false))
+                    {
+                        _ = connection.SendAsync(Acknowledgement.Create(invitation.NoticeId), CancellationToken.None);
+                    }
+
+                    break;
+                case GroupJoin join:
+                    if (await service.groups.ReceiveJoinAsync(contactKey, join, cancellationToken).ConfigureAwait(false))
+                    {
+                        _ = connection.SendAsync(Acknowledgement.Create(GroupNotices.JoinId(join.RecordHash, contactKey)), CancellationToken.None);
+                    }
+
+                    break;
+                case GroupMessage groupMessage:
+                    if (await service.groupChats.ReceiveAsync(contactKey, groupMessage, cancellationToken).ConfigureAwait(false) is { } received)
+                    {
+                        _ = connection.SendAsync(Acknowledgement.Create(received), CancellationToken.None);
+                    }
+
                     break;
             }
         }

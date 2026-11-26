@@ -1,0 +1,44 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:P2PMessenger.UI.ViewModels"
+             xmlns:res="using:P2PMessenger.UI.Resources"
+             x:Class="P2PMessenger.UI.Views.NewGroupView"
+             x:DataType="vm:NewGroupViewModel">
+    <ScrollViewer>
+        <StackPanel Margin="16" Spacing="8" MaxWidth="640">
+            <TextBlock x:Name="IntroText" Text="{x:Static res:UiText.NewGroupIntro}" TextWrapping="Wrap" />
+            <TextBlock Text="{x:Static res:UiText.NewGroupNameLabel}" FontWeight="SemiBold" Margin="0,8,0,0" />
+            <TextBox x:Name="NameBox"
+                     Text="{Binding Name}"
+                     PlaceholderText="{x:Static res:UiText.NewGroupNamePlaceholder}"
+                     AutomationProperties.Name="{x:Static res:UiText.NewGroupNameLabel}" />
+            <TextBlock Text="{x:Static res:UiText.NewGroupMembersLabel}" FontWeight="SemiBold" Margin="0,8,0,0" />
+            <TextBlock x:Name="NoContactsText"
+                       Text="{x:Static res:UiText.NewGroupNoContacts}"
+                       TextWrapping="Wrap"
+                       IsVisible="{Binding HasNoContacts}" />
+            <ItemsControl x:Name="CandidateItems" ItemsSource="{Binding Candidates}" IsVisible="{Binding HasContacts}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:GroupCandidateViewModel">
+                        <CheckBox Margin="0,0,0,6" IsChecked="{Binding IsSelected}" AutomationProperties.Name="{Binding Name}">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding Fingerprint}" FontFamily="monospace" FontSize="12" />
+                            </StackPanel>
+                        </CheckBox>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button x:Name="CreateButton" Content="{x:Static res:UiText.NewGroupCreate}" Command="{Binding CreateCommand}" />
+            <ProgressBar x:Name="BusyBar"
+                         IsIndeterminate="True"
+                         IsVisible="{Binding IsBusy}"
+                         AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
+            <TextBlock x:Name="ErrorText"
+                       Text="{Binding ErrorMessage}"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
+                       TextWrapping="Wrap" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

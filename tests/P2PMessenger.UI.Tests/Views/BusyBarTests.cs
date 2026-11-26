@@ -164,6 +164,23 @@ public sealed class BusyBarTests
         harness.Messenger.Identity.Dispose();
     }
 
+    [AvaloniaFact]
+    public async Task NewGroupAndGroupConversation_WhileBusyOrDeleting_ShowTheProgressBars()
+    {
+        await using var harness = await UiHarness.StartAsync("Alice");
+        var newGroup = harness.Shell.Pages.NewGroup();
+        var newGroupView = new NewGroupView { DataContext = newGroup };
+        harness.Show(newGroupView);
+        var conversation = harness.Shell.Pages.GroupConversation(Core.Groups.GroupId.Create());
+        var conversationView = new GroupConversationView { DataContext = conversation };
+        harness.Show(conversationView);
+
+        FollowsBusy(UiHarness.Find<ProgressBar>(newGroupView, "BusyBar"), busy => newGroup.IsBusy = busy);
+        FollowsBusy(UiHarness.Find<ProgressBar>(conversationView, "BusyBar"), busy => conversation.IsBusy = busy);
+        FollowsBusy(UiHarness.Find<ProgressBar>(conversationView, "DeleteChatBusyBar"), busy => conversation.IsDeletingChat = busy);
+        harness.Messenger.Identity.Dispose();
+    }
+
     private static void FollowsBusy(ProgressBar bar, Action<bool> setBusy)
     {
         Assert.True(bar.IsIndeterminate);

@@ -6,4 +6,7 @@ public enum SessionMessageType
     Text = 1,
     Acknowledgement = 2,
     KeepAlive = 3,
+    GroupInvitation = 4,
+    GroupJoin = 5,
+    GroupMessage = 6,
 }

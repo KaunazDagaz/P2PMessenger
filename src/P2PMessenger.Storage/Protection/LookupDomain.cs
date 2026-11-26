@@ -5,4 +5,5 @@ public enum LookupDomain
     IdentityKey = 1,
     StaticKey = 2,
     MessageId = 3,
+    GroupId = 4,
 }

@@ -27,6 +27,12 @@
         <DataTemplate DataType="vm:ConversationViewModel">
             <v:ConversationView />
         </DataTemplate>
+        <DataTemplate DataType="vm:NewGroupViewModel">
+            <v:NewGroupView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:GroupConversationViewModel">
+            <v:GroupConversationView />
+        </DataTemplate>
         <DataTemplate DataType="vm:VerifyContactViewModel">
             <v:VerifyContactView />
         </DataTemplate>
