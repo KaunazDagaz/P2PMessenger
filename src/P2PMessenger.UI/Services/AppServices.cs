@@ -96,6 +96,10 @@ public sealed class AppServices : IAsyncDisposable
 
     public bool OffersTor => initialSetup.Tor is { IsInBuild: true };
 
+    public bool CanSendPcCopy { get; init; }
+
+    public bool CanReceivePcCopy { get; init; }
+
     public Messenger? Messenger { get; private set; }
 
     public FailureLog FailureLog { get; }
@@ -238,6 +242,7 @@ public sealed class AppServices : IAsyncDisposable
             ContactStore = stores.Contacts,
             ChatStore = stores.Chats,
             GroupStore = stores.Groups,
+            CopiedChatStore = stores.CopiedChats,
             SeenMessageIds = stores.SeenMessageIds,
         };
         identities = new IdentityService(stores.Identity);

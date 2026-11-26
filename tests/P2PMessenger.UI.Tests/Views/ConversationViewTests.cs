@@ -303,7 +303,10 @@ public sealed class ConversationViewTests
         var bob = await harness.ConnectPeerAsync("Bob");
         var contact = harness.ContactOf(bob);
         await UiHarness.StopPeerAsync(bob);
-        await UiHarness.WaitUntilAsync(() => !harness.Messenger.Connections.IsHeard(contact.IdentityKey) && harness.Messenger.Connections.DialStatusOf(contact.IdentityKey) == Application.Connections.DialStatus.None);
+        await UiHarness.WaitUntilAsync(() =>
+            !harness.Messenger.Connections.IsConnected(contact.IdentityKey)
+            && !harness.Messenger.Connections.IsHeard(contact.IdentityKey)
+            && harness.Messenger.Connections.DialStatusOf(contact.IdentityKey) == Application.Connections.DialStatus.None);
         var page = harness.Shell.Pages.Conversation(contact);
         var view = new ConversationView { DataContext = page };
         harness.Show(view);

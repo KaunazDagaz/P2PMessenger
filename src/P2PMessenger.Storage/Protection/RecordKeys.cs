@@ -107,6 +107,7 @@ public sealed class RecordKeys : IDisposable
         LookupDomain.StaticKey => "P2PM/lookup/v1/static-key"u8,
         LookupDomain.MessageId => "P2PM/lookup/v1/message-id"u8,
         LookupDomain.GroupId => "P2PM/lookup/v1/group-id"u8,
+        LookupDomain.CopyOrigin => "P2PM/lookup/v1/copy-origin"u8,
         _ => throw new ArgumentOutOfRangeException(nameof(domain), domain, "Unknown lookup domain."),
     };
 }

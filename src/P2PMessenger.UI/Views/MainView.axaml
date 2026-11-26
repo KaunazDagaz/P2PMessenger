@@ -33,6 +33,15 @@
         <DataTemplate DataType="vm:GroupConversationViewModel">
             <v:GroupConversationView />
         </DataTemplate>
+        <DataTemplate DataType="vm:ReceiveCopyViewModel">
+            <v:ReceiveCopyView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:SendCopyViewModel">
+            <v:SendCopyView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:CopiedConversationViewModel">
+            <v:CopiedConversationView />
+        </DataTemplate>
         <DataTemplate DataType="vm:VerifyContactViewModel">
             <v:VerifyContactView />
         </DataTemplate>

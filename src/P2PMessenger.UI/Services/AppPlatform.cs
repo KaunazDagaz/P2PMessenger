@@ -52,6 +52,10 @@ public sealed class AppPlatform
 
     public ISettingsStore? Settings { get; init; }
 
+    public bool CanSendPcCopy { get; init; }
+
+    public bool CanReceivePcCopy { get; init; }
+
     public ILocalData CreateLocalData() =>
         DataFolder is { Length: > 0 } folder
             ? new DatabaseLocalData(Path.Combine(folder, DatabaseLocalData.FileName), KeyProtector)

@@ -1,0 +1,67 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:P2PMessenger.UI.ViewModels"
+             xmlns:res="using:P2PMessenger.UI.Resources"
+             x:Class="P2PMessenger.UI.Views.SendCopyView"
+             x:DataType="vm:SendCopyViewModel">
+    <ScrollViewer>
+        <StackPanel Margin="16" Spacing="8" MaxWidth="640">
+            <TextBlock x:Name="IntroText" Text="{x:Static res:UiText.SendCopyIntro}" TextWrapping="Wrap" />
+            <StackPanel x:Name="PairingPanel" Spacing="8" IsVisible="{Binding IsPairingVisible}">
+                <Button x:Name="ScanButton"
+                        Content="{x:Static res:UiText.SendCopyScan}"
+                        Command="{Binding ScanCommand}" />
+            </StackPanel>
+            <StackPanel x:Name="SelectingPanel" Spacing="8" IsVisible="{Binding IsSelectingVisible}">
+                <TextBlock Text="{x:Static res:UiText.SendCopyChatsLabel}" FontWeight="SemiBold" Margin="0,8,0,0" />
+                <TextBlock x:Name="NoChatsText"
+                           Text="{x:Static res:UiText.SendCopyNoChats}"
+                           TextWrapping="Wrap"
+                           IsVisible="{Binding HasNoCandidates}" />
+                <ItemsControl x:Name="CandidateItems" ItemsSource="{Binding Candidates}" IsVisible="{Binding HasCandidates}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:CopyCandidateViewModel">
+                            <CheckBox Margin="0,0,0,6" IsChecked="{Binding IsSelected}" AutomationProperties.Name="{Binding Title}">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding DetailText}" FontSize="12" />
+                                </StackPanel>
+                            </CheckBox>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <WrapPanel>
+                    <Button x:Name="CopySelectedButton"
+                            Margin="0,0,8,8"
+                            Content="{x:Static res:UiText.SendCopyStart}"
+                            Command="{Binding CopySelectedCommand}" />
+                    <Button x:Name="DisconnectButton"
+                            Margin="0,0,8,8"
+                            Content="{x:Static res:UiText.SendCopyDisconnect}"
+                            Command="{Binding DisconnectCommand}" />
+                </WrapPanel>
+            </StackPanel>
+            <ProgressBar x:Name="BusyBar"
+                         IsIndeterminate="True"
+                         IsVisible="{Binding IsBusy}"
+                         AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
+            <Border x:Name="StatusPanel"
+                    Padding="12"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                    IsVisible="{Binding HasStatus}">
+                <TextBlock x:Name="StatusText" Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+            </Border>
+            <TextBlock x:Name="ErrorText"
+                       Text="{Binding ErrorMessage}"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
+                       TextWrapping="Wrap" />
+            <Button x:Name="DoneButton"
+                    Content="{x:Static res:UiText.SendCopyDone}"
+                    Command="{Binding DoneCommand}"
+                    IsVisible="{Binding IsCompleted}" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

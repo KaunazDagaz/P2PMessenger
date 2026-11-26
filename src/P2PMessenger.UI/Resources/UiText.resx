@@ -927,4 +927,184 @@
   <data name="GroupMessageNotDeletable" xml:space="preserve">
     <value>A member's app has already received the message, so it was not deleted.</value>
   </data>
+  <data name="ContactListSendCopy" xml:space="preserve">
+    <value>Copy chats to PC</value>
+  </data>
+  <data name="ContactListReceiveCopy" xml:space="preserve">
+    <value>Receive a copy</value>
+  </data>
+  <data name="ContactListCopiedChatsHeading" xml:space="preserve">
+    <value>Copied chats (read-only)</value>
+  </data>
+  <data name="CopiedChatItemSummaryFormat" xml:space="preserve">
+    <value>Read-only copy · {0} messages · copied {1}</value>
+  </data>
+  <data name="CopiedChatItemSummaryOneFormat" xml:space="preserve">
+    <value>Read-only copy · 1 message · copied {0}</value>
+  </data>
+  <data name="CopiedConversationBannerFormat" xml:space="preserve">
+    <value>Read-only copy from your phone (copied {0}). You cannot reply here; new messages on your phone appear here only when you copy the chat again.</value>
+  </data>
+  <data name="CopiedConversationEmpty" xml:space="preserve">
+    <value>This copied chat has no messages.</value>
+  </data>
+  <data name="CopiedConversationYou" xml:space="preserve">
+    <value>You</value>
+  </data>
+  <data name="CopiedConversationDelete" xml:space="preserve">
+    <value>Delete copy</value>
+  </data>
+  <data name="CopiedConversationDeleteQuestionFormat" xml:space="preserve">
+    <value>Delete the copy of {0} from this PC? Your phone keeps its chat unchanged.</value>
+  </data>
+  <data name="CopiedConversationDeleteFailed" xml:space="preserve">
+    <value>The copied chat could not be deleted. Try again.</value>
+  </data>
+  <data name="ReceiveCopyTitle" xml:space="preserve">
+    <value>Receive a copy</value>
+  </data>
+  <data name="ReceiveCopyIntro" xml:space="preserve">
+    <value>Keep your phone and this PC on the same Wi-Fi network. On your phone, open "Copy chats to PC" and scan this QR code. Your phone's private keys are never copied; the copied chats are stored read-only on this PC.</value>
+  </data>
+  <data name="ReceiveCopyQrLabel" xml:space="preserve">
+    <value>Pairing QR code</value>
+  </data>
+  <data name="ReceiveCopyStarting" xml:space="preserve">
+    <value>Starting to wait for your phone…</value>
+  </data>
+  <data name="ReceiveCopyWaiting" xml:space="preserve">
+    <value>Waiting for your phone on the same Wi-Fi network…</value>
+  </data>
+  <data name="ReceiveCopyConnected" xml:space="preserve">
+    <value>Connected to your phone. Choose the chats to copy on your phone.</value>
+  </data>
+  <data name="ReceiveCopyReceivingFormat" xml:space="preserve">
+    <value>Receiving copied chats ({0} of {1})…</value>
+  </data>
+  <data name="ReceiveCopyCompletedFormat" xml:space="preserve">
+    <value>Saved {0} copied chats as read-only copies on this PC.</value>
+  </data>
+  <data name="ReceiveCopyCompletedOne" xml:space="preserve">
+    <value>Saved 1 copied chat as a read-only copy on this PC.</value>
+  </data>
+  <data name="ReceiveCopyNoNetwork" xml:space="preserve">
+    <value>This PC is not on a Wi-Fi or local network. Connect both this PC and your phone to the same Wi-Fi network, then try again.</value>
+  </data>
+  <data name="ReceiveCopyListenFailed" xml:space="preserve">
+    <value>Could not start listening on the local network. Check your firewall or network settings and try again.</value>
+  </data>
+  <data name="ReceiveCopyDisconnected" xml:space="preserve">
+    <value>The connection to your phone was interrupted. Any chats that finished before the break were saved; start again to copy the rest.</value>
+  </data>
+  <data name="ReceiveCopyFailed" xml:space="preserve">
+    <value>The copy did not finish cleanly. Nothing partial was saved; try again.</value>
+  </data>
+  <data name="ReceiveCopyTryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="ReceiveCopyAnother" xml:space="preserve">
+    <value>Receive another copy</value>
+  </data>
+  <data name="ReceiveCopyDone" xml:space="preserve">
+    <value>Back to chats</value>
+  </data>
+  <data name="SendCopyTitle" xml:space="preserve">
+    <value>Copy chats to PC</value>
+  </data>
+  <data name="SendCopyIntro" xml:space="preserve">
+    <value>Keep your phone and your PC on the same Wi-Fi network. On your PC, open "Receive a copy", then scan the QR code shown there. Only the messages of the chats you choose are copied; your private keys never leave this phone.</value>
+  </data>
+  <data name="SendCopyScan" xml:space="preserve">
+    <value>Scan PC QR code</value>
+  </data>
+  <data name="SendCopyScanTitle" xml:space="preserve">
+    <value>Scan PC pairing code</value>
+  </data>
+  <data name="SendCopyScanHint" xml:space="preserve">
+    <value>Point the camera at the pairing QR code shown on your PC.</value>
+  </data>
+  <data name="SendCopyConnecting" xml:space="preserve">
+    <value>Connecting to your PC…</value>
+  </data>
+  <data name="SendCopyConnected" xml:space="preserve">
+    <value>Connected to your PC. Choose which chats to copy; copying again updates the read-only copy on your PC.</value>
+  </data>
+  <data name="SendCopyChatsLabel" xml:space="preserve">
+    <value>Chats to copy</value>
+  </data>
+  <data name="SendCopyNoChats" xml:space="preserve">
+    <value>You have no added chats or created groups to copy yet.</value>
+  </data>
+  <data name="SendCopyCandidateContactFormat" xml:space="preserve">
+    <value>Chat · {0} messages</value>
+  </data>
+  <data name="SendCopyCandidateContactOne" xml:space="preserve">
+    <value>Chat · 1 message</value>
+  </data>
+  <data name="SendCopyCandidateContactTruncatedFormat" xml:space="preserve">
+    <value>Chat · newest {0} of {1} messages</value>
+  </data>
+  <data name="SendCopyCandidateGroupFormat" xml:space="preserve">
+    <value>Group · {0} messages</value>
+  </data>
+  <data name="SendCopyCandidateGroupOne" xml:space="preserve">
+    <value>Group · 1 message</value>
+  </data>
+  <data name="SendCopyCandidateGroupTruncatedFormat" xml:space="preserve">
+    <value>Group · newest {0} of {1} messages</value>
+  </data>
+  <data name="SendCopyStart" xml:space="preserve">
+    <value>Copy selected chats</value>
+  </data>
+  <data name="SendCopyDisconnect" xml:space="preserve">
+    <value>Disconnect</value>
+  </data>
+  <data name="SendCopySendingFormat" xml:space="preserve">
+    <value>Copying chats to your PC ({0} of {1})…</value>
+  </data>
+  <data name="SendCopyCompletedFormat" xml:space="preserve">
+    <value>Copied {0} chats to your PC as read-only copies. New messages on this phone appear on your PC only when you copy again.</value>
+  </data>
+  <data name="SendCopyCompletedOne" xml:space="preserve">
+    <value>Copied 1 chat to your PC as a read-only copy. New messages on this phone appear on your PC only when you copy again.</value>
+  </data>
+  <data name="SendCopyNothingSelected" xml:space="preserve">
+    <value>Choose at least one chat to copy.</value>
+  </data>
+  <data name="SendCopyNotACode" xml:space="preserve">
+    <value>This is not a PC copy pairing code. Open "Receive a copy" on your PC and scan the QR code shown there.</value>
+  </data>
+  <data name="SendCopyUnsupportedVersion" xml:space="preserve">
+    <value>This pairing code comes from another version of the app and cannot be read.</value>
+  </data>
+  <data name="SendCopyDamaged" xml:space="preserve">
+    <value>This pairing code is damaged. Open "Receive a copy" on your PC and try again.</value>
+  </data>
+  <data name="SendCopyNotReachable" xml:space="preserve">
+    <value>Could not reach your PC. Make sure both this phone and your PC are on the same Wi-Fi network and that "Receive a copy" is open on your PC, then try again.</value>
+  </data>
+  <data name="SendCopyTimedOut" xml:space="preserve">
+    <value>Your PC did not answer in time. Make sure both devices are on the same Wi-Fi network and that your PC's firewall allows local connections, then try again.</value>
+  </data>
+  <data name="SendCopyRefused" xml:space="preserve">
+    <value>The connection to your PC was refused or the pairing code has expired. Start "Receive a copy" on your PC again for a new code.</value>
+  </data>
+  <data name="SendCopyDisconnected" xml:space="preserve">
+    <value>The connection to your PC was interrupted before the copy finished. Open "Receive a copy" on your PC and start again.</value>
+  </data>
+  <data name="SendCopyFailed" xml:space="preserve">
+    <value>The copy could not be completed. Open "Receive a copy" on your PC and try again.</value>
+  </data>
+  <data name="SendCopyNoCamera" xml:space="preserve">
+    <value>No camera was found on this device. Copying chats to a PC requires a camera to scan the PC's QR code.</value>
+  </data>
+  <data name="SendCopyCameraRefused" xml:space="preserve">
+    <value>The app may not use the camera. Allow camera access in the system settings, then try again.</value>
+  </data>
+  <data name="SendCopyCameraFailed" xml:space="preserve">
+    <value>The camera could not be started. Close other apps that use it and try again.</value>
+  </data>
+  <data name="SendCopyDone" xml:space="preserve">
+    <value>Back to chats</value>
+  </data>
 </root>

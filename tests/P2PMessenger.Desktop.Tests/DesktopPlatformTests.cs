@@ -62,6 +62,8 @@ public sealed class DesktopPlatformTests
 
         Assert.Equal(Path.GetFullPath("third-app"), platform.DataFolder);
         Assert.Equal(OperatingSystem.IsWindows() || OperatingSystem.IsLinux(), platform.KeyProtector is not null);
+        Assert.True(platform.CanReceivePcCopy);
+        Assert.False(platform.CanSendPcCopy);
     }
 
     [Fact]

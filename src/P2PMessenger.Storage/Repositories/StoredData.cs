@@ -15,6 +15,7 @@ public sealed class StoredData : IDisposable
         SeenMessages = new SeenMessageRepository(gate, keys);
         Groups = new GroupRepository(gate, keys);
         GroupMessages = new GroupMessageRepository(gate, keys);
+        CopiedConversations = new CopiedConversationRepository(gate, keys);
     }
 
     public IdentityRepository Identity { get; }
@@ -28,6 +29,8 @@ public sealed class StoredData : IDisposable
     public GroupRepository Groups { get; }
 
     public GroupMessageRepository GroupMessages { get; }
+
+    public CopiedConversationRepository CopiedConversations { get; }
 
     public void Dispose() => keys.Dispose();
 }

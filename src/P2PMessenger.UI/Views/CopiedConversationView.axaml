@@ -1,0 +1,97 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:P2PMessenger.UI.ViewModels"
+             xmlns:res="using:P2PMessenger.UI.Resources"
+             x:Class="P2PMessenger.UI.Views.CopiedConversationView"
+             x:DataType="vm:CopiedConversationViewModel">
+    <DockPanel Margin="16">
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+            <Button x:Name="DeleteCopyButton"
+                    DockPanel.Dock="Right"
+                    Margin="8,0,0,0"
+                    VerticalAlignment="Top"
+                    Content="{x:Static res:UiText.CopiedConversationDelete}"
+                    Command="{Binding AskDeleteCopyCommand}"
+                    IsVisible="{Binding IsDeleteCopyVisible}" />
+            <Border x:Name="ReadOnlyPanel"
+                    Padding="12"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+                <TextBlock x:Name="ReadOnlyText" Text="{Binding BannerText}" TextWrapping="Wrap" />
+            </Border>
+        </DockPanel>
+        <Border x:Name="DeleteCopyPanel"
+                DockPanel.Dock="Top"
+                Margin="0,0,0,8"
+                Padding="12"
+                BorderThickness="1"
+                CornerRadius="4"
+                BorderBrush="{DynamicResource SystemControlErrorTextForegroundBrush}"
+                IsVisible="{Binding IsConfirmingDeleteCopy}">
+            <StackPanel Spacing="8">
+                <TextBlock x:Name="DeleteCopyQuestionText" Text="{Binding DeleteCopyQuestion}" TextWrapping="Wrap" />
+                <WrapPanel>
+                    <Button x:Name="DeleteCopyConfirmButton"
+                            Margin="0,0,8,0"
+                            Content="{x:Static res:UiText.CommonDelete}"
+                            Command="{Binding DeleteCopyCommand}" />
+                    <Button x:Name="DeleteCopyCancelButton"
+                            Content="{x:Static res:UiText.CommonCancel}"
+                            Command="{Binding CancelDeleteCopyCommand}" />
+                </WrapPanel>
+                <ProgressBar x:Name="DeleteCopyBusyBar"
+                             IsIndeterminate="True"
+                             IsVisible="{Binding IsDeletingCopy}"
+                             AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
+            </StackPanel>
+        </Border>
+        <TextBlock x:Name="ErrorText"
+                   DockPanel.Dock="Top"
+                   Margin="0,0,0,8"
+                   Text="{Binding ErrorMessage}"
+                   IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                   Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
+                   TextWrapping="Wrap" />
+        <Grid>
+            <TextBlock x:Name="EmptyText"
+                       Text="{x:Static res:UiText.CopiedConversationEmpty}"
+                       IsVisible="{Binding IsEmpty}"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center" />
+            <ScrollViewer>
+                <ItemsControl x:Name="MessageItems" ItemsSource="{Binding Messages}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:CopiedMessageItemViewModel">
+                            <Border Margin="0,0,0,8"
+                                    Padding="10,6"
+                                    CornerRadius="6"
+                                    MaxWidth="560"
+                                    BorderThickness="1"
+                                    BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                                    Classes.own="{Binding IsOwn}"
+                                    Classes.theirs="{Binding IsTheirs}">
+                                <StackPanel Spacing="2">
+                                    <TextBlock FontSize="12">
+                                        <Run Text="{Binding Sender}" FontWeight="SemiBold" />
+                                        <Run Text=" · " />
+                                        <Run Text="{Binding WrittenAt}" />
+                                    </TextBlock>
+                                    <SelectableTextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                    <ItemsControl.Styles>
+                        <Style Selector="Border.own">
+                            <Setter Property="HorizontalAlignment" Value="Right" />
+                        </Style>
+                        <Style Selector="Border.theirs">
+                            <Setter Property="HorizontalAlignment" Value="Left" />
+                        </Style>
+                    </ItemsControl.Styles>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+    </DockPanel>
+</UserControl>

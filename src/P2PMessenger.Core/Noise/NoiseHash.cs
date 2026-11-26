@@ -83,6 +83,22 @@ internal sealed class NoiseHash
         }
     }
 
+    public void Hkdf(ReadOnlySpan<byte> chainingKey, ReadOnlySpan<byte> inputKeyMaterial, Span<byte> output1, Span<byte> output2, Span<byte> output3)
+    {
+        Span<byte> tempKey = stackalloc byte[HashLength];
+        try
+        {
+            Hmac(chainingKey, inputKeyMaterial, default, tempKey);
+            Hmac(tempKey, [0x01], default, output1);
+            Hmac(tempKey, output1, [0x02], output2);
+            Hmac(tempKey, output2, [0x03], output3);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(tempKey);
+        }
+    }
+
     private static void FillPad(ReadOnlySpan<byte> key, byte value, Span<byte> pad)
     {
         pad.Fill(value);

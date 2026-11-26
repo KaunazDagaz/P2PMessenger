@@ -9,4 +9,5 @@ public enum FailureSource
     Discovery = 4,
     Delivery = 5,
     Groups = 6,
+    PcCopy = 7,
 }

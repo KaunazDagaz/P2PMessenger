@@ -189,6 +189,68 @@ public sealed class SchemaTests
         Assert.Empty(await Sql.StringsAsync(connection, "PRAGMA foreign_key_check;", cancellationToken));
     }
 
+    [Fact]
+    [Trait("Story", "US-22")]
+    [Trait("NFR", "NFR-11")]
+    public async Task Schema_CopiedConversationWithoutEncryptedOriginOrCascadeDelete_EnforcesConstraints()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        using var database = new TemporaryDatabase();
+        await using var connection = await database.OpenMigratedAsync(cancellationToken);
+
+        var missing = await Assert.ThrowsAsync<SqliteException>(() =>
+            Sql.ExecuteAsync(
+                connection,
+                "INSERT INTO copied_conversation (id, origin_mac, title_enc, copied_at_enc) VALUES (1, $mac, $sealed, $sealed);",
+                [("$mac", Mac(1)), ("$sealed", Sealed)],
+                cancellationToken));
+        Assert.Equal(ConstraintFailed, missing.SqliteErrorCode);
+
+        var tooShort = await Assert.ThrowsAsync<SqliteException>(() =>
+            Sql.ExecuteAsync(
+                connection,
+                "INSERT INTO copied_conversation (id, origin_mac, origin_enc, title_enc, copied_at_enc) VALUES (1, $mac, $short, $sealed, $sealed);",
+                [("$mac", Mac(1)), ("$short", new byte[39]), ("$sealed", Sealed)],
+                cancellationToken));
+        Assert.Equal(ConstraintFailed, tooShort.SqliteErrorCode);
+
+        await Sql.ExecuteAsync(
+            connection,
+            "INSERT INTO copied_conversation (id, origin_mac, origin_enc, title_enc, copied_at_enc) VALUES (1, $mac, $sealed, $sealed, $sealed);",
+            [("$mac", Mac(1)), ("$sealed", Sealed)],
+            cancellationToken);
+        await Sql.ExecuteAsync(
+            connection,
+            "INSERT INTO copied_message (copied_conversation_id, position, written_by_owner, author_name_enc, text_enc, written_at_enc) VALUES (1, 1, 1, NULL, $sealed, $sealed);",
+            [("$sealed", Sealed)],
+            cancellationToken);
+
+        await Sql.ExecuteAsync(connection, "DELETE FROM copied_conversation WHERE id = 1;", [], cancellationToken);
+
+        Assert.Equal(0, await Sql.ScalarAsync(connection, "SELECT count(*) FROM copied_message;", cancellationToken));
+    }
+
+    [Fact]
+    [Trait("Story", "US-22")]
+    public async Task Migrate_CopiedConversationStoredBeforeVersion7_IsRefusedAndRolledBack()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        using var database = new TemporaryDatabase();
+        await using var connection = await database.OpenAsync(cancellationToken);
+        var catalog = MigrationCatalog.Load();
+        await MigrationRunner.MigrateAsync(connection, [.. catalog.Take(6)], cancellationToken);
+        await Sql.ExecuteAsync(
+            connection,
+            "INSERT INTO copied_conversation (id, origin_mac, title_enc, copied_at_enc) VALUES (1, $mac, $sealed, $sealed);",
+            [("$mac", Mac(1)), ("$sealed", Sealed)],
+            cancellationToken);
+
+        await Assert.ThrowsAsync<SqliteException>(() => MigrationRunner.MigrateAsync(connection, cancellationToken));
+
+        Assert.Equal(6, await MigrationRunner.ReadVersionAsync(connection, cancellationToken));
+        Assert.Equal(0, await Sql.ScalarAsync(connection, "SELECT count(*) FROM pragma_table_info('copied_conversation') WHERE name = 'origin_enc';", cancellationToken));
+    }
+
     private static async Task AddUserAndContactAsync(SqliteConnection connection, CancellationToken cancellationToken)
     {
         await Sql.ExecuteAsync(connection, "INSERT INTO person (id, identity_key_mac, identity_key_enc, display_name_enc) VALUES (1, $mac, $sealed, $sealed);", [("$mac", Mac(1)), ("$sealed", Sealed)], cancellationToken);

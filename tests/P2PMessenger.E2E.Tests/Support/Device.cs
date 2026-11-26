@@ -7,13 +7,16 @@ using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.Logging.Abstractions;
 using P2PMessenger.Application;
 using P2PMessenger.Application.LocalData;
+using P2PMessenger.Core.Copy;
 using P2PMessenger.Tests.Shared;
 using P2PMessenger.Transport.Connections;
+using P2PMessenger.UI.Qr;
 using P2PMessenger.UI.Services;
 using P2PMessenger.UI.ViewModels;
 using P2PMessenger.UI.Views;
@@ -34,6 +37,7 @@ internal sealed class Device : IAsyncDisposable
 
     private readonly LoopbackDiscovery hub;
     private readonly DeviceKeyStore keyStore = new();
+    private readonly DeviceQrScanner qrScanner = new();
     private readonly string root;
     private AppServices? services;
     private Window? window;
@@ -50,6 +54,16 @@ internal sealed class Device : IAsyncDisposable
     }
 
     public string Name { get; }
+
+    public bool CanSendPcCopy { get; init; }
+
+    public bool CanReceivePcCopy { get; init; }
+
+    public string? NextQrScan
+    {
+        get => qrScanner.NextText;
+        set => qrScanner.NextText = value;
+    }
 
     public string DataFolder { get; }
 
@@ -76,12 +90,19 @@ internal sealed class Device : IAsyncDisposable
         {
             ListenAddress = IPAddress.Loopback,
             ListenPort = 0,
+            CopyListenAddress = IPAddress.Loopback,
+            CopyListenPort = 0,
+            CopyAddressSource = LoopbackCopyAddresses,
             Connection = FastReconnects,
             Discovery = node.Setup,
             Loggers = NullLoggerFactory.Instance,
         };
         TopLevelServices topLevelServices = new(() => window);
-        services = new AppServices(new DatabaseLocalData(DatabasePath, keyStore), setup, new AvaloniaUiThread(), topLevelServices, topLevelServices, NoQrScanner.Instance);
+        services = new AppServices(new DatabaseLocalData(DatabasePath, keyStore), setup, new AvaloniaUiThread(), topLevelServices, topLevelServices, qrScanner)
+        {
+            CanSendPcCopy = CanSendPcCopy,
+            CanReceivePcCopy = CanReceivePcCopy,
+        };
         MainViewModel shell = new(services);
         window = new MainWindow { DataContext = shell, Width = 900, Height = 1000 };
         window.Show();
@@ -131,6 +152,14 @@ internal sealed class Device : IAsyncDisposable
     public Button? ContactButton(string contactName) =>
         TryNamed<ItemsControl>("ContactItems")?.GetVisualDescendants().OfType<Button>()
             .FirstOrDefault(button => button.IsEffectivelyVisible && string.Equals(AutomationProperties.GetName(button), contactName, StringComparison.Ordinal));
+
+    public Button? CopiedChatButton(string title) =>
+        TryNamed<ItemsControl>("CopiedChatItems")?.GetVisualDescendants().OfType<Button>()
+            .FirstOrDefault(button => button.IsEffectivelyVisible && string.Equals(AutomationProperties.GetName(button), title, StringComparison.Ordinal));
+
+    public CheckBox? CopyCandidateCheckBox(string title) =>
+        TryNamed<ItemsControl>("CandidateItems")?.GetVisualDescendants().OfType<CheckBox>()
+            .FirstOrDefault(box => box.IsEffectivelyVisible && string.Equals(AutomationProperties.GetName(box), title, StringComparison.Ordinal));
 
     public IReadOnlyList<string> ContactNames() =>
         [.. Named<ItemsControl>("ContactItems").GetVisualDescendants().OfType<Button>().Select(static button => AutomationProperties.GetName(button)).OfType<string>()];
@@ -233,6 +262,21 @@ internal sealed class Device : IAsyncDisposable
     public Task WaitForTextAsync(string text) =>
         WaitUntilAsync(() => Shows(text), $"{Name} shows the text {text}");
 
+    public string? ReadDisplayedQrCode()
+    {
+        Settle();
+        using Bitmap? frame = Window.CaptureRenderedFrame();
+        if (frame is null)
+        {
+            return null;
+        }
+
+        PixelSize size = frame.PixelSize;
+        byte[] pixels = BitmapPixels.CopyBgra(frame, out int stride);
+        byte[] plane = Luminance.FromBgraOverWhite(pixels, size.Width, size.Height, stride);
+        return new QrDecoder(false).DecodeLuminance(plane, size.Width, size.Width, size.Height);
+    }
+
     public async Task<bool> DatabaseFilesContainAsync(string text)
     {
         byte[] needle = Encoding.UTF8.GetBytes(text);
@@ -272,6 +316,12 @@ internal sealed class Device : IAsyncDisposable
         }
     }
 
+    private static IReadOnlyList<Ipv4Address> LoopbackCopyAddresses()
+    {
+        Assert.True(Ipv4Address.TryCreate(127, 0, 0, 1, out Ipv4Address loopback));
+        return [loopback];
+    }
+
     private static string Describe(Control control) =>
         string.IsNullOrEmpty(control.Name) ? control.GetType().Name : $"{control.GetType().Name} {control.Name}";
 
@@ -305,5 +355,17 @@ internal sealed class Device : IAsyncDisposable
         Window.UpdateLayout();
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();
         Dispatcher.UIThread.RunJobs();
+    }
+
+    private sealed class DeviceQrScanner : IQrScanner
+    {
+        public string? NextText { get; set; }
+
+        public Task<QrScanResult> ScanAsync(QrScanRequest request, CancellationToken cancellationToken)
+        {
+            string? text = NextText;
+            NextText = null;
+            return Task.FromResult(text is null ? QrScanResult.NoCamera : QrScanResult.Read(text));
+        }
     }
 }

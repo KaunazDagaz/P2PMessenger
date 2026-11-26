@@ -2,6 +2,7 @@ using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
 using P2PMessenger.Transport.Admission;
 using P2PMessenger.Transport.Connections;
+using P2PMessenger.Transport.Copy;
 using P2PMessenger.Transport.Tor;
 
 namespace P2PMessenger.Transport.Logging;
@@ -94,4 +95,25 @@ internal static partial class TransportLog
 
     [LoggerMessage(EventId = 29, Level = LogLevel.Warning, Message = "tor did not take the network change ({ExceptionType})")]
     public static partial void TorNetworkChangeFailed(this ILogger logger, string exceptionType);
+
+    [LoggerMessage(EventId = 30, Level = LogLevel.Information, Message = "Listening for a PC copy connection on port {Port}")]
+    public static partial void CopyListening(this ILogger logger, int port);
+
+    [LoggerMessage(EventId = 31, Level = LogLevel.Debug, Message = "Inbound PC copy connection {Number} was not admitted: {Refusal}")]
+    public static partial void CopyNotAdmitted(this ILogger logger, long number, AdmissionRefusal refusal);
+
+    [LoggerMessage(EventId = 32, Level = LogLevel.Debug, Message = "Inbound PC copy connection {Number} was refused: {Refusal}")]
+    public static partial void CopyRefused(this ILogger logger, long number, HandshakeRefusal refusal);
+
+    [LoggerMessage(EventId = 33, Level = LogLevel.Information, Message = "PC copy connection {Number} authenticated in {Milliseconds} ms")]
+    public static partial void CopyAccepted(this ILogger logger, long number, long milliseconds);
+
+    [LoggerMessage(EventId = 34, Level = LogLevel.Debug, Message = "Outbound PC copy connection failed: {Failure}")]
+    public static partial void CopyDialFailed(this ILogger logger, CopyConnectFailure failure);
+
+    [LoggerMessage(EventId = 35, Level = LogLevel.Debug, Message = "PC copy channel closed: {Reason}")]
+    public static partial void CopyClosed(this ILogger logger, ConnectionCloseReason reason);
+
+    [LoggerMessage(EventId = 36, Level = LogLevel.Error, Message = "PC copy: unexpected {ExceptionType}")]
+    public static partial void CopyUnexpected(this ILogger logger, string exceptionType);
 }

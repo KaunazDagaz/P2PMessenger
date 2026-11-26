@@ -1,0 +1,50 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:P2PMessenger.UI.ViewModels"
+             xmlns:res="using:P2PMessenger.UI.Resources"
+             xmlns:c="using:P2PMessenger.UI.Controls"
+             x:Class="P2PMessenger.UI.Views.ReceiveCopyView"
+             x:DataType="vm:ReceiveCopyViewModel">
+    <ScrollViewer>
+        <StackPanel Margin="16" Spacing="8" MaxWidth="640">
+            <TextBlock x:Name="IntroText" Text="{x:Static res:UiText.ReceiveCopyIntro}" TextWrapping="Wrap" />
+            <StackPanel x:Name="QrPanel" Spacing="8" IsVisible="{Binding HasQrCode}">
+                <c:QrCodeView x:Name="QrCode"
+                              Matrix="{Binding QrCode}"
+                              Width="280"
+                              Height="280"
+                              HorizontalAlignment="Center"
+                              AutomationProperties.Name="{x:Static res:UiText.ReceiveCopyQrLabel}" />
+            </StackPanel>
+            <ProgressBar x:Name="BusyBar"
+                         IsIndeterminate="True"
+                         IsVisible="{Binding IsBusy}"
+                         AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
+            <Border x:Name="StatusPanel"
+                    Padding="12"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                    IsVisible="{Binding HasStatus}">
+                <TextBlock x:Name="StatusText" Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+            </Border>
+            <TextBlock x:Name="ErrorText"
+                       Text="{Binding ErrorMessage}"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
+                       TextWrapping="Wrap" />
+            <WrapPanel>
+                <Button x:Name="RetryButton"
+                        Margin="0,0,8,8"
+                        Content="{Binding RetryButtonText}"
+                        Command="{Binding RetryCommand}"
+                        IsVisible="{Binding CanShowRetry}" />
+                <Button x:Name="DoneButton"
+                        Margin="0,0,8,8"
+                        Content="{x:Static res:UiText.ReceiveCopyDone}"
+                        Command="{Binding DoneCommand}"
+                        IsVisible="{Binding IsCompleted}" />
+            </WrapPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

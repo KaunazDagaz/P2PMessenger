@@ -1,4 +1,36 @@
 <Project>
+  <UsingTask TaskName="TrimTrailingWhitespace"
+             TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Files ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Text" />
+      <Using Namespace="System.Text.RegularExpressions" />
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+        foreach (ITaskItem item in Files)
+        {
+            string path = item.ItemSpec;
+            if (!File.Exists(path))
+            {
+                continue;
+            }
+
+            string original = File.ReadAllText(path);
+            string trimmed = Regex.Replace(original, @"[ \t]+(?=\r?\n)", string.Empty);
+            if (!string.Equals(original, trimmed, StringComparison.Ordinal))
+            {
+                File.WriteAllText(path, trimmed, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+            }
+        }
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
   <Target Name="GenerateResourceDesigners">
     <ItemGroup>
       <ResourceDesignerSource Include="@(EmbeddedResource)" Condition="'%(EmbeddedResource.Generator)' == 'PublicResXFileCodeGenerator' or '%(EmbeddedResource.Generator)' == 'ResXFileCodeGenerator'">
@@ -15,5 +47,10 @@
                       StronglyTypedManifestPrefix="%(ResourceDesignerSource.ClassNamespace)"
                       PublicClass="$([System.String]::Equals('%(ResourceDesignerSource.Generator)', 'PublicResXFileCodeGenerator'))"
                       ExecuteAsTool="false" />
+    <ItemGroup>
+      <GeneratedResourceDesigner Include="%(ResourceDesignerSource.RelativeDir)%(ResourceDesignerSource.LastGenOutput)"
+                                 Condition="'@(ResourceDesignerSource)' != ''" />
+    </ItemGroup>
+    <TrimTrailingWhitespace Condition="'@(GeneratedResourceDesigner)' != ''" Files="@(GeneratedResourceDesigner)" />
   </Target>
 </Project>
