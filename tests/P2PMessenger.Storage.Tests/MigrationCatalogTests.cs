@@ -72,8 +72,18 @@ public sealed class MigrationCatalogTests
     {
         var migrations = MigrationCatalog.Load();
 
-        Assert.Equal(6, migrations.Count);
         Assert.Equal("0006_deleted_group_messages", migrations[5].Name);
         Assert.Contains("ADD COLUMN deleted_ranges_enc", migrations[5].Script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("Story", "US-22")]
+    public void Load_SeventhScript_AddsTheEncryptedOriginToCopiedConversations()
+    {
+        var migrations = MigrationCatalog.Load();
+
+        Assert.Equal(7, migrations.Count);
+        Assert.Equal("0007_copied_conversation_origin", migrations[6].Name);
+        Assert.Contains("ADD COLUMN origin_enc", migrations[6].Script, StringComparison.Ordinal);
     }
 }

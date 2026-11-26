@@ -47,6 +47,18 @@ internal static class Formats
     public static readonly CompositeFormat GroupCreatedBy = CompositeFormat.Parse(UiText.GroupCreatedByFormat);
     public static readonly CompositeFormat GroupDeliveryReceived = CompositeFormat.Parse(UiText.GroupDeliveryReceivedFormat);
     public static readonly CompositeFormat GroupDeleteChatQuestion = CompositeFormat.Parse(UiText.GroupDeleteChatQuestionFormat);
+    public static readonly CompositeFormat CopiedChatItemSummary = CompositeFormat.Parse(UiText.CopiedChatItemSummaryFormat);
+    public static readonly CompositeFormat CopiedChatItemSummaryOne = CompositeFormat.Parse(UiText.CopiedChatItemSummaryOneFormat);
+    public static readonly CompositeFormat CopiedConversationBanner = CompositeFormat.Parse(UiText.CopiedConversationBannerFormat);
+    public static readonly CompositeFormat CopiedConversationDeleteQuestion = CompositeFormat.Parse(UiText.CopiedConversationDeleteQuestionFormat);
+    public static readonly CompositeFormat ReceiveCopyReceiving = CompositeFormat.Parse(UiText.ReceiveCopyReceivingFormat);
+    public static readonly CompositeFormat ReceiveCopyCompleted = CompositeFormat.Parse(UiText.ReceiveCopyCompletedFormat);
+    public static readonly CompositeFormat SendCopyCandidateContact = CompositeFormat.Parse(UiText.SendCopyCandidateContactFormat);
+    public static readonly CompositeFormat SendCopyCandidateContactTruncated = CompositeFormat.Parse(UiText.SendCopyCandidateContactTruncatedFormat);
+    public static readonly CompositeFormat SendCopyCandidateGroup = CompositeFormat.Parse(UiText.SendCopyCandidateGroupFormat);
+    public static readonly CompositeFormat SendCopyCandidateGroupTruncated = CompositeFormat.Parse(UiText.SendCopyCandidateGroupTruncatedFormat);
+    public static readonly CompositeFormat SendCopySending = CompositeFormat.Parse(UiText.SendCopySendingFormat);
+    public static readonly CompositeFormat SendCopyCompleted = CompositeFormat.Parse(UiText.SendCopyCompletedFormat);
 
     public static string With(CompositeFormat format, object? argument) => string.Format(CultureInfo.CurrentCulture, format, argument);
 

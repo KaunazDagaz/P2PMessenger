@@ -3,13 +3,16 @@ using Microsoft.Extensions.Logging;
 using P2PMessenger.Application.Chats;
 using P2PMessenger.Application.Connections;
 using P2PMessenger.Application.Contacts;
+using P2PMessenger.Application.Copy;
 using P2PMessenger.Application.Delivery;
 using P2PMessenger.Application.Groups;
 using P2PMessenger.Application.Identity;
 using P2PMessenger.Application.Internet;
+using P2PMessenger.Core.Copy;
 using P2PMessenger.Core.Crypto;
 using P2PMessenger.Core.Groups;
 using P2PMessenger.Core.Messages;
+using P2PMessenger.Transport.Discovery;
 
 namespace P2PMessenger.Application;
 
@@ -26,6 +29,8 @@ public sealed class Messenger : IAsyncDisposable
         ChatLog chats,
         GroupBook groups,
         GroupChats groupChats,
+        CopiedChatBook copiedChats,
+        PcCopyService pcCopy,
         GroupPassOn groupPassOn,
         ConnectionService connections,
         Outbox outbox,
@@ -36,6 +41,8 @@ public sealed class Messenger : IAsyncDisposable
         Chats = chats;
         Groups = groups;
         GroupChats = groupChats;
+        CopiedChats = copiedChats;
+        PcCopy = pcCopy;
         Connections = connections;
         InternetRoute = InternetRoute.Off(connections);
         this.groupPassOn = groupPassOn;
@@ -53,6 +60,10 @@ public sealed class Messenger : IAsyncDisposable
 
     public GroupChats GroupChats { get; }
 
+    public CopiedChatBook CopiedChats { get; }
+
+    public PcCopyService PcCopy { get; }
+
     public ConnectionService Connections { get; }
 
     public InternetRoute InternetRoute { get; private set; }
@@ -61,7 +72,7 @@ public sealed class Messenger : IAsyncDisposable
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(setup);
-        string? problem = setup.Delivery.FindProblem();
+        string? problem = setup.Delivery.FindProblem() ?? setup.Copy.FindProblem();
         if (problem is not null)
         {
             throw new ArgumentException(problem, nameof(setup));
@@ -75,10 +86,13 @@ public sealed class Messenger : IAsyncDisposable
         IReadOnlyList<LoadedGroup> loadedGroups = await groupStore.LoadGroupsAsync(cancellationToken).ConfigureAwait(false);
         IReadOnlyList<GroupChatMessage> groupMessages;
         IReadOnlyDictionary<GroupId, IReadOnlyList<AuthorSequenceRange>> deletedGroupMessages;
+        IReadOnlyList<CopiedConversation> loadedCopiedChats;
+        ICopiedChatStore copiedChatStore = setup.CopiedChatStore ?? new InMemoryCopiedChatStore();
         try
         {
             groupMessages = await groupStore.LoadMessagesAsync(cancellationToken).ConfigureAwait(false);
             deletedGroupMessages = await groupStore.LoadDeletedAsync(cancellationToken).ConfigureAwait(false);
+            loadedCopiedChats = await copiedChatStore.LoadAllAsync(cancellationToken).ConfigureAwait(false);
         }
         catch
         {
@@ -94,11 +108,28 @@ public sealed class Messenger : IAsyncDisposable
         ChatLog chatLog = new(setup.ChatStore, setup.SeenMessageIds, setup.TimeProvider, messages, sentSequences);
         GroupBook groupBook = new(identity, contactBook, groupStore, loadedGroups, setup.Loggers.CreateLogger<GroupBook>(), setup.Failures);
         GroupChats groupChats = new(groupBook, identity, groupStore, setup.SeenMessageIds, setup.TimeProvider, groupMessages, deletedGroupMessages, chatLog.EnterDeliveryAsync);
+        CopiedChatBook copiedChatBook = new(copiedChatStore, loadedCopiedChats);
+        ILocalInterfaceSource interfaceSource = setup.Discovery?.Interfaces ?? new SystemInterfaceSource();
+        Func<IReadOnlyList<Ipv4Address>> readCopyAddresses = setup.CopyAddressSource ?? (() => PcCopyService.ReadAddresses(interfaceSource));
+        PcCopyService pcCopy = new(
+            identity,
+            contactBook,
+            chatLog,
+            groupBook,
+            groupChats,
+            copiedChatBook,
+            setup.Copy,
+            setup.CopyListenAddress ?? setup.ListenAddress,
+            setup.CopyListenPort,
+            readCopyAddresses,
+            setup.TimeProvider,
+            setup.Loggers,
+            setup.Failures);
         GroupPassOn groupPassOn = new(groupBook, groupChats, setup.Delivery, setup.TimeProvider);
         ConnectionService connections = new(identity, contactBook, chatLog, groupBook, groupChats, groupPassOn, setup.Connection, setup.TimeProvider, setup.Loggers, setup.Failures);
         IWakeUpScheduler scheduler = setup.WakeUps ?? new TimerWakeUpScheduler(setup.TimeProvider);
         Outbox outbox = new(chatLog, groupBook, groupChats, groupPassOn, connections, scheduler, setup.Delivery, setup.TimeProvider, setup.Loggers.CreateLogger<Outbox>(), setup.Failures);
-        Messenger messenger = new(identity, contactBook, chatLog, groupBook, groupChats, groupPassOn, connections, outbox, setup.TimeProvider);
+        Messenger messenger = new(identity, contactBook, chatLog, groupBook, groupChats, copiedChatBook, pcCopy, groupPassOn, connections, outbox, setup.TimeProvider);
         try
         {
             await groupBook.JoinWhereReadyAsync(cancellationToken).ConfigureAwait(false);
@@ -203,6 +234,13 @@ public sealed class Messenger : IAsyncDisposable
         return GroupChats.DeleteWaitingAsync(groupId, id, cancellationToken);
     }
 
+    public Task<bool> DeleteCopiedChatAsync(CopyOriginId origin, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+
+        return CopiedChats.DeleteAsync(origin, cancellationToken);
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (Interlocked.Exchange(ref disposed, 1) != 0)
@@ -214,6 +252,7 @@ public sealed class Messenger : IAsyncDisposable
         await outbox.DisposeAsync().ConfigureAwait(false);
         await Connections.DisposeAsync().ConfigureAwait(false);
         groupPassOn.Dispose();
+        CopiedChats.Dispose();
         GroupChats.Dispose();
         Groups.Dispose();
         Chats.Dispose();

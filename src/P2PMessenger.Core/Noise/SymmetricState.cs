@@ -42,6 +42,23 @@ internal sealed class SymmetricState : IDisposable
         }
     }
 
+    public void MixKeyAndHash(ReadOnlySpan<byte> inputKeyMaterial)
+    {
+        Span<byte> tempHash = stackalloc byte[hash.HashLength];
+        Span<byte> tempKey = stackalloc byte[hash.HashLength];
+        try
+        {
+            hash.Hkdf(chainingKey, inputKeyMaterial, chainingKey, tempHash, tempKey);
+            MixHash(tempHash);
+            cipher.InitializeKey(tempKey[..CipherState.KeyLength]);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(tempHash);
+            CryptographicOperations.ZeroMemory(tempKey);
+        }
+    }
+
     public void MixHash(ReadOnlySpan<byte> data)
     {
         hash.Hash(handshakeHash, data, handshakeHash);

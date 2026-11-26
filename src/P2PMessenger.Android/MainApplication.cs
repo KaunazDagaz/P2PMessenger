@@ -71,6 +71,7 @@ public class MainApplication : AvaloniaAndroidApplication<App>
             Background = provider.GetRequiredService<BackgroundPorts>(),
             Tor = AndroidTor.Setup(ApplicationInfo?.NativeLibraryDir, NoBackupFilesDir?.AbsolutePath),
             Settings = provider.GetRequiredService<ISettingsStore>(),
+            CanSendPcCopy = true,
         });
         _ = collection.AddTransient(provider => new App(provider.GetRequiredService<AppPlatform>()));
         return collection.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });

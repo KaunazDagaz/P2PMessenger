@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using P2PMessenger.Application.Chats;
 using P2PMessenger.Application.Contacts;
+using P2PMessenger.Application.Copy;
 using P2PMessenger.Application.Groups;
 using P2PMessenger.Application.Identity;
 using P2PMessenger.Core;
@@ -361,6 +362,7 @@ public sealed class DatabaseLocalData : ILocalData
             new InMemoryChatStore(seen),
             new InMemoryGroupStore(seen),
             seen,
+            new InMemoryCopiedChatStore(),
             LocalDataMode.MemoryOnlyNoKeyStore));
     }
 
@@ -693,6 +695,7 @@ public sealed class DatabaseLocalData : ILocalData
 
             await data.GroupMessages.LoadAllAsync(cancellationToken).ConfigureAwait(false);
             await data.GroupMessages.LoadDeletedRangesAsync(cancellationToken).ConfigureAwait(false);
+            await data.CopiedConversations.LoadAllAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (StoredDataException)
         {
@@ -713,6 +716,7 @@ public sealed class DatabaseLocalData : ILocalData
             new DatabaseChatStore(data.Messages),
             new DatabaseGroupStore(data.Groups, data.GroupMessages),
             data.SeenMessages,
+            new DatabaseCopiedChatStore(data.CopiedConversations),
             LocalDataMode.Saved));
     }
 

@@ -40,8 +40,28 @@ internal static class Locations
 
     public static RecordLocation GroupRecord(long groupId, long epoch) => new("group_key", "record_enc", GroupKeyRow(groupId, epoch));
 
+    public static RecordLocation CopiedConversationOrigin(long conversationId) => new("copied_conversation", "origin_enc", conversationId);
+
+    public static RecordLocation CopiedConversationTitle(long conversationId) => new("copied_conversation", "title_enc", conversationId);
+
+    public static RecordLocation CopiedConversationCopiedAt(long conversationId) => new("copied_conversation", "copied_at_enc", conversationId);
+
+    public static RecordLocation CopiedMessageAuthorName(long conversationId, long position, bool writtenByOwner) =>
+        new("copied_message", "author_name_enc", CopiedMessageRow(conversationId, position, writtenByOwner));
+
+    public static RecordLocation CopiedMessageText(long conversationId, long position, bool writtenByOwner) =>
+        new("copied_message", "text_enc", CopiedMessageRow(conversationId, position, writtenByOwner));
+
+    public static RecordLocation CopiedMessageWrittenAt(long conversationId, long position, bool writtenByOwner) =>
+        new("copied_message", "written_at_enc", CopiedMessageRow(conversationId, position, writtenByOwner));
+
     private static long GroupKeyRow(long groupId, long epoch) =>
         groupId is >= 1 and <= int.MaxValue && epoch is >= 1 and <= uint.MaxValue
             ? (groupId << 32) | epoch
             : throw new ArgumentOutOfRangeException(nameof(groupId), "A group key row needs a group row from 1 to 2^31 - 1 and an epoch from 1 to 2^32 - 1.");
+
+    private static long CopiedMessageRow(long conversationId, long position, bool writtenByOwner) =>
+        conversationId is >= 1 and <= int.MaxValue && position is >= 1 and <= int.MaxValue
+            ? (conversationId << 32) | (writtenByOwner ? 1L << 31 : 0L) | position
+            : throw new ArgumentOutOfRangeException(nameof(conversationId), "A copied message row needs a copied conversation row from 1 to 2^31 - 1 and a position from 1 to 2^31 - 1.");
 }

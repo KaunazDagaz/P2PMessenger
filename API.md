@@ -2,10 +2,10 @@
 
 P2PMessenger has no server, so it has no HTTP API, no OpenAPI description, no REST resources and no HTTP status codes. Its interfaces are two:
 
-1. **The wire protocol** (Sections 1 to 8): every format that two apps exchange, over the local network, over Tor or through another channel. This is the interface between two running apps, and the one that an independent implementation would have to follow. The data is binary, not JSON, because every connection is an encrypted Noise session with padded frames.
-2. **The application interface** (Section 9): the operations, events and result values through which the screens use the back-end libraries inside one app.
+1. **The wire protocol** (Sections 1 to 9): every format that two apps exchange, over the local network, over Tor or through another channel. This is the interface between two running apps, and the one that an independent implementation would have to follow. The data is binary, not JSON, because every connection is an encrypted Noise session with padded frames.
+2. **The application interface** (Section 10): the operations, events and result values through which the screens use the back-end libraries inside one app.
 
-**Status:** this document describes the version on the `main` branch. Small groups (6.7 to 6.14) are specified for creating a group, joining it, sending group messages directly to each member and passing missed group messages on between members; acknowledgements passed on by other members, leaving and removing members, and the copy of chats to a PC are not built yet and will add their own message types. A change to any format changes this document in the same change, and the tests named below compare the code with the reference vectors byte by byte.
+**Status:** this document describes the version on the `main` branch. Small groups (6.7 to 6.14) are specified for creating a group, joining it, sending group messages directly to each member and passing missed group messages on between members, and copying chosen chats from a phone to a PC over the local network is specified in Section 9; acknowledgements passed on by other members and leaving or removing group members are not built yet and will add their own message types. A change to any format changes this document in the same change, and the tests named below compare the code with the reference vectors byte by byte.
 
 ## Where the code is
 
@@ -18,7 +18,8 @@ P2PMessenger has no server, so it has no HTTP API, no OpenAPI description, no RE
 | Connections, admission, reconnects (Section 4.9) | `src/P2PMessenger.Transport/Connections`, `src/P2PMessenger.Transport/Admission`, `src/P2PMessenger.Transport/Tcp` | `tests/P2PMessenger.Transport.Tests`, `tests/P2PMessenger.Integration.Tests` |
 | Discovery on the local network (Section 7) | `src/P2PMessenger.Core/Discovery`, `src/P2PMessenger.Transport/Discovery` | `tests/P2PMessenger.Core.Tests`, `tests/P2PMessenger.Transport.Tests` |
 | Onion service (Section 8) | `src/P2PMessenger.Transport/Tor`, `src/P2PMessenger.Core/Identity` | `tests/P2PMessenger.Transport.Tests`, `tests/P2PMessenger.Integration.Tests` |
-| Application interface (Section 9) | `src/P2PMessenger.Application` | `tests/P2PMessenger.Application.Tests` |
+| Copying chats to a PC (Section 9) | `src/P2PMessenger.Core/Copy`, `src/P2PMessenger.Core/Noise`, `src/P2PMessenger.Transport/Copy`, `src/P2PMessenger.Application/Copy` | `tests/P2PMessenger.Core.Tests`, `tests/P2PMessenger.Transport.Tests`, `tests/P2PMessenger.Storage.Tests`, `tests/P2PMessenger.Application.Tests`, `tests/P2PMessenger.Integration.Tests` |
+| Application interface (Section 10) | `src/P2PMessenger.Application` | `tests/P2PMessenger.Application.Tests` |
 
 ## Contents
 
@@ -30,14 +31,15 @@ P2PMessenger has no server, so it has no HTTP API, no OpenAPI description, no RE
 6. [Message types](#6-message-types)
 7. [Discovery on the local network](#7-discovery-on-the-local-network)
 8. [Onion service](#8-onion-service)
-9. [Application interface](#9-application-interface)
+9. [Copying chats to a PC](#9-copying-chats-to-a-pc)
+10. [Application interface](#10-application-interface)
 
 ## 1. Principles
 
 These apply to every format below.
 
-- Every connection is a Noise session, `Noise_KK_25519_ChaChaPoly_BLAKE2b`, with both static public keys known in advance. The prologue carries the protocol identifier and version.
-- Connections from keys that are not contacts are refused before anything reaches the user.
+- Every connection between contacts is a Noise session, `Noise_KK_25519_ChaChaPoly_BLAKE2b`, with both static public keys known in advance; a one-time PC copy connection is `Noise_NKpsk0_25519_ChaChaPoly_BLAKE2b`, authenticated by the fresh public key and pre-shared secret carried in the PC's pairing code (Section 9). Each prologue carries the protocol identifier and version.
+- Connections from keys that are not contacts (or, for a PC copy, callers that do not know the current pairing code) are refused before anything reaches the user.
 - Frames are length-prefixed; a Noise message is at most 65,535 bytes. Plaintexts are padded to fixed size classes, and there is a maximum message size.
 - Message types are versioned. Parsers are strict, check lengths before allocating and return `false` instead of throwing. On any parse or authentication error the connection is closed without telling the peer why, and unauthenticated data is never used.
 - Every message that a person writes has an ID; a stored set of seen IDs rejects replays across sessions. Acknowledgements and keep-alives carry no ID of their own (Section 6).
@@ -56,6 +58,7 @@ These apply to every format below.
 | Connection rules 1 | TCP, either side opens, one session per contact and the choice between two, a keep-alive after 15 s without another frame, closing after 45 s without a frame (Section 4.9) |
 | Connection rules 2 | Every session has a route, nearby or Tor; a Tor session replaces a nearby one, and a nearby one replaces a Tor one only if the Tor session counted 10 s or more earlier; over Tor 10 s for the hint and 20 s for the handshake (Section 4.9) |
 | Announcement 1 (`P2PM/announcement/v1`) | The announcement key, the 274-byte announcement, multicast, directed broadcast and the sweep, a random listening port (Section 7) |
+| PC copy 1 (`P2PMC1-`, `P2PM/pc-copy/v1`, `P2PM/copy-origin/v1`) | One-time pairing code, `Noise_NKpsk0` session, five padding classes and copy message types 1 to 9 (Section 9) |
 
 Connection rules 2 change no byte format.
 
@@ -534,16 +537,99 @@ The onion service changes no byte of Sections 4 to 6: a connection through Tor c
 
 Reference vector: the expanded keys of the four RFC 8032 seeds of `OnionServiceKeyTests` (computed with Python's `hashlib`), for which tor 0.4.9.11 returned the four addresses of `OnionAddressTests`. Seed 2 (`4ccd089b…a6fb`, the onion seed of the vector in 3.9) gives `aL2e11iC1SgVqXWFyvR5Cn9sazt/ghxeJZoksC5QLlFFZoSCkdrK8iXMY96zSNoxjiwuF7ALgWD5zmv6BHKRHQ==` and the address `hvabpq7iioevvevxbktu2g36xsojqlgpf3cjndgazvk7ckxumygcmyyd.onion`.
 
-## 9. Application interface
+## 9. Copying chats to a PC
 
-The screens in `P2PMessenger.UI` reach the back-end only through `P2PMessenger.Application`, inside one process; no network separates them. The entry point is `Messenger`, which owns the identity, the contacts, the chats, the groups and the connections of one running app. Expected failures (an empty text, a refused contact code, a locked or damaged database) are returned as result values with the enumerations below, not thrown. An unexpected failure of background work (a connection, discovery, delivery) is not thrown to the screens either: it is reported to one `GlobalFailureHandler`, which logs the type of the exception once and raises `FailureReported`. Changes are announced by events that can be raised on any thread; the screens move them to the UI thread.
+Copying chosen chats from a phone to the user's PC runs over a one-time authenticated, encrypted TCP session on the local Wi-Fi network, completely separate from contact sessions and Tor. The PC opens a fresh random TCP port and displays a one-time QR pairing code (never copied to the clipboard); the phone scans the QR code with its camera, dials the PC's local addresses directly, completes the handshake and transfers snapshots of the conversations the user chooses. No private key ever leaves the phone, and the PC stores each copied conversation read-only under its own encrypted database key, apart from its own contacts and chats.
 
-### 9.1 Messenger
+### 9.1 Pairing code, version 1
+
+When the PC opens "Receive a copy", it creates a fresh X25519 key pair (used only for this pairing session, never stored on disk), a fresh random 32-byte non-zero pre-shared secret, a random TCP listening port from 49152 to 65535, and up to 8 sorted distinct local IPv4 addresses of its current local network interfaces. Binary length is `68 + 4 * count` bytes, which is 72 to 100 bytes.
+
+| Offset | Size | Field | Rule |
+| --- | --- | --- | --- |
+| 0 | 1 | Version | 1 |
+| 1 | 32 | Receiver public key | X25519 public key of the PC's one-time key pair; canonical and not of small order |
+| 33 | 32 | Pairing secret | 32 random bytes, not all zero |
+| 65 | 2 | Port | Big-endian TCP port, 1 to 65535 |
+| 67 | 1 | Address count | 1 to 8 |
+| 68 | 4 * count | Addresses | Big-endian IPv4 addresses; first octet 1 to 223, strictly ascending and distinct |
+
+The text form is `P2PMC1-` followed by RFC 4648 upper-case Base32 without padding (123 to 167 characters), encoded in a QR code in alphanumeric mode with error correction M (same mask check as 3.5). The text parser (`CopyPairingCode.TryParseText`) ignores white space, dashes, soft hyphens, zero-width characters and BOMs, checks `P2PMC` case-insensitively, reports `P2PMC` with another ASCII digit as `UnsupportedVersion`, and reports any malformed `P2PMC1-` payload as `Damaged`.
+
+### 9.2 Origin identifier
+
+Each copied conversation carries a 32-byte `CopyOriginId` so that copying the same conversation again replaces the existing copy on the PC without linking the copy to any contact or group key on the PC and without exposing private keys:
+
+- **One-to-one chat:** `BLAKE2b-256("P2PM/copy-origin/v1" | 0x01 | own Ed25519 public key | contact Ed25519 public key)` (84 bytes hashed).
+- **Group chat:** `BLAKE2b-256("P2PM/copy-origin/v1" | 0x02 | own Ed25519 public key | 16-byte group ID)` (68 bytes hashed).
+
+### 9.3 Handshake and transport rules
+
+The handshake is `Noise_NKpsk0_25519_ChaChaPoly_BLAKE2b` (Noise revision 34, with `MixKeyAndHash` from 3-output HKDF-BLAKE2b):
+
+- **Pre-message:** `<- s` (the PC's one-time X25519 public key from the pairing code).
+- **Prologue:** the 15 ASCII bytes `P2PM/pc-copy/v1` followed by the raw bytes of the pairing code (87 to 115 bytes). Every field of the pairing code is therefore bound into the handshake hash.
+- **Message 1 (phone to PC):** `-> psk, e, es`, empty payload. Framed with a 2-byte big-endian length `0x0030` (48 = 32-byte ephemeral key + 16-byte tag), 50 bytes on the wire.
+- **Message 2 (PC to phone):** `<- e, ee`, empty payload. Framed with a 2-byte big-endian length `0x0030` (48 bytes), 50 bytes on the wire.
+- **Confirmation:** right after handshake completion, the phone writes an encrypted `Ready` frame (9.4). The PC keeps its session unconfirmed and cannot write any transport frame until it decrypts that `Ready` frame; once it does, it immediately closes the listening TCP port so no second device can pair with the same code, and replies with its own `Ready` frame.
+- **Connection rules (`CopyOptions`):** the phone dials all IPv4 addresses in the pairing code in parallel with a 10-second connect timeout and uses the first connection whose handshake and `Ready` exchange succeed, cancelling the others. The PC enforces admission limits on its temporary port (8 pending connections overall, 4 per address, 10 handshakes/s burst 16 overall, 4/s burst 8 per address, 256 tracked sources) and a 5-second handshake timeout; callers without the pairing secret are closed silently without sending a byte back while the listener stays open for the real phone. Once paired, both sides send `KeepAlive` after 10 seconds without another frame, close after 30 seconds without any frame, and enforce a 15-second write timeout. Each copied conversation is capped by `MaxMessagesPerConversation` (default `100,000`) and `MaxConversationBytes` (default `32 MiB` of UTF-8 author names and message texts); when a conversation exceeds either cap, the phone lists and copies the newest messages that fit both limits and discloses `"newest X of Y messages"`, and the PC rejects any incoming conversation that exceeds either limit without saving partial data.
+
+### 9.4 Frames, padding and message types
+
+Transport frames use a 2-byte big-endian encrypted length (`padded length + 16`) followed by the ChaCha20-Poly1305 ciphertext and 16-byte tag. Plaintexts use the same 2-byte content length, 1-byte type, 1-byte version (`1`) and zero-padding check as Section 5, with five size classes: **256, 1,024, 4,096, 16,384 and 32,768 bytes** (the fifth class fits a maximum 16,348-byte UTF-8 message together with a 64-byte author name and header). Any unknown type, wrong version, non-minimal padding class or non-zero padding closes the session silently.
+
+| Type | Name | Direction | Body |
+| --- | --- | --- | --- |
+| 1 | `Ready` | Both | Empty (0 bytes) |
+| 2 | `KeepAlive` | Both | Empty (0 bytes) |
+| 3 | `TransferStart` | Phone -> PC | 4-byte big-endian conversation count (`1` to `1,000`) |
+| 4 | `ConversationStart` | Phone -> PC | 32-byte `CopyOriginId`, 1-byte title length (`1` to `64`), UTF-8 display name (3.3), 4-byte big-endian message count (`0` to `100,000`) |
+| 5 | `ConversationMessage` | Phone -> PC | 4-byte big-endian position (`1` to `100,000`), 1-byte `written_by_owner` (`0` or `1`), 1-byte author name length (`0` when `written_by_owner = 1`, `1` to `64` otherwise), author UTF-8 display name (3.3), 8-byte big-endian `written_at` Unix milliseconds (`0` to `253,402,300,799,999`), UTF-8 message text (`1` to `16,348` bytes) |
+| 6 | `ConversationEnd` | Phone -> PC | 32-byte `CopyOriginId` (must match the current `ConversationStart`) |
+| 7 | `ConversationSaved` | PC -> Phone | 32-byte `CopyOriginId` |
+| 8 | `TransferDone` | Phone -> PC | 4-byte big-endian conversation count (must match `TransferStart` and saved count) |
+| 9 | `TransferComplete` | PC -> Phone | 4-byte big-endian saved conversation count |
+
+### 9.5 Transfer flow and interrupted transfers
+
+After the `Ready` exchange, the user selects conversations on the phone (from added one-to-one contacts and created groups) and starts the copy:
+
+1. Phone sends `TransferStart(N)`.
+2. For each chosen conversation (distinct `CopyOriginId`s), the phone sends `ConversationStart`, then `ConversationMessage` frames with positions `1, 2, …, M` in strict order, then `ConversationEnd(origin)`.
+3. Only after receiving `ConversationEnd(origin)` with all `M` messages does the PC save or atomically replace that conversation in its encrypted SQLite database and reply `ConversationSaved(origin)`. Previously copied conversations that were not chosen remain untouched.
+4. After all `N` conversations are acknowledged, the phone sends `TransferDone(N)` and the PC replies `TransferComplete(N)`, ending the session.
+
+If the connection breaks mid-transfer, any conversation whose `ConversationEnd` was already received and saved remains intact, while the interrupted conversation is discarded completely so no partial copy is ever written; the user can pair again and copy again cleanly.
+
+### 9.6 Reference vectors
+
+Computed with an independent Python 3 implementation (`hashlib`, pure-Python Curve25519 and RFC 8439 ChaCha20-Poly1305 verified against RFC 7748, RFC 8439 and cacophony's `Noise_KK` vectors). `NkPsk0HandshakeTests`, `CopyPairingCodeTests`, `CopyOriginIdTests` and `CopySessionTests` in `P2PMessenger.Core.Tests` compare the code with every value below byte for byte (published test keys; never use them for anything else).
+
+Inputs: PC one-time X25519 private key `5dab087e624a8a4b79e17f8b83800ee66f3bb1292618b6fd1c2f8b27ff88e0eb`, PSK `101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f`, port `51234`, addresses `192.168.1.42` and `192.168.1.99`, phone ephemeral `893e28b9dc6ca8d611ab664754b8ceb7bac5117349a4439a6b0569da977c464a`, PC ephemeral `bbdb4cdbd309f1a1f2e1456967fe288cadd6f712d65dc7b7793d5e63da6b375b`. For origin IDs: Alice identity key `d75a9801…511a`, Bob identity key `fc51cd8e…8025` (from 3.9), group ID `00112233445566778899aabbccddeeff`.
+
+| Value | Hex or text |
+| --- | --- |
+| PC public key | `de9edb7d7b7dc1b4d35b61c2ece435373f8343c85b78674dadfc7e146f882b4f` |
+| Pairing code (76 bytes) | `01de9edb7d7b7dc1b4d35b61c2ece435373f8343c85b78674dadfc7e146f882b4f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2fc82202c0a8012ac0a80163` |
+| Pairing code text | `P2PMC1-AHPJ5W35PN64DNGTLNQ4F3HEGU3T7A2DZBNXQZ2NVX6H4FDPRAVU6EARCIJRIFIWC4MBSGQ3DQOR4HZAEERCGJBFEYTSQKJKFMWC2LRPZARAFQFIAEVMBKABMM` |
+| Handshake message 1 (50 bytes) | `0030ca35def5ae56cec33dc2036731ab14896bc4c75dbb07a61f879f8e3afa4c7944e3af65c53f6119ff8be8852e2794ffeb` |
+| Handshake message 2 (50 bytes) | `003095ebc60d2b1fa672c1f46a8aa265ef51bfe38e7ccb39ec5be34069f1448088435b0144efd2554ed3ff7db8d5c8c2db37` |
+| Handshake hash (64 bytes) | `30db1f8283dd20349d27a4ccc55de2b7149384ba8aa48f34e3fc7492fb905b66c507a059b3b383265cc6c943bcf1e9f4c109ab010f7e2ddaa540ef0f7e07b60f` |
+| Contact origin ID (Alice -> Bob) | `b40d9ce86021d3d2bd089e2637eb8cd7f46b0a643a2d51f213ded5f1bee67a6b` |
+| Group origin ID (Alice, group `0011…eeff`) | `999ba12a3bb01e47d35055a7c9bcf48cc93eaeb53c8352f1d46ee11664b48bf8` |
+
+`CopySessionTests` also verifies all ten encrypted 274-byte transport frames of a complete 1-conversation, 2-message transfer (`Ready` both ways, `TransferStart`, `ConversationStart` for Bob, own message at `1794571200000`, Bob's message at `1794571260000`, `ConversationEnd`, `ConversationSaved`, `TransferDone`, `TransferComplete`) against the independent Python vectors in `CopyVectors`.
+
+## 10. Application interface
+
+The screens in `P2PMessenger.UI` reach the back-end only through `P2PMessenger.Application`, inside one process; no network separates them. The entry point is `Messenger`, which owns the identity, the contacts, the chats, the groups, the copied chats, the PC copy service and the connections of one running app. Expected failures (an empty text, a refused contact code, a locked or damaged database) are returned as result values with the enumerations below, not thrown. An unexpected failure of background work (a connection, discovery, delivery, groups, PC copy) is not thrown to the screens either: it is reported to one `GlobalFailureHandler`, which logs the type of the exception once and raises `FailureReported`. Changes are announced by events that can be raised on any thread; the screens move them to the UI thread.
+
+### 10.1 Messenger
 
 | Member | Purpose |
 | --- | --- |
 | `static Messenger.StartAsync(OwnIdentity, MessengerSetup, CancellationToken)` | Starts the listener, the local-network discovery, the Tor route and the outbox for an identity |
-| `Identity`, `Contacts`, `Chats`, `Groups`, `GroupChats`, `Connections`, `InternetRoute` | The services of 9.2 |
+| `Identity`, `Contacts`, `Chats`, `Groups`, `GroupChats`, `CopiedChats`, `PcCopy`, `Connections`, `InternetRoute` | The services of 10.2 |
 | `SendAsync(Ed25519PublicKey contactKey, string? text, CancellationToken)` | Records a text for a contact and hands it to the outbox; returns `SendResult(Outcome, Message)` |
 | `DeleteChatAsync(contactKey, CancellationToken)` | Deletes the chat with a contact on this device and cancels its waiting messages; returns the number of messages deleted |
 | `DeleteWaitingAsync(contactKey, MessageId, CancellationToken)` | Deletes one message that is still waiting; returns whether it was waiting |
@@ -551,9 +637,10 @@ The screens in `P2PMessenger.UI` reach the back-end only through `P2PMessenger.A
 | `SendToGroupAsync(GroupId, string? text, CancellationToken)` | Seals and signs a group message, records it with one waiting delivery per other member and hands it to the outbox; returns `GroupSendResult(Outcome, Message)` |
 | `DeleteGroupChatAsync(GroupId, CancellationToken)` | Deletes a group's messages on this device and stops sending the user's waiting ones; the group and the membership stay. Returns the number of messages deleted |
 | `DeleteWaitingGroupMessageAsync(GroupId, MessageId, CancellationToken)` | Deletes one of the user's group messages that no member's app has acknowledged; returns whether it was deleted |
+| `DeleteCopiedChatAsync(CopyOriginId, CancellationToken)` | Deletes one copied conversation from this device's encrypted database without touching the phone; returns whether it existed |
 | `DisposeAsync()` | Stops the connections, discovery and tor |
 
-### 9.2 Services
+### 10.2 Services
 
 | Service | Operations | Event |
 | --- | --- | --- |
@@ -562,11 +649,13 @@ The screens in `P2PMessenger.UI` reach the back-end only through `P2PMessenger.A
 | `ChatLog` | `MessagesWith`, `WaitingFor`, `ContactsWithWaitingMessages`, `UnreadCount`, `MarkRead`; `ReceiveAsync`, `MarkReceivedAsync`, `DeleteChatAsync`, `DeleteWaitingAsync` | `Changed` (`ChatChangedEventArgs`) |
 | `GroupBook` | `All`; `TryGet(groupId, out Group)`; `MembersToAdd(group)`, the members who are not yet contacts whose first connection has succeeded; `CreateAsync(name, contactKeys, ct)`. A `Group` has its `Record`, its `Members` (`GroupMemberStatus`: identity key, name, `MemberJoin`, and the `NoticeState` of the invitation and of the user's own join for that member) and its `GroupState` | `Changed` (`GroupChangedEventArgs`) |
 | `GroupChats` | `MessagesIn(groupId)`, `UnreadCount`, `MarkRead`. A `GroupChatMessage` has its signed `Envelope`, author, direction, ID, sequence, times, text and, for the user's own message, one `DeliveryState` per other member with `ReceivedCount`, `RecipientCount` and `CanBeDeleted` (no member's app has it yet) | `Changed` (`GroupChatChangedEventArgs`: a message `Added`, `Updated` or `Removed`, or the chat `IsCleared`) |
+| `CopiedChatBook` | `All`; `TryGet(origin, out CopiedConversation)`; `SaveAsync(conversation, ct)`; `DeleteAsync(origin, ct)`. Each `CopiedConversation` holds its `Origin`, `Title`, `CopiedAt` and read-only `Messages` (`CopiedMessage`) | `Changed` (`CopiedChatChangedEventArgs`: `Saved` or `Deleted`) |
+| `PcCopyService` | `ListCandidates()` (added one-to-one chats and created groups with copyable and total message counts); `static TryParsePairingCode(text, out code, out error)`; `StartReceivingAsync(ct)` returns `StartReceiveResult` with a one-time `PcCopyReceiver` (`PairingCode`, `PairingCodeText`, `RunAsync(progress, ct)`); `ConnectAsync(pairingCode, ct)` returns `PcCopyConnectResult` with a `PcCopySender` (`SendAsync(origins, progress, ct)`) | None (progress reported through `IProgress<PcCopyProgress>` and `IProgress<PcCopySendProgress>`) |
 | `ConnectionService` | `ListeningPort`, `LastListenResult`, `DiscoveryState`, `DiscoveryPort`, `Network`, `UsesTor`; `IsConnected`, `IsHeard`, `ReachabilityOf`, `DialStatusOf`, `TorStatusOf` per contact | `Changed` (`ConnectionChangedEventArgs`) |
 | `InternetRoute` | `Status`, `IsInBuild`, `IsOn`, `TargetKind`; `SetEnabledAsync(on, ct)` turns Tor on or off | `Changed` |
 | `GlobalFailureHandler` | `Install()` and `Uninstall()` hook the unobserved task and the process-ending exception; `Handle(exception, FailureSource)` returns false for out-of-memory and otherwise logs the exception's type once (an exception reported again, also inside an `AggregateException`, is ignored); `Report(source, exception)` is the same call for the components; `Count`. It is given to the messenger as `MessengerSetup.Failures` | `FailureReported` (`FailureReport`: the `FailureSource` and the exception's type name, never its message) |
 
-### 9.3 Result values
+### 10.3 Result values
 
 | Type | Values |
 | --- | --- |
@@ -581,13 +670,19 @@ The screens in `P2PMessenger.UI` reach the back-end only through `P2PMessenger.A
 | `CreateIdentityError` | `None`; `InvalidName`; `AlreadyCreated` |
 | `DeliveryState` | `None` (a received message), `Waiting` and `Received` (a sent message: waiting for, or confirmed by, the contact's app) |
 | `Reachability` | `NotReachable`; `Nearby`; `Tor` |
-| `FailureSource` | Where a failure was caught: `UiThread`, `BackgroundTask` (a failed task that nobody observed), `AppDomain` (an exception that ends the process), `Connections`, `Discovery`, `Delivery`, `Groups` (joining a group after a contact changed) |
+| `CopyPairingCodeError` | `None`; `NotAPairingCode`; `UnsupportedVersion`; `Damaged` |
+| `PcCopyReceiveProblem` | `None`; `NoLocalNetwork`; `ListenFailed` |
+| `PcCopyReceivePhase` | `WaitingForPhone`; `Connected`; `Receiving`; `Completed`; `Cancelled`; `Disconnected`; `Failed` |
+| `PcCopyConnectOutcome` | `Connected`; `NotReachable`; `TimedOut`; `Refused`; `Cancelled` |
+| `PcCopySendOutcome` | `Completed`; `NothingSelected`; `Disconnected`; `Cancelled`; `Failed` |
+| `CopiedChatChange` | `Saved`; `Deleted` |
+| `FailureSource` | Where a failure was caught: `UiThread`, `BackgroundTask` (a failed task that nobody observed), `AppDomain` (an exception that ends the process), `Connections`, `Discovery`, `Delivery`, `Groups` (joining a group after a contact changed), `PcCopy` |
 | `InternetRouteState` | `NotInBuild`; `Off`; `Starting`; `Connected`; `Unavailable`, with an `InternetRouteProblem`: `None`, `NotInBuild`, `NoNetwork`, `ClockWrong`, `CannotReachTor`, `TorFailed`, `TorStopped` |
 | `LocalDataStatus` | `Opened`; `NotCreated`; `PassphraseNeeded`; `WrongPassphrase`; `PassphraseRequired`; `PassphraseNotAccepted`; `Failed`, with a `LocalDataProblem`: `None`, `KeyStoreUnavailable`, `KeyStoreRefused`, `KeyNotFound`, `NewerVersion`, `Damaged` |
 
 Stored data that fails any check is reported as `Damaged`; the app never replaces data it cannot read. The tables, columns and constraints behind these operations are in [`src/P2PMessenger.Storage/README.md`](src/P2PMessenger.Storage/README.md).
 
-### 9.4 What each platform implements
+### 10.4 What each platform implements
 
 The back-end libraries call no platform API themselves: whatever differs between Windows, Linux and Android sits behind an interface, and the tests supply fakes for all of them.
 
@@ -598,8 +693,8 @@ The back-end libraries call no platform API themselves: whatever differs between
 | `IBackgroundService`, `IBatteryExemption`, `IMessageNotifier` (Application) | The Android background service, the battery exemption and message notifications: `Show(MessageNotice)` for a one-to-one message and `ShowGroup(GroupMessageNotice)` for a group message, each with the text only if the user turned previews on | `P2PMessenger.Android` |
 | `ILocalInterfaceSource` (Transport) | The device's local network interfaces | `SystemInterfaceSource` (Transport), `AndroidInterfaceSource` (Android) |
 | `ILocalData` (Application) | Opens, creates, unlocks and deletes the local database; the passphrase operations | `DatabaseLocalData` (SQLite), `InMemoryLocalData` |
-| `IContactStore`, `IChatStore`, `IGroupStore`, `IIdentityStore` (Application) | Persistence of the contacts, the chats, the groups with their messages and the identity | The database-backed stores in `Application/LocalData`, and the `InMemory` ones |
+| `IContactStore`, `IChatStore`, `IGroupStore`, `ICopiedChatStore`, `IIdentityStore` (Application) | Persistence of the contacts, the chats, the groups with their messages, the copied chats and the identity | The database-backed stores in `Application/LocalData`, and the `InMemory` ones |
 | `IWakeUpScheduler` (Application) | The timer that wakes the outbox | `TimerWakeUpScheduler` |
-| `IFailureSink` (Core) | Receives the unexpected failures that the connections, discovery and delivery catch in their background work; without one they log the failure themselves | `GlobalFailureHandler` (Application), passed in through `MessengerSetup.Failures` |
+| `IFailureSink` (Core) | Receives the unexpected failures that the connections, discovery, delivery and PC copy catch in their background work; without one they log the failure themselves | `GlobalFailureHandler` (Application), passed in through `MessengerSetup.Failures` |
 | `IDialer`, `IDiscoveryLink`, `IKnownContacts` (Transport) | Opening connections, the UDP socket of discovery and the list of contacts that may call | `TcpDialer` and `OnionDialer`, `UdpDiscoveryLink`, `KnownContacts` (Transport) |
 | `IConnectionObserver`, `IDiscoveryObserver` (Transport) | Reports of sessions, refusals and heard announcements to the layer above | `ConnectionService` in Application |

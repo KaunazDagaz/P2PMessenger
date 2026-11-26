@@ -23,6 +23,7 @@ public static class DesktopPlatform
         {
             Tor = Tor(dataFolder, AppContext.BaseDirectory),
             Settings = dataFolder is { Length: > 0 } ? new FileSettingsStore(dataFolder) : new InMemorySettingsStore(),
+            CanReceivePcCopy = true,
         };
     }
 

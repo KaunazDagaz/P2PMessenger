@@ -4,12 +4,15 @@ using Microsoft.Extensions.Logging.Abstractions;
 using P2PMessenger.Application.Chats;
 using P2PMessenger.Application.Connections;
 using P2PMessenger.Application.Contacts;
+using P2PMessenger.Application.Copy;
 using P2PMessenger.Application.Delivery;
 using P2PMessenger.Application.Groups;
 using P2PMessenger.Application.Internet;
 using P2PMessenger.Core;
+using P2PMessenger.Core.Copy;
 using P2PMessenger.Core.Messages;
 using P2PMessenger.Transport.Connections;
+using P2PMessenger.Transport.Copy;
 
 namespace P2PMessenger.Application;
 
@@ -23,15 +26,25 @@ public sealed record MessengerSetup
 
     public IGroupStore? GroupStore { get; init; }
 
+    public ICopiedChatStore? CopiedChatStore { get; init; }
+
     public ConnectionOptions Connection { get; init; } = new();
 
     public DeliveryOptions Delivery { get; init; } = new();
+
+    public CopyOptions Copy { get; init; } = new();
 
     public IWakeUpScheduler? WakeUps { get; init; }
 
     public IPAddress ListenAddress { get; init; } = IPAddress.Any;
 
     public int? ListenPort { get; init; }
+
+    public IPAddress? CopyListenAddress { get; init; }
+
+    public int? CopyListenPort { get; init; }
+
+    public Func<IReadOnlyList<Ipv4Address>>? CopyAddressSource { get; init; }
 
     public DiscoverySetup? Discovery { get; init; }
 
@@ -42,6 +55,7 @@ public sealed record MessengerSetup
     public ILoggerFactory Loggers { get; init; } = NullLoggerFactory.Instance;
 
     public IFailureSink? Failures { get; init; }
+
     public static MessengerSetup InMemory()
     {
         InMemorySeenMessageIds seen = new();
@@ -50,6 +64,7 @@ public sealed record MessengerSetup
             ContactStore = new InMemoryContactStore(),
             ChatStore = new InMemoryChatStore(seen),
             GroupStore = new InMemoryGroupStore(seen),
+            CopiedChatStore = new InMemoryCopiedChatStore(),
             SeenMessageIds = seen,
         };
     }

@@ -12,6 +12,7 @@ using P2PMessenger.Application.Identity;
 using P2PMessenger.Application.Internet;
 using P2PMessenger.Application.LocalData;
 using P2PMessenger.Core.Contacts;
+using P2PMessenger.Core.Copy;
 using P2PMessenger.Core.Identity;
 using P2PMessenger.Core.Sessions;
 using P2PMessenger.Tests.Shared;
@@ -65,7 +66,15 @@ internal sealed class UiHarness : IAsyncDisposable
     public static UiHarness Create(ILocalData localData, NetworkSnapshot? network, BackgroundPorts? background, TorSetup? tor, ISettingsStore? settings) =>
         Create(localData, network, background, tor, settings, null);
 
-    public static UiHarness Create(ILocalData localData, NetworkSnapshot? network, BackgroundPorts? background, TorSetup? tor, ISettingsStore? settings, ILoggerFactory? loggers)
+    public static UiHarness Create(
+        ILocalData localData,
+        NetworkSnapshot? network,
+        BackgroundPorts? background,
+        TorSetup? tor,
+        ISettingsStore? settings,
+        ILoggerFactory? loggers,
+        bool canSendPcCopy = false,
+        bool canReceivePcCopy = false)
     {
         FakePlatform platform = new();
         LoopbackDiscovery hub = new();
@@ -79,6 +88,9 @@ internal sealed class UiHarness : IAsyncDisposable
         {
             ListenAddress = IPAddress.Loopback,
             ListenPort = 0,
+            CopyListenAddress = IPAddress.Loopback,
+            CopyListenPort = 0,
+            CopyAddressSource = () => node.Network.Interfaces.Count == 0 ? [] : [LoopbackAddress()],
             Connection = Fast,
             Discovery = node.Setup,
             Tor = tor,
@@ -88,6 +100,8 @@ internal sealed class UiHarness : IAsyncDisposable
         {
             Background = background,
             TorSettings = new InternetRouteSettings(settings ?? new InMemorySettingsStore()),
+            CanSendPcCopy = canSendPcCopy,
+            CanReceivePcCopy = canReceivePcCopy,
         };
         return new UiHarness(services, platform, hub, node);
     }
@@ -96,15 +110,24 @@ internal sealed class UiHarness : IAsyncDisposable
 
     public static Task<UiHarness> StartAsync(string name, NetworkSnapshot? network) => StartAsync(name, network, null);
 
-    public static async Task<UiHarness> StartAsync(string name, NetworkSnapshot? network, ILoggerFactory? loggers)
+    public static Task<UiHarness> StartAsync(string name, NetworkSnapshot? network, ILoggerFactory? loggers) =>
+        StartAsync(name, network, loggers, false, false);
+
+    public static async Task<UiHarness> StartAsync(string name, NetworkSnapshot? network, ILoggerFactory? loggers, bool canSendPcCopy, bool canReceivePcCopy)
     {
-        UiHarness harness = Create(new InMemoryLocalData(), network, null, null, null, loggers);
+        UiHarness harness = Create(new InMemoryLocalData(), network, null, null, null, loggers, canSendPcCopy, canReceivePcCopy);
         Assert.True((await harness.Services.OpenLocalDataAsync(CancellationToken.None)).IsOpen);
         CreateIdentityResult created = await harness.Services.Identities.CreateAsync(name, CancellationToken.None);
         Assert.True(created.IsCreated);
         await harness.Shell.StartAsync(CancellationToken.None);
         Assert.NotNull(harness.Services.Messenger);
         return harness;
+    }
+
+    private static Ipv4Address LoopbackAddress()
+    {
+        Assert.True(Ipv4Address.TryCreate(127, 0, 0, 1, out Ipv4Address address));
+        return address;
     }
 
     public static void Flush() => Dispatcher.UIThread.RunJobs();

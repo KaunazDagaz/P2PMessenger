@@ -1,6 +1,7 @@
 using P2PMessenger.Application;
 using P2PMessenger.Application.Contacts;
 using P2PMessenger.Application.LocalData;
+using P2PMessenger.Core.Copy;
 using P2PMessenger.Core.Groups;
 using P2PMessenger.UI.Resources;
 using P2PMessenger.UI.Services;
@@ -42,7 +43,16 @@ public sealed class Pages
     public PassphraseViewModel Passphrase() => Own(new PassphraseViewModel(services));
 
     public ContactListViewModel ContactList() =>
-        Own(new ContactListViewModel(Messenger, services.UiThread, navigation, this, services.SupportsPassphrase && services.Mode == LocalDataMode.Saved, services.Background is not null, services.SetTorAsync));
+        Own(new ContactListViewModel(
+            Messenger,
+            services.UiThread,
+            navigation,
+            this,
+            services.SupportsPassphrase && services.Mode == LocalDataMode.Saved,
+            services.Background is not null,
+            services.SetTorAsync,
+            services.CanSendPcCopy,
+            services.CanReceivePcCopy));
 
     public BackgroundViewModel Background(bool firstRun) =>
         Own(new BackgroundViewModel(services.Background ?? throw new InvalidOperationException("This platform has no background service."), services.QuitAsync, navigation, firstRun));
@@ -58,6 +68,12 @@ public sealed class Pages
     public NewGroupViewModel NewGroup() => Own(new NewGroupViewModel(Messenger, navigation, this));
 
     public GroupConversationViewModel GroupConversation(GroupId groupId) => Own(new GroupConversationViewModel(Messenger, groupId, services.UiThread));
+
+    public ReceiveCopyViewModel ReceiveCopy() => Own(new ReceiveCopyViewModel(Messenger, services.UiThread, navigation));
+
+    public SendCopyViewModel SendCopy() => Own(new SendCopyViewModel(Messenger, services.QrScanner, services.UiThread, navigation));
+
+    public CopiedConversationViewModel CopiedConversation(CopyOriginId origin) => Own(new CopiedConversationViewModel(Messenger, origin, services.UiThread, navigation));
 
     public VerifyContactViewModel VerifyContact(Contact contact) => Own(new VerifyContactViewModel(Messenger, contact.IdentityKey, services.UiThread));
 

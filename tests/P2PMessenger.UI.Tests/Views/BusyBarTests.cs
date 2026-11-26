@@ -181,6 +181,32 @@ public sealed class BusyBarTests
         harness.Messenger.Identity.Dispose();
     }
 
+    [AvaloniaFact]
+    [Trait("Story", "US-22")]
+    public async Task PcCopyViews_WhileBusyOrDeleting_ShowTheProgressBars()
+    {
+        await using var harness = await UiHarness.StartAsync("Alice");
+        var receive = harness.Shell.Pages.ReceiveCopy();
+        var receiveView = new ReceiveCopyView { DataContext = receive };
+        harness.Show(receiveView);
+
+        var send = harness.Shell.Pages.SendCopy();
+        var sendView = new SendCopyView { DataContext = send };
+        harness.Show(sendView);
+
+        using var owner = Core.Identity.KeySet.Create();
+        using var bob = Core.Identity.KeySet.Create();
+        var origin = Core.Copy.CopyOriginId.ForContact(owner.IdentityKey, bob.IdentityKey);
+        var copied = harness.Shell.Pages.CopiedConversation(origin);
+        var copiedView = new CopiedConversationView { DataContext = copied };
+        harness.Show(copiedView);
+
+        FollowsBusy(UiHarness.Find<ProgressBar>(receiveView, "BusyBar"), busy => receive.IsBusy = busy);
+        FollowsBusy(UiHarness.Find<ProgressBar>(sendView, "BusyBar"), busy => send.IsBusy = busy);
+        FollowsBusy(UiHarness.Find<ProgressBar>(copiedView, "DeleteCopyBusyBar"), busy => copied.IsDeletingCopy = busy);
+        harness.Messenger.Identity.Dispose();
+    }
+
     private static void FollowsBusy(ProgressBar bar, Action<bool> setBusy)
     {
         Assert.True(bar.IsIndeterminate);

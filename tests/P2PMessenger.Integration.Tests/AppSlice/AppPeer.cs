@@ -4,6 +4,7 @@ using P2PMessenger.Application;
 using P2PMessenger.Application.Contacts;
 using P2PMessenger.Application.Identity;
 using P2PMessenger.Application.LocalData;
+using P2PMessenger.Core.Copy;
 using P2PMessenger.Core.Crypto;
 using P2PMessenger.Core.Identity;
 using P2PMessenger.Core.Sessions;
@@ -69,6 +70,9 @@ internal sealed class AppPeer : IAsyncDisposable
         {
             ListenAddress = IPAddress.Loopback,
             ListenPort = 0,
+            CopyListenAddress = IPAddress.Loopback,
+            CopyListenPort = 0,
+            CopyAddressSource = LoopbackCopyAddresses,
             Connection = TestOptions.Fast,
             Discovery = node.Setup,
         };
@@ -110,9 +114,13 @@ internal sealed class AppPeer : IAsyncDisposable
                 ContactStore = opened.Stores.Contacts,
                 ChatStore = opened.Stores.Chats,
                 GroupStore = opened.Stores.Groups,
+                CopiedChatStore = opened.Stores.CopiedChats,
                 SeenMessageIds = opened.Stores.SeenMessageIds,
                 ListenAddress = IPAddress.Loopback,
                 ListenPort = 0,
+                CopyListenAddress = IPAddress.Loopback,
+                CopyListenPort = 0,
+                CopyAddressSource = LoopbackCopyAddresses,
                 Connection = TestOptions.Fast,
                 Discovery = node.Setup,
             };
@@ -161,5 +169,11 @@ internal sealed class AppPeer : IAsyncDisposable
         {
             await localData.DisposeAsync();
         }
+    }
+
+    private static IReadOnlyList<Ipv4Address> LoopbackCopyAddresses()
+    {
+        Assert.True(Ipv4Address.TryCreate(127, 0, 0, 1, out var loopback));
+        return [loopback];
     }
 }

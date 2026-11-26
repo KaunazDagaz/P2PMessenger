@@ -128,6 +128,8 @@ public partial class App : Avalonia.Application
         {
             Background = platform.Background,
             TorSettings = new InternetRouteSettings(platform.Settings ?? new InMemorySettingsStore()),
+            CanSendPcCopy = platform.CanSendPcCopy,
+            CanReceivePcCopy = platform.CanReceivePcCopy,
         };
         if (platform.PassphraseSetChanged is { } passphraseSetChanged)
         {

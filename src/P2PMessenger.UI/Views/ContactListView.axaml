@@ -15,6 +15,16 @@
                     Content="{x:Static res:UiText.ContactListNewGroup}"
                     Command="{Binding NewGroupCommand}"
                     IsVisible="{Binding HasContacts}" />
+            <Button x:Name="SendCopyButton"
+                    Margin="0,0,8,8"
+                    Content="{x:Static res:UiText.ContactListSendCopy}"
+                    Command="{Binding SendPcCopyCommand}"
+                    IsVisible="{Binding OffersSendPcCopy}" />
+            <Button x:Name="ReceiveCopyButton"
+                    Margin="0,0,8,8"
+                    Content="{x:Static res:UiText.ContactListReceiveCopy}"
+                    Command="{Binding ReceivePcCopyCommand}"
+                    IsVisible="{Binding OffersReceivePcCopy}" />
             <Button x:Name="PassphraseButton"
                     Margin="0,0,8,8"
                     Content="{x:Static res:UiText.ContactListPassphrase}"
@@ -69,7 +79,7 @@
                    Text="{x:Static res:UiText.ContactListEmpty}"
                    TextWrapping="Wrap"
                    IsVisible="{Binding IsEmpty}" />
-        <DockPanel x:Name="SearchPanel" DockPanel.Dock="Top" Margin="0,0,0,12" IsVisible="{Binding HasContacts}">
+        <DockPanel x:Name="SearchPanel" DockPanel.Dock="Top" Margin="0,0,0,12" IsVisible="{Binding HasSearchableItems}">
             <Button x:Name="ClearSearchButton"
                     DockPanel.Dock="Right"
                     Margin="8,0,0,0"
@@ -120,7 +130,7 @@
                            Margin="0,8,0,8"
                            Text="{x:Static res:UiText.ContactListContactsHeading}"
                            FontWeight="SemiBold"
-                           IsVisible="{Binding HasGroups}" />
+                           IsVisible="{Binding ShowContactsHeading}" />
                 <ItemsControl x:Name="ContactItems" ItemsSource="{Binding Contacts}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="vm:ContactItemViewModel">
@@ -141,6 +151,28 @@
                                     <TextBlock Text="{Binding Fingerprint}" FontFamily="monospace" FontSize="12" />
                                     <TextBlock Text="{Binding StatusText}" />
                                     <TextBlock Text="{Binding KeyText}" />
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock x:Name="CopiedChatsHeading"
+                           Margin="0,8,0,8"
+                           Text="{x:Static res:UiText.ContactListCopiedChatsHeading}"
+                           FontWeight="SemiBold"
+                           IsVisible="{Binding HasCopiedChats}" />
+                <ItemsControl x:Name="CopiedChatItems" ItemsSource="{Binding CopiedChats}" IsVisible="{Binding HasCopiedChats}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:CopiedChatItemViewModel">
+                            <Button Command="{Binding OpenCommand}"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Stretch"
+                                    Margin="0,0,0,8"
+                                    Padding="12"
+                                    AutomationProperties.Name="{Binding Title}">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding SummaryText}" />
                                 </StackPanel>
                             </Button>
                         </DataTemplate>

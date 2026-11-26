@@ -4,7 +4,7 @@ Each device keeps its data in one SQLite database of its own. There is no server
 
 This file documents the database: the design rules, the logical schema, how stored data is protected, the data dictionary, normalisation, migrations, and how to create and inspect a database. The schema is created and changed only by the numbered scripts in [`Migrations`](Migrations); nothing is created by hand.
 
-**Status:** the schema, its migrations, the encryption described in [How stored data is protected](#how-stored-data-is-protected) and the repositories exist, with their tests. The app keeps its identity, contacts, messages, its groups with their signed member lists, keys and messages, the delivery state of its own messages for each recipient and the IDs of seen messages here, on Windows, Linux and Android, and deletes a chat (one-to-one or group), a waiting message or all its data here, keeping what a deleted group chat had so that it does not come back. On Android the data key is wrapped by the Android Keystore. The PC copy has tables but no code yet.
+**Status:** the schema, its migrations, the encryption described in [How stored data is protected](#how-stored-data-is-protected) and the repositories exist, with their tests. The app keeps its identity, contacts, messages, its groups with their signed member lists, keys and messages, the delivery state of its own messages for each recipient, the IDs of seen messages and read-only chats copied from a phone to a PC here, on Windows, Linux and Android, and deletes a chat (one-to-one or group), a waiting message, a copied chat or all its data here, keeping what a deleted group chat had so that it does not come back. On Android the data key is wrapped by the Android Keystore.
 
 ## Contents
 
@@ -124,6 +124,7 @@ erDiagram
     copied_conversation {
         INTEGER id PK
         BLOB origin_mac UK "MAC"
+        BLOB origin_enc "encrypted"
         BLOB title_enc "encrypted"
         BLOB copied_at_enc "encrypted"
     }
@@ -164,10 +165,10 @@ The data key is 32 random bytes made on the device. It is never stored unwrapped
 All cryptography comes from libsodium through NSec (`Protection/RecordKeys.cs`).
 
 - **Two keys from the data key.** HKDF-SHA-256 extracts a pseudorandom key from the data key with the salt `P2PM/storage/v1` and expands two keys from it: with the info `P2PM/storage/v1/record-key` the XChaCha20-Poly1305 key for `_enc` values, and with `P2PM/storage/v1/lookup-key` the BLAKE2b-256 key for `_mac` values. The data key itself is cleared from memory once the two keys exist.
-- **An encrypted value** is a random 24-byte nonce, then the ciphertext, then the 16-byte tag. The associated data is the ASCII text `P2PM/storage/v1`, a zero byte, the table name, a zero byte, the column name, a zero byte and the row's key as a big-endian 64-bit integer. For example, the name in row 2 of `person` is bound to the bytes of `P2PM/storage/v1`, `00`, `person`, `00`, `display_name_enc`, `00` and `00 00 00 00 00 00 00 02`. A value copied to another row, column or table does not decrypt.
-- **A MAC** is BLAKE2b-256 under the lookup key of `P2PM/lookup/v1/` and a domain name (`identity-key`, `static-key`, `message-id` or `group-id`), a zero byte and the value. The same message ID gives the same MAC in `message` and in `seen_message`.
-- **What is inside an encrypted value:** public keys as their 32 bytes, the user's private keys as one 97-byte block (a version byte and the three 32-byte private keys), names and texts as UTF-8, a contact code's signature as its 64 bytes, a message ID as its 16 bytes, times as an 8-byte big-endian count of 100-nanosecond ticks since 0001-01-01 UTC, and a sequence number as an 8-byte big-endian integer of at least 1.
-- **Reading checks everything.** Every value must decrypt with its own associated data, every MAC must match the value it was made from, and a contact code rebuilt from its parts must carry a valid signature. If anything fails, the app reads nothing and says that the stored data was changed or damaged.
+- **An encrypted value** is a random 24-byte nonce, then the ciphertext, then the 16-byte tag. The associated data is the ASCII text `P2PM/storage/v1`, a zero byte, the table name, a zero byte, the column name, a zero byte and the row's key as a big-endian 64-bit integer. For example, the name in row 2 of `person` is bound to the bytes of `P2PM/storage/v1`, `00`, `person`, `00`, `display_name_enc`, `00` and `00 00 00 00 00 00 00 02`. For `copied_message`, the 64-bit row key packs `(copied_conversation_id << 32) | (written_by_owner << 31) | position`, so moving a message between copied chats, reordering it or flipping `written_by_owner` fails authentication too. A value copied to another row, column or table does not decrypt.
+- **A MAC** is BLAKE2b-256 under the lookup key of `P2PM/lookup/v1/` and a domain name (`identity-key`, `static-key`, `message-id`, `group-id` or `copy-origin`), a zero byte and the value. The same message ID gives the same MAC in `message` and in `seen_message`.
+- **What is inside an encrypted value:** public keys as their 32 bytes, the user's private keys as one 97-byte block (a version byte and the three 32-byte private keys), a copied conversation's origin ID as its 32 bytes, names and texts as UTF-8, a contact code's signature as its 64 bytes, a message ID as its 16 bytes, times as an 8-byte big-endian count of 100-nanosecond ticks since 0001-01-01 UTC, and a sequence number as an 8-byte big-endian integer of at least 1.
+- **Reading checks everything.** Every value must decrypt with its own associated data, every MAC (including `copied_conversation.origin_mac` against `origin_enc`) must match the value it was made from, every copied message list must have contiguous positions from 1, and a contact code rebuilt from its parts must carry a valid signature. If anything fails, the app reads nothing and says that the stored data was changed or damaged.
 
 ### How the data key is wrapped
 
@@ -334,24 +335,25 @@ The IDs of messages already received or sent, so that a repeated, replayed or re
 
 ### `copied_conversation`
 
-On the user's PC: a chat copied from the user's phone. Read-only; copying the same chat again replaces it.
+On the user's PC: a chat copied from the user's phone. Read-only; copying the same chat again atomically replaces it in one transaction while leaving other copied chats untouched.
 
 | Column | Type | Null | Key | Class | Description |
 | --- | --- | --- | --- | --- | --- |
 | `id` | INTEGER | No | PK | Plain | Surrogate key |
-| `origin_mac` | BLOB | No | UK | MAC | MAC of the chat's ID on the phone; a new copy of the same chat replaces the old one |
+| `origin_mac` | BLOB | No | UK | MAC | MAC of the 32-byte copy origin ID (`copy-origin` domain); a new copy of the same chat replaces the old one |
+| `origin_enc` | BLOB | No | | Encrypted | The 32-byte copy origin ID, so loading checks `origin_mac` against the decrypted value. Added by `0007_copied_conversation_origin.sql` |
 | `title_enc` | BLOB | No | | Encrypted | The chat's title: the contact's or the group's name |
 | `copied_at_enc` | BLOB | No | | Encrypted | When it was copied |
 
 ### `copied_message`
 
-A message of a copied chat. `WITHOUT ROWID`.
+A message of a copied chat. `WITHOUT ROWID`. Each encrypted column's associated data binds `(copied_conversation_id << 32) | (written_by_owner << 31) | position`, so changing `written_by_owner`, moving a value to another position or another copied conversation fails decryption.
 
 | Column | Type | Null | Key | Class | Description |
 | --- | --- | --- | --- | --- | --- |
 | `copied_conversation_id` | INTEGER | No | PK, FK `copied_conversation.id` | Plain | The copied chat; deleting it deletes its messages |
-| `position` | INTEGER | No | PK | Plain | Place in the chat, from 1 |
-| `written_by_owner` | INTEGER | No | | Plain | 1 if the user wrote it on the phone, otherwise 0 |
+| `position` | INTEGER | No | PK | Plain | Place in the chat, contiguous from 1 |
+| `written_by_owner` | INTEGER | No | | Plain | 1 if the user wrote it on the phone, otherwise 0; also bound into each encrypted column's associated data |
 | `author_name_enc` | BLOB | Yes | | Encrypted | The author's name; NULL exactly when `written_by_owner` is 1 |
 | `text_enc` | BLOB | No | | Encrypted | The text |
 | `written_at_enc` | BLOB | No | | Encrypted | When the author wrote it |
@@ -396,6 +398,7 @@ Two kinds of derived values are kept on purpose:
   | `0004_sent_sequence.sql` | Adds `conversation.sent_sequence_enc`, empty in every existing row, so that a chat keeps its next sequence number when its messages are deleted (see [`conversation`](#conversation)) |
   | `0005_groups.sql` | Adds `group_key.record_enc` and `group_member.joined`, `invitation_state` and `join_state`. No earlier version stored a group, so no row needs a value |
   | `0006_deleted_group_messages.sql` | Adds `conversation.deleted_ranges_enc`, empty for every existing chat |
+  | `0007_copied_conversation_origin.sql` | Adds `copied_conversation.origin_enc`, storing the encrypted 32-byte copy origin ID so `origin_mac` is verified on every load. No earlier version wrote rows to `copied_conversation` |
 
 - `MigrationRunner.MigrateAsync` reads the schema version from `PRAGMA user_version`, applies every newer script in order, and records the new version. Each script runs in one transaction together with the version update, so a failing script leaves the database at the previous version.
 - A database whose version is newer than the newest script is refused, not changed.
@@ -414,7 +417,7 @@ A database can be built from the scripts in two ways: with the SQLite command-li
 ### Create a database
 
 ```
-sqlite3 review.db ".read src/P2PMessenger.Storage/Migrations/0001_initial.sql" ".read src/P2PMessenger.Storage/Migrations/0002_message_id.sql" ".read src/P2PMessenger.Storage/Migrations/0003_outgoing_delivery.sql" ".read src/P2PMessenger.Storage/Migrations/0004_sent_sequence.sql" ".read src/P2PMessenger.Storage/Migrations/0005_groups.sql" ".read src/P2PMessenger.Storage/Migrations/0006_deleted_group_messages.sql"
+sqlite3 review.db ".read src/P2PMessenger.Storage/Migrations/0001_initial.sql" ".read src/P2PMessenger.Storage/Migrations/0002_message_id.sql" ".read src/P2PMessenger.Storage/Migrations/0003_outgoing_delivery.sql" ".read src/P2PMessenger.Storage/Migrations/0004_sent_sequence.sql" ".read src/P2PMessenger.Storage/Migrations/0005_groups.sql" ".read src/P2PMessenger.Storage/Migrations/0006_deleted_group_messages.sql" ".read src/P2PMessenger.Storage/Migrations/0007_copied_conversation_origin.sql"
 ```
 
 Read the scripts in number order. The shell leaves `user_version` at 0, because the migration runner, not the script, records the version.
@@ -498,6 +501,7 @@ The tests build temporary databases with `MigrationRunner` and `SqliteDatabase`,
 - a message is stored together with its ID among the seen IDs and, if the user wrote it, its waiting delivery; the delivery becomes received only for the contact the message was sent to, and only once;
 - a message of the user without its delivery, a delivery for another person, and a received message with a delivery are refused as damaged;
 - a group comes back with the same signed record, key and member states, a member who is not a contact is stored as a person with the name from the record, a group key that does not fit the record or that was moved to another group's row is refused, and a group message keeps its signed envelope and one delivery per member, of which only the one for the member who confirmed it becomes received; a second message with an author's used sequence number is not stored;
+- copied conversations and copied messages save, replace atomically by origin ID, delete cleanly with `secure_delete` and journal truncation leaving no plaintext in the database files, refuse any flipped bit of any encrypted column or `origin_mac`, refuse a value moved to another row, column or position, refuse a flipped `written_by_owner` flag, and refuse gaps in message positions (`CopiedConversationRepositoryTests`, `CopiedFilesTests`, `0007_copied_conversation_origin.sql`);
 - the key derivation and XChaCha20-Poly1305 give the published test vectors (RFC 5869, draft-irtf-cfrg-xchacha), and the associated data, two encrypted values and the MACs match an independent Python implementation;
 - every flipped bit of every stored encrypted value and MAC, and a value moved to another row or column, is refused;
 - a stored identity, contacts, messages and seen IDs come back unchanged after the database is closed and opened again;
