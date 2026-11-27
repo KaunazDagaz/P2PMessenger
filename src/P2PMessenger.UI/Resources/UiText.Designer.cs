@@ -3593,5 +3593,23 @@ namespace P2PMessenger.UI.Resources {
                 return ResourceManager.GetString("VerifyYoursLabel", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to P2PMessenger needs the Microsoft Visual C++ Redistributable (x64) to run its cryptography library on Windows. Install it from https://aka.ms/vs/17/release/vc_redist.x64.exe or run the P2PMessenger Windows installer, then start P2PMessenger again..
+        /// </summary>
+        public static string WindowsVcRuntimeMissingBody {
+            get {
+                return ResourceManager.GetString("WindowsVcRuntimeMissingBody", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Microsoft Visual C++ Redistributable required.
+        /// </summary>
+        public static string WindowsVcRuntimeMissingTitle {
+            get {
+                return ResourceManager.GetString("WindowsVcRuntimeMissingTitle", resourceCulture);
+            }
+        }
     }
 }

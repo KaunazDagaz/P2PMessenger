@@ -5,7 +5,7 @@
         xmlns:views="using:P2PMessenger.UI.Views"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="P2PMessenger.UI.Views.MainWindow"
-        Icon="/Assets/avalonia-logo.ico"
+        Icon="/Assets/p2pmessenger.ico"
         Title="P2PMessenger">
     <views:MainView />
 </Window>

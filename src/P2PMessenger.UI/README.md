@@ -339,6 +339,5 @@ Tests use dummy data. The tests that need a real Tor, a platform key store or a 
 
 | What | When | Why |
 | --- | --- | --- |
-| A GitHub release with an APK and a Windows build | When the MVP is reached, and in any case before the review | A build to try the app |
 | Shared styles and more reusable components, replacing the margins and card borders repeated in the views | After the MVP | A CSS-like architecture for the views |
 | A responsive layout checked at phone and desktop sizes | After the MVP | Desktop and mobile |

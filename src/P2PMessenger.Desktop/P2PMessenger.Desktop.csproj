@@ -2,6 +2,9 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
+    <RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ApplicationIcon>..\P2PMessenger.UI\Assets\p2pmessenger.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
@@ -21,7 +24,11 @@
   </PropertyGroup>
 
   <ItemGroup Condition="'$(TorBundlePlatform)' != '' and Exists('$(TorBundleFolder)')">
-    <None Include="$(TorBundleFolder)**" LinkBase="tor" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="$(TorBundleFolder)**"
+          Exclude="$(TorBundleFolder)pluggable_transports/**;$(TorBundleFolder)tor-gencert*"
+          LinkBase="tor"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

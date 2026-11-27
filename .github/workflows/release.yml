@@ -1,0 +1,523 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Dry-run semantic version (without v prefix)
+        required: false
+        default: '0.0.0-dryrun'
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  AVALONIA_TELEMETRY_OPTOUT: 1
+
+jobs:
+  version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+      version: ${{ steps.resolve.outputs.version }}
+      assembly_version: ${{ steps.resolve.outputs.assembly_version }}
+      android_version_code: ${{ steps.resolve.outputs.android_version_code }}
+      is_prerelease: ${{ steps.resolve.outputs.is_prerelease }}
+      should_publish: ${{ steps.resolve.outputs.should_publish }}
+    steps:
+      - name: Resolve semantic version
+        id: resolve
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "$EVENT_NAME" = "push" ]; then
+            raw="$REF_NAME"
+            should_publish="true"
+          else
+            raw="$INPUT_VERSION"
+            should_publish="false"
+          fi
+          if [[ ! "$raw" =~ ^v?([0-9]+)\.([0-9]+)\.([0-9]+)(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Invalid semantic version '$raw'"
+            exit 1
+          fi
+          major="${BASH_REMATCH[1]}"
+          minor="${BASH_REMATCH[2]}"
+          patch="${BASH_REMATCH[3]}"
+          suffix="${BASH_REMATCH[4]}"
+          version="${major}.${minor}.${patch}${suffix}"
+          tag="v${version}"
+          assembly_version="${major}.${minor}.${patch}"
+          code=$((major * 10000 + minor * 100 + patch))
+          if [ "$code" -lt 1 ]; then
+            code=1
+          fi
+          if [ -n "$suffix" ]; then
+            is_prerelease="true"
+          else
+            is_prerelease="false"
+          fi
+          {
+            echo "tag=$tag"
+            echo "version=$version"
+            echo "assembly_version=$assembly_version"
+            echo "android_version_code=$code"
+            echo "is_prerelease=$is_prerelease"
+            echo "should_publish=$should_publish"
+          } >> "$GITHUB_OUTPUT"
+
+  verify:
+    name: Format and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+
+      - name: Restore
+        run: dotnet restore P2PMessenger.Desktop.slnf --locked-mode
+
+      - name: Check format
+        run: dotnet format P2PMessenger.Desktop.slnf --verify-no-changes --no-restore
+
+      - name: Build
+        run: dotnet build P2PMessenger.Desktop.slnf --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --solution P2PMessenger.Desktop.slnf --configuration Release --no-build
+
+      - name: Check for vulnerable packages
+        run: |
+          dotnet list P2PMessenger.Desktop.slnf package --vulnerable --include-transitive --no-restore | tee "$RUNNER_TEMP/vulnerable.txt"
+          if grep -q 'has the following vulnerable packages' "$RUNNER_TEMP/vulnerable.txt"; then
+            exit 1
+          fi
+
+  windows:
+    name: Windows (x64)
+    needs: [version, verify]
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+
+      - name: Download Tor bundle
+        shell: pwsh
+        run: pwsh -File tools/get-tor.ps1 -Platform windows-x86_64
+
+      - name: Restore
+        run: dotnet restore src/P2PMessenger.Desktop/P2PMessenger.Desktop.csproj --locked-mode
+
+      - name: Publish self-contained
+        shell: pwsh
+        env:
+          REL_VERSION: ${{ needs.version.outputs.version }}
+          ASM_VERSION: ${{ needs.version.outputs.assembly_version }}
+        run: |
+          $publishDir = Join-Path $env:RUNNER_TEMP 'win-x64-publish'
+          dotnet publish src/P2PMessenger.Desktop/P2PMessenger.Desktop.csproj `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained true `
+            --no-restore `
+            -p:Version=$env:REL_VERSION `
+            -p:AssemblyVersion=$env:ASM_VERSION `
+            -p:FileVersion=$env:ASM_VERSION `
+            -p:DebugSymbols=false `
+            -p:DebugType=None `
+            -o $publishDir
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-ChildItem -Path $publishDir -Recurse -Include *.pdb, *.xml | Remove-Item -Force
+          Copy-Item -LiteralPath 'THIRD-PARTY-NOTICES.txt' -Destination (Join-Path $publishDir 'THIRD-PARTY-NOTICES.txt')
+          $torLicDest = Join-Path $publishDir 'licenses\tor'
+          New-Item -ItemType Directory -Path $torLicDest -Force | Out-Null
+          foreach ($doc in @('tor.txt', 'openssl.txt', 'libevent.txt', 'zlib.txt')) {
+              Copy-Item -LiteralPath (Join-Path 'tools\tor\windows-x86_64\docs' $doc) -Destination (Join-Path $torLicDest $doc)
+          }
+          pwsh -File tools/verify-release.ps1 -Mode Desktop -Path $publishDir -Platform win-x64
+
+      - name: Package portable zip
+        shell: pwsh
+        env:
+          REL_VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          $publishDir = Join-Path $env:RUNNER_TEMP 'win-x64-publish'
+          $outDir = Join-Path $env:RUNNER_TEMP 'win-x64-out'
+          New-Item -ItemType Directory -Path $outDir -Force | Out-Null
+          $zipPath = Join-Path $outDir "P2PMessenger-$env:REL_VERSION-win-x64.zip"
+          Compress-Archive -Path (Join-Path $publishDir '*') -DestinationPath $zipPath -CompressionLevel Optimal
+          pwsh -File tools/verify-release.ps1 -Mode Desktop -Path $zipPath -Platform win-x64
+
+      - name: Download and verify VC++ Redistributable
+        shell: pwsh
+        run: |
+          $vcPath = Join-Path $env:RUNNER_TEMP 'vc_redist.x64.exe'
+          Invoke-WebRequest -Uri 'https://aka.ms/vs/17/release/vc_redist.x64.exe' -OutFile $vcPath -UseBasicParsing
+          $sig = Get-AuthenticodeSignature -FilePath $vcPath
+          if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notlike '*Microsoft Corporation*') {
+              throw "VC++ Redistributable signature check failed: $($sig.Status) / $($sig.SignerCertificate.Subject)"
+          }
+
+      - name: Build Inno Setup installer
+        shell: pwsh
+        env:
+          REL_VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          $iscc = Get-Command iscc.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Source
+          if (-not $iscc) {
+              $candidate = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+              if (Test-Path -LiteralPath $candidate) { $iscc = $candidate }
+          }
+          if (-not $iscc) {
+              throw 'Inno Setup compiler (ISCC.exe) was not found.'
+          }
+          $publishDir = Join-Path $env:RUNNER_TEMP 'win-x64-publish'
+          $vcPath = Join-Path $env:RUNNER_TEMP 'vc_redist.x64.exe'
+          $outDir = Join-Path $env:RUNNER_TEMP 'win-x64-out'
+          $iconPath = Join-Path $pwd 'src\P2PMessenger.UI\Assets\p2pmessenger.ico'
+          & $iscc /Q "/DAppVersion=$env:REL_VERSION" "/DSelfContainedDir=$publishDir" "/DVcRedistPath=$vcPath" "/DIconPath=$iconPath" "/DOutputDir=$outDir" "/DOutputBaseFilename=P2PMessenger-$env:REL_VERSION-win-x64-setup" 'tools\windows-installer.iss'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-ChildItem -LiteralPath $outDir | Select-Object Name, Length
+
+      - name: Upload Windows assets
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: release-windows
+          path: ${{ runner.temp }}/win-x64-out/*
+          if-no-files-found: error
+
+  linux:
+    name: Linux (x64)
+    needs: [version, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+
+      - name: Download Tor bundle
+        shell: pwsh
+        run: pwsh -File tools/get-tor.ps1 -Platform linux-x86_64
+
+      - name: Restore
+        run: dotnet restore src/P2PMessenger.Desktop/P2PMessenger.Desktop.csproj --locked-mode
+
+      - name: Publish self-contained
+        shell: bash
+        env:
+          REL_VERSION: ${{ needs.version.outputs.version }}
+          ASM_VERSION: ${{ needs.version.outputs.assembly_version }}
+        run: |
+          stage_name="P2PMessenger-${REL_VERSION}-linux-x64"
+          publish_dir="$RUNNER_TEMP/linux-stage/$stage_name"
+          out_dir="$RUNNER_TEMP/linux-x64-out"
+          mkdir -p "$publish_dir" "$out_dir"
+          dotnet publish src/P2PMessenger.Desktop/P2PMessenger.Desktop.csproj \
+            --configuration Release \
+            --runtime linux-x64 \
+            --self-contained true \
+            --no-restore \
+            -p:Version="$REL_VERSION" \
+            -p:AssemblyVersion="$ASM_VERSION" \
+            -p:FileVersion="$ASM_VERSION" \
+            -p:DebugSymbols=false \
+            -p:DebugType=None \
+            -o "$publish_dir"
+          find "$publish_dir" -type f \( -name '*.pdb' -o -name '*.xml' \) -delete
+          cp THIRD-PARTY-NOTICES.txt "$publish_dir/THIRD-PARTY-NOTICES.txt"
+          mkdir -p "$publish_dir/licenses/tor"
+          for doc in tor.txt openssl.txt libevent.txt zlib.txt; do
+            cp "tools/tor/linux-x86_64/docs/$doc" "$publish_dir/licenses/tor/$doc"
+          done
+          chmod +x "$publish_dir/P2PMessenger.Desktop" "$publish_dir/tor/tor"
+          pwsh -File tools/verify-release.ps1 -Mode Desktop -Path "$publish_dir" -Platform linux-x64
+          tar -czf "$out_dir/${stage_name}.tar.gz" -C "$RUNNER_TEMP/linux-stage" "$stage_name"
+
+      - name: Upload Linux assets
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: release-linux
+          path: ${{ runner.temp }}/linux-x64-out/*
+          if-no-files-found: error
+
+  android:
+    name: Android (APK)
+    needs: [version, verify]
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 45
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880
+        with:
+          distribution: microsoft
+          java-version: '21'
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: src/P2PMessenger.Android/packages.lock.json
+          workloads: android
+
+      - name: Download Tor bundles
+        shell: pwsh
+        run: pwsh -File tools/get-tor.ps1 -Platform android-aarch64,android-armv7,android-x86_64
+
+      - name: Restore
+        run: dotnet restore src/P2PMessenger.Android --locked-mode
+
+      - name: Install Android SDK components
+        run: dotnet build src/P2PMessenger.Android -t:InstallAndroidDependencies --no-restore -p:AndroidSdkDirectory="$ANDROID_HOME" -p:AcceptAndroidSDKLicenses=true
+
+      - name: Check for vulnerable packages
+        run: |
+          dotnet list src/P2PMessenger.Android package --vulnerable --include-transitive --no-restore | tee "$RUNNER_TEMP/vulnerable.txt"
+          if grep -q 'has the following vulnerable packages' "$RUNNER_TEMP/vulnerable.txt"; then
+            exit 1
+          fi
+
+      - name: Prepare signing keystore
+        id: keystore
+        shell: bash
+        env:
+          SHOULD_PUBLISH: ${{ needs.version.outputs.should_publish }}
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ] || [ -z "$KEYSTORE_PASS" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASS" ]; then
+            if [ "$SHOULD_PUBLISH" = "true" ]; then
+              echo "::error::Missing Android signing secrets in production environment"
+              exit 1
+            fi
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
+          chmod 600 "$RUNNER_TEMP/release.keystore"
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Publish APK
+        shell: bash
+        env:
+          REL_VERSION: ${{ needs.version.outputs.version }}
+          VERSION_CODE: ${{ needs.version.outputs.android_version_code }}
+          SIGNED: ${{ steps.keystore.outputs.signed }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          publish_args=(
+            src/P2PMessenger.Android/P2PMessenger.Android.csproj
+            --configuration Release
+            --no-restore
+            -p:ApplicationDisplayVersion="$REL_VERSION"
+            -p:ApplicationVersion="$VERSION_CODE"
+            -p:AndroidPackageFormat=apk
+          )
+          if [ "$SIGNED" = "true" ]; then
+            publish_args+=(
+              -p:AndroidKeyStore=true
+              -p:AndroidSigningKeyStore="$RUNNER_TEMP/release.keystore"
+              -p:AndroidSigningKeyAlias="$ANDROID_KEY_ALIAS"
+              -p:AndroidSigningStorePass=env:ANDROID_KEYSTORE_PASSWORD
+              -p:AndroidSigningKeyPass=env:ANDROID_KEY_PASSWORD
+            )
+          fi
+          dotnet publish "${publish_args[@]}"
+
+      - name: Remove keystore
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/release.keystore"
+
+      - name: Verify APK and extract certificate fingerprint
+        shell: bash
+        env:
+          REL_VERSION: ${{ needs.version.outputs.version }}
+          SIGNED: ${{ steps.keystore.outputs.signed }}
+        run: |
+          out_dir="$RUNNER_TEMP/android-out"
+          mkdir -p "$out_dir"
+          apk_src=$(find src/P2PMessenger.Android/bin/Release/net10.0-android36.1/publish -maxdepth 1 -name '*-Signed.apk' 2>/dev/null | head -n 1 || true)
+          if [ -z "$apk_src" ]; then
+            apk_src=$(find src/P2PMessenger.Android/bin/Release/net10.0-android36.1 -maxdepth 2 -name '*-Signed.apk' | head -n 1 || true)
+          fi
+          if [ -z "$apk_src" ] && [ "$SIGNED" != "true" ]; then
+            apk_src=$(find src/P2PMessenger.Android/bin/Release/net10.0-android36.1 -maxdepth 2 -name '*.apk' | head -n 1 || true)
+          fi
+          if [ -z "$apk_src" ]; then
+            echo "::error::Release APK was not produced"
+            exit 1
+          fi
+          apk_out="$out_dir/P2PMessenger-${REL_VERSION}-android.apk"
+          cp "$apk_src" "$apk_out"
+          pwsh -File tools/verify-release.ps1 -Mode Apk -Path "$apk_out"
+          apksigner=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -n 1)
+          if [ -z "$apksigner" ]; then
+            echo "::error::apksigner not found under $ANDROID_HOME/build-tools"
+            exit 1
+          fi
+          if [ "$SIGNED" = "true" ]; then
+            "$apksigner" verify --print-certs "$apk_out" | tee "$RUNNER_TEMP/apksigner.txt"
+            sha=$(grep -i 'Signer #1 certificate SHA-256 digest:' "$RUNNER_TEMP/apksigner.txt" | head -n 1 | awk -F: '{print $2}' | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')
+            if [ -z "$sha" ]; then
+              echo "::error::Could not extract SHA-256 signing certificate fingerprint"
+              exit 1
+            fi
+            colon=$(printf '%s' "$sha" | sed 's/../&:/g; s/:$//')
+            {
+              echo "SHA-256: $colon"
+              echo "SHA-256 (hex): $sha"
+            } > "$out_dir/signing-certificate-sha256.txt"
+          else
+            echo "Dry-run build without signing secrets in the production environment." > "$out_dir/signing-certificate-sha256.txt"
+          fi
+
+      - name: Upload Android assets
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: release-android
+          path: ${{ runner.temp }}/android-out/*
+          if-no-files-found: error
+
+  publish:
+    name: Publish release
+    needs: [version, windows, linux, android]
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: write
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          path: release/downloaded
+
+      - name: Assemble checksums and release notes
+        shell: bash
+        env:
+          REL_VERSION: ${{ needs.version.outputs.version }}
+          REL_TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          mkdir -p release/assets
+          cp release/downloaded/release-windows/* release/assets/
+          cp release/downloaded/release-linux/* release/assets/
+          cp release/downloaded/release-android/* release/assets/
+          cp THIRD-PARTY-NOTICES.txt release/assets/THIRD-PARTY-NOTICES.txt
+          (
+            cd release/assets
+            LC_ALL=C sha256sum $(ls -1 | LC_ALL=C sort) > SHA256SUMS.txt
+          )
+          cert_info=$(cat release/assets/signing-certificate-sha256.txt)
+          checksums=$(cat release/assets/SHA256SUMS.txt)
+          {
+            printf '%s\n' "## P2PMessenger ${REL_VERSION}"
+            printf '\n'
+            printf '%s\n' "### Assets"
+            printf '%s\n' "- \`P2PMessenger-${REL_VERSION}-win-x64-setup.exe\` — Windows x64 installer (checks and installs Microsoft Visual C++ Redistributable x64 when needed)."
+            printf '%s\n' "- \`P2PMessenger-${REL_VERSION}-win-x64.zip\` — Portable Windows x64 archive (requires Microsoft Visual C++ Redistributable x64)."
+            printf '%s\n' "- \`P2PMessenger-${REL_VERSION}-linux-x64.tar.gz\` — Self-contained Linux x64 archive."
+            printf '%s\n' "- \`P2PMessenger-${REL_VERSION}-android.apk\` — Signed Android APK (API 26+, arm64-v8a, armeabi-v7a, x86_64)."
+            printf '%s\n' "- \`THIRD-PARTY-NOTICES.txt\` — Third-party software and license notices."
+            printf '%s\n' "- \`signing-certificate-sha256.txt\` — Android APK signing certificate SHA-256 fingerprint."
+            printf '%s\n' "- \`SHA256SUMS.txt\` — SHA-256 checksums for all release files."
+            printf '\n'
+            printf '%s\n' "### Android signing certificate fingerprint"
+            printf '%s\n' '```'
+            printf '%s\n' "${cert_info}"
+            printf '%s\n' '```'
+            printf '\n'
+            printf '%s\n' "Verify an APK with \`apksigner verify --print-certs P2PMessenger-${REL_VERSION}-android.apk\`."
+            printf '\n'
+            printf '%s\n' "### SHA-256 checksums"
+            printf '%s\n' '```'
+            printf '%s\n' "${checksums}"
+            printf '%s\n' '```'
+            printf '\n'
+            printf '%s\n' "### Platform notes"
+            printf '%s\n' "- **Windows:** Windows SmartScreen may ask for confirmation before running an unsigned installer or executable; verify the SHA-256 checksum first. On first start, Windows Defender Firewall asks to allow network access (allow **Public networks** as well when using a phone's hotspot)."
+            printf '%s\n' "- **Android:** Sideload the signed APK directly (and pass the same signed APK file to contacts when needed offline). Keep the same signing key across updates."
+          } > release/release-notes.md
+
+      - name: Upload release bundle artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: release-bundle
+          path: release/assets/*
+          if-no-files-found: error
+
+      - name: Create GitHub release
+        if: needs.version.outputs.should_publish == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REL_TAG: ${{ needs.version.outputs.tag }}
+          REL_VERSION: ${{ needs.version.outputs.version }}
+          IS_PRERELEASE: ${{ needs.version.outputs.is_prerelease }}
+        run: |
+          args=(
+            release create "$REL_TAG"
+            release/assets/*
+            --verify-tag
+            --title "P2PMessenger $REL_VERSION"
+            --notes-file release/release-notes.md
+          )
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            args+=(--prerelease)
+          fi
+          gh "${args[@]}"
