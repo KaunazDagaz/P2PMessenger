@@ -64,7 +64,7 @@ The app has no server, so it has no HTTP service. The back-end is four .NET 10 l
 | Configuration | Ports, timeouts and limits are named option classes (`ConnectionOptions`, `DiscoveryOptions`, `TorOptions`, `DeliveryOptions`, `CopyOptions`, `AdmissionLimits`) with defaults in code. A client app has no deployment environment to read them from; the user's own settings are kept in the app's settings file or preferences | Done |
 | Dependencies | No paid libraries. `dotnet list package --vulnerable --include-transitive` finds nothing and fails CI when it does; Dependabot proposes updates every week. See [Continuous integration](#continuous-integration) | Done |
 | Version control | Git, with the history of every step from the first commit, merged through pull requests | Done |
-| Production deployment | A GitHub Release with a Windows build, a Linux build and an APK. Until then, the CI run on `main` keeps the desktop builds and the Debug APK as artifacts | Planned, see [Planned](#planned) |
+| Production deployment | A GitHub Release workflow publishing Windows installer and portable archive, Linux archive, signed Android APK, notices and checksums | Done, see [Releases and verification](#releases-and-verification) |
 | Unit tests with at least 70 % coverage | See [Tests and coverage](#tests-and-coverage) | Done |
 
 ### Logs
@@ -108,17 +108,11 @@ dotnet reportgenerator "-reports:TestResults/*.xml" "-targetdir:TestResults/cove
 - **The Noise handshake is our own implementation** of the published Noise specification (revision 34) on libsodium's primitives through NSec, checked against the published test vectors of cacophony and snow. No primitive is home-made.
 - **No comments in the source code.** What a comment would explain is in the READMEs and in [`API.md`](API.md); only comments that a tool generated stay as it wrote them.
 
-### Planned
-
-| What | When | Why |
-| --- | --- | --- |
-| A GitHub Release with a Windows build, a Linux build and an APK | When the MVP is reached, and in any case before the review (2026-12-02) | Production deployment: a build that anyone can download and run |
-
 ## Prerequisites
 
 - .NET SDK 10.0.404 (`global.json`). A later 10.0.4xx patch also builds, but its restore changes the Android head's lock file (see Continuous integration).
 - For the Android head only: the android workload (`dotnet workload install android`), the Android SDK with the API 36.1 platform, and a JDK (Microsoft OpenJDK 21 is recommended). On a machine without them, `dotnet build src/P2PMessenger.Android -t:InstallAndroidDependencies -p:AndroidSdkDirectory=C:\Android\sdk -p:JavaSdkDirectory=C:\Android\jdk -p:AcceptAndroidSDKLicenses=true` installs both into the given folders (absolute paths without spaces). Then set the `ANDROID_HOME` and `JAVA_HOME` environment variables to those folders so later builds find them.
-- On Windows, NSec's installation notes say that the native libsodium it loads needs the Microsoft Visual C++ Redistributable (x64). A developer machine usually has it and a clean Windows installation may not, so the tests of `P2PMessenger.Core.Tests` may fail to load the library there.
+- On Windows, NSec's installation notes say that the native libsodium it loads needs the Microsoft Visual C++ Redistributable (x64). The Windows installer bundles `vc_redist.x64.exe` and prompts to install it automatically when missing; the portable archive, developer runs and `P2PMessenger.Core.Tests` expect it on the machine, and the desktop app displays an explicit error dialog if it is missing at startup.
 
 - For tor in a build (optional, see [Tor](#tor)): PowerShell 7 or Windows PowerShell 5.1, gpg (Git for Windows includes one) and tar (part of Windows 10 1803 and later).
 
@@ -192,13 +186,13 @@ Each app listens for its contacts on a TCP port chosen at random from 49152 to 6
 - An app that recognises a contact's announcement connects to the address it came from and the port in it, unless the two are already connected. Both sides do so, and the connection rules keep one session. A contact counts as reachable only once its key has been checked in that session, never because of an announcement alone, and stops being dialled 30 seconds after its last announcement.
 - When no contact has been heard for 30 seconds, the app also sends its announcements to every address of each local subnet of at most 510 addresses, paced and at most once a minute, for networks that drop multicast and broadcast.
 - Each app screens at most 100 announcements a second, and 10 a second from one address, and ignores its own and repeated ones.
-- On Android the app does not hold a multicast lock yet, so a phone that is a client of another network may hear only the broadcast announcements; a phone that shares its hotspot hears both.
+- On Android the foreground nearby service acquires a Wi-Fi multicast lock while active so both broadcast and multicast announcements are received even when the phone is a Wi-Fi client.
 
 ## Tor
 
 The app's internet route is Tor: C tor from the Tor Project's Tor Expert Bundle, the same build on every platform. The bundles are not in the repository. `pwsh tools/get-tor.ps1` (or `powershell -ExecutionPolicy Bypass -File tools\get-tor.ps1` in Windows PowerShell) downloads the pinned bundles from the Tor Project's archive into `tools/tor`, checks each one's OpenPGP signature against the Tor Browser Developers' key `EF6E286DDA85EA2A4BA7DE684E2C6E8793298290` and its SHA-256 against the value pinned in the script, and unpacks it. Without options it gets the bundle of the desktop it runs on (windows-x86_64 or linux-x86_64) and the three Android ones; `-Platform` chooses others (`all` for every pinned one), and `-Force` downloads them again. The pinned bundles are those of Tor Browser 16.0.1 (tor 0.4.9.16) for the desktops and 16.0.2 for Android, a release for Android only that fixed how 16.0.1's Android tor was linked.
 
-- A build works without the bundles, and CI builds without them. The desktop build copies the `tor` folder of its platform's bundle next to the app (`tor/tor.exe` or `tor/tor`). The Android build is made for 32-bit ARM, 64-bit ARM and x86_64 (`RuntimeIdentifiers`), so one APK installs on 32-bit phones too, and packs the `libTor.so` of the armeabi-v7a, arm64-v8a and x86_64 bundles as native libraries, which Android extracts at install (`android:extractNativeLibs`), because the app starts tor as a program; there is no tor for 32-bit x86. An app without tor says so on its contact list.
+- A build works without the bundles, and CI builds without them. The desktop build copies the `tor` folder of its platform's bundle next to the app (`tor/tor.exe` or `tor/tor`), excluding `pluggable_transports` and `tor-gencert*`, and release packages include `THIRD-PARTY-NOTICES.txt` and Tor license files in `licenses/tor/`. The Android build targets 32-bit ARM, 64-bit ARM and x86_64 (`RuntimeIdentifiers`), and Release builds enable partial IL trimming and R8 shrinking without AOT while keeping `libTor.so` extracted (`android:extractNativeLibs`) with 16 KB ELF load-segment alignment for API 36 devices; there is no tor for 32-bit x86. An app without tor says so on its contact list.
 - When the messenger starts, after the passphrase if one is set, the app starts tor as a separate process with only its own settings: empty configuration files, a data folder of its own (`tor` inside the app's data folder, which on Android is the app's folder that is not backed up), a control port and a SOCKS port on 127.0.0.1 that tor chooses, and cookie authentication. The app reads the control port from a file that tor writes, sends the cookie only after the control port names the cookie file that the app chose, takes ownership of tor so that tor exits with the app, and follows tor's status events. tor's own log is off (`--quiet`), and the app logs only tor's state, never an address.
 - The app adds its onion service with `ADD_ONION` each time tor starts, giving tor the onion-service key from the encrypted database, so tor's data folder never holds the service key. tor hands the connections to the onion service to the app through a Unix socket in tor's data folder on Linux and Android, which other apps cannot open, and through a port on 127.0.0.1 chosen at random on Windows, whose tor has no Unix sockets. Every such connection still has to pass the same handshake as on the local network, so a program on the device that connects to the port gets nowhere; connections from the onion service have no address and share the overall limits against flooding.
 - The contact list shows one line about the internet route: connecting to Tor with tor's progress, connected to Tor, or unavailable with the reason when the app knows it (tor is not part of this build, the device has no network, its date or time is wrong, the Tor network cannot be reached, tor could not start, tor stopped), and that nearby messaging continues. The app starts tor again 30 seconds after it fails or stops. Debug builds show tor's state, whether the onion service was published and the kind of socket on "Network (debug)".
@@ -247,7 +241,7 @@ dotnet test --project tests/P2PMessenger.Storage.Tests
 or, with the SQLite command-line shell (3.37 or later):
 
 ```
-sqlite3 :memory: ".read src/P2PMessenger.Storage/Migrations/0001_initial.sql" ".read src/P2PMessenger.Storage/Migrations/0002_message_id.sql" ".read src/P2PMessenger.Storage/Migrations/0003_outgoing_delivery.sql" ".read src/P2PMessenger.Storage/Migrations/0004_sent_sequence.sql" ".read src/P2PMessenger.Storage/Migrations/0005_groups.sql" ".read src/P2PMessenger.Storage/Migrations/0006_deleted_group_messages.sql" ".read src/P2PMessenger.Storage/Migrations/0007_copied_conversation_origin.sql" ".read src/P2PMessenger.Storage/Migrations/0008_group_acknowledgements.sql" ".tables"
+sqlite3 :memory: ".read src/P2PMessenger.Storage/Migrations/0001_initial.sql" ".read src/P2PMessenger.Storage/Migrations/0002_message_id.sql" ".read src/P2PMessenger.Storage/Migrations/0003_outgoing_delivery.sql" ".read src/P2PMessenger.Storage/Migrations/0004_sent_sequence.sql" ".read src/P2PMessenger.Storage/Migrations/0005_groups.sql" ".read src/P2PMessenger.Storage/Migrations/0006_deleted_group_messages.sql" ".read src/P2PMessenger.Storage/Migrations/0007_copied_conversation_origin.sql" ".read src/P2PMessenger.Storage/Migrations/0008_group_acknowledgements.sql" ".read src/P2PMessenger.Storage/Migrations/0009_group_membership.sql" ".tables"
 ```
 
 Give a file name instead of `:memory:` to keep the database, for example to open it in DB Browser for SQLite; delete the file afterwards, it is not part of the repository.
@@ -281,7 +275,19 @@ GitHub Actions runs `.github/workflows/ci.yml` on every push and pull request. T
 - **Desktop**, on Windows and Linux: a locked restore, the format check, a Release build (warnings are errors) and the tests with coverage. The coverage reports are uploaded as the `test-results-<OS>` artifact. On Linux the job also fails if `dotnet list package --vulnerable --include-transitive` finds a vulnerable package.
 - **Coverage**, on Linux, once the desktop jobs have passed: ReportGenerator, pinned in `.config/dotnet-tools.json`, merges the reports of the Linux run. The job summary shows the coverage by assembly, the `coverage-report` artifact holds the HTML report. The job fails when the line coverage of the desktop solution's assemblies, test assemblies left out, is below 70 %. GitHub's own code-coverage feature is not used: it needs GitHub Code Quality, which is offered to organizations on the Team and Enterprise Cloud plans.
 - **Android**, on Linux: Microsoft OpenJDK 21 (the newest JDK the android workload supports), the android workload and the Android SDK parts the project needs, then a locked restore, a Debug build with the .NET code inside the APK, and the same check for vulnerable packages.
-- For pull requests and `main`, the desktop builds and the APK are uploaded as artifacts. Each run signs the APK with a new debug key, so uninstall the previous build before installing another one.
+- For pull requests and `main`, the desktop builds and the Debug APK are uploaded as CI artifacts. Each CI run signs the Debug APK with a temporary debug key, so uninstall the previous debug build before installing another one.
+
+## Releases and verification
+
+- Version tags matching `vX.Y.Z` (or `vX.Y.Z-label` for pre-releases) and manual dry-runs trigger `.github/workflows/release.yml`, which builds self-contained Desktop packages and a Release Android APK with the pinned Tor bundles, checks them with `tools/verify-release.ps1` and publishes:
+  - `P2PMessenger-<version>-win-x64-setup.exe` — Windows x64 Inno Setup installer (`tools/windows-installer.iss`) that checks whether Microsoft Visual C++ Redistributable (x64) is already installed and runs the bundled Microsoft-signed `vc_redist.x64.exe` when missing.
+  - `P2PMessenger-<version>-win-x64.zip` — portable self-contained Windows x64 archive.
+  - `P2PMessenger-<version>-linux-x64.tar.gz` — portable self-contained Linux x64 archive.
+  - `P2PMessenger-<version>-android.apk` — universal Release APK (API 26+, `arm64-v8a`, `armeabi-v7a`, `x86_64`), signed with the repository's release keystore from the GitHub `production` environment.
+  - `THIRD-PARTY-NOTICES.txt`, `signing-certificate-sha256.txt` and `SHA256SUMS.txt`.
+- **Verify downloads before running:** check `SHA256SUMS.txt` (`sha256sum -c SHA256SUMS.txt` on Linux/macOS or `(Get-FileHash <file> -Algorithm SHA256).Hash` on Windows) and verify the Android APK signature against `signing-certificate-sha256.txt` using `apksigner verify --print-certs P2PMessenger-<version>-android.apk`.
+- **Windows firewall and SmartScreen:** Windows executables are not Authenticode-signed, so SmartScreen may ask for confirmation once (verify `SHA256SUMS.txt` first). On first start, Windows Defender Firewall prompts for network access; allow **Public networks** as well if you connect over a phone's hotspot.
+- **Android sideloading and offline sharing:** Android releases are distributed directly via signed APK so you can both install them without a store account and pass the exact same signed `.apk` file to a contact offline (for example via Bluetooth or USB), keeping upgrade compatibility as long as releases continue to use the same signing key.
 
 Dependabot (`.github/dependabot.yml`) proposes updates once a week for the NuGet packages (all of them in one pull request), the .NET SDK in `global.json` (within .NET 10) and the actions. It skips xunit.v3.mtp-v2 4.x, which does not work with Avalonia 12.1.5 yet.
 

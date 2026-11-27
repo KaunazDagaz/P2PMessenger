@@ -1197,4 +1197,10 @@
   <data name="SendCopyDone" xml:space="preserve">
     <value>Back to chats</value>
   </data>
+  <data name="WindowsVcRuntimeMissingTitle" xml:space="preserve">
+    <value>Microsoft Visual C++ Redistributable required</value>
+  </data>
+  <data name="WindowsVcRuntimeMissingBody" xml:space="preserve">
+    <value>P2PMessenger needs the Microsoft Visual C++ Redistributable (x64) to run its cryptography library on Windows. Install it from https://aka.ms/vs/17/release/vc_redist.x64.exe or run the P2PMessenger Windows installer, then start P2PMessenger again.</value>
+  </data>
 </root>

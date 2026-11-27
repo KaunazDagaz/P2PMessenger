@@ -160,6 +160,46 @@ public sealed class ManifestTests
         Assert.Equal("remove", (string?)receiver.Attribute(ToolsNamespace + "node"));
     }
 
+    [Fact]
+    public void Project_ApplicationId_IsPermanent()
+    {
+        var project = XDocument.Load(HeadFile("P2PMessenger.Android.csproj")).Root!;
+        var applicationId = Assert.Single(project.Elements("PropertyGroup").Elements("ApplicationId"));
+
+        Assert.Equal("io.github.kaunazdagaz.p2pmessenger", applicationId.Value);
+    }
+
+    [Fact]
+    public void Project_ReleaseConfig_EnablesTrimmingAndR8WithoutAot()
+    {
+        var project = XDocument.Load(HeadFile("P2PMessenger.Android.csproj")).Root!;
+        var releaseGroup = Assert.Single(
+            project.Elements("PropertyGroup"),
+            static element => string.Equals((string?)element.Attribute("Condition"), "'$(Configuration)' == 'Release'", StringComparison.Ordinal));
+
+        Assert.Equal("true", releaseGroup.Element("PublishTrimmed")?.Value);
+        Assert.Equal("partial", releaseGroup.Element("TrimMode")?.Value);
+        Assert.Equal("false", releaseGroup.Element("RunAOTCompilation")?.Value);
+        Assert.Equal("r8", releaseGroup.Element("AndroidLinkTool")?.Value);
+        Assert.Equal("false", releaseGroup.Element("DebugSymbols")?.Value);
+        Assert.Equal("None", releaseGroup.Element("DebugType")?.Value);
+    }
+
+    [Fact]
+    public void Splash_Resources_UseCustomSplashIconAndNoAvaloniaAnim()
+    {
+        var styles = XDocument.Load(HeadFile("Resources", "values-v31", "styles.xml")).Root!;
+        var splashItem = Assert.Single(
+            styles.Elements("style").Elements("item"),
+            static element => string.Equals((string?)element.Attribute("name"), "android:windowSplashScreenAnimatedIcon", StringComparison.Ordinal));
+
+        Assert.Equal("@drawable/splash_icon", splashItem.Value);
+        Assert.True(File.Exists(HeadFile("Resources", "drawable-v31", "splash_icon.xml")));
+        Assert.True(File.Exists(HeadFile("Resources", "drawable-night-v31", "splash_icon.xml")));
+        Assert.False(File.Exists(HeadFile("Resources", "drawable-v31", "avalonia_anim.xml")));
+        Assert.False(File.Exists(HeadFile("Resources", "drawable-night-v31", "avalonia_anim.xml")));
+    }
+
     private static XElement Manifest() => XDocument.Load(HeadFile("Properties", "AndroidManifest.xml")).Root!;
 
     private static XElement Receiver(string name) =>
