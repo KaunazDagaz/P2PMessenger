@@ -46,9 +46,11 @@ if ($Mode -eq 'Desktop') {
             'THIRD-PARTY-NOTICES.txt',
             'licenses/tor/tor.txt',
             'licenses/tor/openssl.txt',
-            'licenses/tor/libevent.txt',
-            'licenses/tor/zlib.txt'
+            'licenses/tor/libevent.txt'
         )
+        if ($Platform -eq 'win-x64') {
+            $required += 'licenses/tor/zlib.txt'
+        }
 
         foreach ($rel in $required) {
             $candidate = Join-Path $inspectDir $rel
