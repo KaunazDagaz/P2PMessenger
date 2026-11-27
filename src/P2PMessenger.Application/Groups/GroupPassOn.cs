@@ -65,7 +65,7 @@ internal sealed class GroupPassOn : IDisposable
             {
                 if (group.State == GroupState.Created && IsOtherMember(group, peerKey))
                 {
-                    session.EnqueueInitialSummary(group.Id);
+                    session.EnqueueInitialSummary(group.Id, group.Record.Epoch);
                 }
             }
 
@@ -556,7 +556,7 @@ internal sealed class GroupPassOn : IDisposable
         }
 
         Group group = e.Group;
-        if (group.State == GroupState.ListsDiffer)
+        if (group.State is GroupState.ListsDiffer or GroupState.Left or GroupState.Removed or GroupState.Ended)
         {
             lock (gate)
             {
@@ -573,6 +573,11 @@ internal sealed class GroupPassOn : IDisposable
                     {
                         pendingOwnAcknowledgements.Remove(peerKey);
                     }
+                }
+
+                foreach (PeerSession session in sessions.Values)
+                {
+                    session.RemoveGroup(group.Id);
                 }
             }
 
@@ -593,6 +598,22 @@ internal sealed class GroupPassOn : IDisposable
                 return;
             }
 
+            foreach (Ed25519PublicKey peerKey in sessions.Keys)
+            {
+                if (!IsOtherMember(group, peerKey))
+                {
+                    sessions[peerKey].RemoveGroup(group.Id);
+                    if (pendingOwnAcknowledgements.TryGetValue(peerKey, out List<GroupAcknowledgement>? pending))
+                    {
+                        pending.RemoveAll(acknowledgement => acknowledgement.GroupId.Equals(group.Id));
+                        if (pending.Count == 0)
+                        {
+                            pendingOwnAcknowledgements.Remove(peerKey);
+                        }
+                    }
+                }
+            }
+
             foreach (GroupMemberStatus member in group.Others)
             {
                 Ed25519PublicKey memberKey = member.IdentityKey;
@@ -601,7 +622,7 @@ internal sealed class GroupPassOn : IDisposable
                     continue;
                 }
 
-                if (session.EnqueueInitialSummary(group.Id))
+                if (session.EnqueueInitialSummary(group.Id, group.Record.Epoch))
                 {
                     notify.Add(memberKey);
                 }
@@ -812,7 +833,7 @@ internal sealed class GroupPassOn : IDisposable
 
     private sealed class PeerSession
     {
-        private readonly HashSet<GroupId> summarizedGroups = [];
+        private readonly Dictionary<GroupId, int> summarizedEpochs = [];
         private readonly Dictionary<GroupId, PeerHeld> peerHeld = [];
         private readonly Dictionary<GroupId, SummaryGate> summaryGates = [];
         private readonly Dictionary<GroupId, DelayedSummary> delayedSummaries = [];
@@ -836,8 +857,63 @@ internal sealed class GroupPassOn : IDisposable
 
         public HashSet<MessageId> PendingAcknowledgementSet { get; } = [];
 
-        public bool EnqueueInitialSummary(GroupId groupId) =>
-            summarizedGroups.Add(groupId) && EnqueueSummaryUpdate(groupId);
+        public bool EnqueueInitialSummary(GroupId groupId, int epoch)
+        {
+            if (summarizedEpochs.TryGetValue(groupId, out int previous) && previous == epoch)
+            {
+                return false;
+            }
+
+            if (previous != epoch)
+            {
+                RemoveGroup(groupId);
+            }
+
+            summarizedEpochs[groupId] = epoch;
+            return EnqueueSummaryUpdate(groupId);
+        }
+
+        public void RemoveGroup(GroupId groupId)
+        {
+            summarizedEpochs.Remove(groupId);
+            peerHeld.Remove(groupId);
+            summaryGates.Remove(groupId);
+            delayedSummaries.Remove(groupId);
+            if (PendingSummarySet.Remove(groupId))
+            {
+                Queue<GroupId> keptSummaries = new();
+                while (PendingSummaries.TryDequeue(out GroupId? queued))
+                {
+                    if (!queued.Equals(groupId))
+                    {
+                        keptSummaries.Enqueue(queued);
+                    }
+                }
+
+                while (keptSummaries.TryDequeue(out GroupId? kept))
+                {
+                    PendingSummaries.Enqueue(kept);
+                }
+            }
+
+            Queue<PassOnItem> keptMessages = new();
+            while (PendingMessages.TryDequeue(out PassOnItem item))
+            {
+                if (item.GroupId.Equals(groupId))
+                {
+                    PendingMessageSet.Remove(item.Id);
+                }
+                else
+                {
+                    keptMessages.Enqueue(item);
+                }
+            }
+
+            while (keptMessages.TryDequeue(out PassOnItem item))
+            {
+                PendingMessages.Enqueue(item);
+            }
+        }
 
         public bool EnqueueSummaryUpdate(GroupId groupId)
         {

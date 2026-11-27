@@ -48,6 +48,15 @@ internal static class Formats
     public static readonly CompositeFormat GroupDeliveryReceived = CompositeFormat.Parse(UiText.GroupDeliveryReceivedFormat);
     public static readonly CompositeFormat GroupDeliveryMember = CompositeFormat.Parse(UiText.GroupDeliveryMemberFormat);
     public static readonly CompositeFormat GroupDeleteChatQuestion = CompositeFormat.Parse(UiText.GroupDeleteChatQuestionFormat);
+    public static readonly CompositeFormat GroupDeleteInactiveChatQuestion = CompositeFormat.Parse(UiText.GroupDeleteInactiveChatQuestionFormat);
+    public static readonly CompositeFormat GroupMembersButton = CompositeFormat.Parse(UiText.GroupMembersButtonFormat);
+    public static readonly CompositeFormat GroupRemoveMemberQuestion = CompositeFormat.Parse(UiText.GroupRemoveMemberQuestionFormat);
+    public static readonly CompositeFormat GroupRemoveLastMemberQuestion = CompositeFormat.Parse(UiText.GroupRemoveLastMemberQuestionFormat);
+    public static readonly CompositeFormat GroupMemberRemoved = CompositeFormat.Parse(UiText.GroupMemberRemovedFormat);
+    public static readonly CompositeFormat GroupMemberRemovedEnded = CompositeFormat.Parse(UiText.GroupMemberRemovedEndedFormat);
+    public static readonly CompositeFormat GroupLeaveQuestion = CompositeFormat.Parse(UiText.GroupLeaveQuestionFormat);
+    public static readonly CompositeFormat GroupLeaveAdminQuestion = CompositeFormat.Parse(UiText.GroupLeaveAdminQuestionFormat);
+    public static readonly CompositeFormat GroupLeaveLastMemberQuestion = CompositeFormat.Parse(UiText.GroupLeaveLastMemberQuestionFormat);
     public static readonly CompositeFormat CopiedChatItemSummary = CompositeFormat.Parse(UiText.CopiedChatItemSummaryFormat);
     public static readonly CompositeFormat CopiedChatItemSummaryOne = CompositeFormat.Parse(UiText.CopiedChatItemSummaryOneFormat);
     public static readonly CompositeFormat CopiedConversationBanner = CompositeFormat.Parse(UiText.CopiedConversationBannerFormat);

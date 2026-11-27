@@ -178,6 +178,7 @@ public sealed class BusyBarTests
         FollowsBusy(UiHarness.Find<ProgressBar>(newGroupView, "BusyBar"), busy => newGroup.IsBusy = busy);
         FollowsBusy(UiHarness.Find<ProgressBar>(conversationView, "BusyBar"), busy => conversation.IsBusy = busy);
         FollowsBusy(UiHarness.Find<ProgressBar>(conversationView, "DeleteChatBusyBar"), busy => conversation.IsDeletingChat = busy);
+        FollowsBusy(UiHarness.Find<ProgressBar>(conversationView, "LeaveGroupBusyBar"), busy => conversation.IsLeaving = busy);
         harness.Messenger.Identity.Dispose();
     }
 

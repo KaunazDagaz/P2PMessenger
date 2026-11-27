@@ -199,6 +199,21 @@ public sealed class Messenger : IAsyncDisposable
         return Groups.CreateAsync(name, contactKeys, cancellationToken);
     }
 
+    public Task<RemoveMemberResult> RemoveGroupMemberAsync(GroupId groupId, Ed25519PublicKey memberKey, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(groupId);
+        ArgumentNullException.ThrowIfNull(memberKey);
+
+        return Groups.RemoveMemberAsync(groupId, memberKey, cancellationToken);
+    }
+
+    public Task<LeaveGroupOutcome> LeaveGroupAsync(GroupId groupId, Ed25519PublicKey? successorKey, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(groupId);
+
+        return Groups.LeaveAsync(groupId, successorKey, cancellationToken);
+    }
+
     public Task<GroupSendResult> SendToGroupAsync(GroupId groupId, string? text, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(groupId);

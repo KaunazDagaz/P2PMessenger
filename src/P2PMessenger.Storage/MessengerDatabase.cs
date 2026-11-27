@@ -21,7 +21,7 @@ public sealed class MessengerDatabase : IAsyncDisposable
 
     private const string EraseEverything =
         "DELETE FROM copied_message; DELETE FROM copied_conversation; DELETE FROM group_acknowledgement; DELETE FROM message_delivery; DELETE FROM message; "
-        + "DELETE FROM conversation; DELETE FROM group_key; DELETE FROM group_member; DELETE FROM chat_group; DELETE FROM contact; "
+        + "DELETE FROM conversation; DELETE FROM group_leave_proof; DELETE FROM group_key; DELETE FROM group_member; DELETE FROM chat_group; DELETE FROM contact; "
         + "DELETE FROM identity; DELETE FROM person; DELETE FROM seen_message; DELETE FROM data_key;";
 
     private const string SelectAnyData =

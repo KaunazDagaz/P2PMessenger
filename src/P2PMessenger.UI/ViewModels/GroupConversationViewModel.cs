@@ -33,6 +33,12 @@ public sealed partial class GroupConversationViewModel : PageViewModel
     private string createdByText = string.Empty;
 
     [ObservableProperty]
+    private string membersButtonText = string.Empty;
+
+    [ObservableProperty]
+    private bool isMembersShown;
+
+    [ObservableProperty]
     private bool isJoining;
 
     [ObservableProperty]
@@ -45,6 +51,14 @@ public sealed partial class GroupConversationViewModel : PageViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasListsDifferText))]
     private string? listsDifferText;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasEndedOrLeftText))]
+    private string? endedOrLeftText;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMembershipNoticeText))]
+    private string? membershipNoticeText;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SendCommand))]
@@ -73,8 +87,33 @@ public sealed partial class GroupConversationViewModel : PageViewModel
     private bool isDeletingChat;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DeleteChatQuestion))]
+    private bool isInactiveGroup;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasDeletedText))]
     private string? deletedText;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsLeaveVisible))]
+    private bool canLeave;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsLeaveVisible))]
+    private bool isConfirmingLeave;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(LeaveGroupCommand), nameof(CancelLeaveCommand))]
+    private bool isLeaving;
+
+    [ObservableProperty]
+    private bool needsSuccessor;
+
+    [ObservableProperty]
+    private GroupSuccessorOptionViewModel? selectedSuccessor;
+
+    [ObservableProperty]
+    private string leaveQuestion = string.Empty;
 
     public GroupConversationViewModel(Messenger messenger, GroupId groupId, IUiThread uiThread)
         : this(messenger, groupId, uiThread, TimeZoneInfo.Local)
@@ -100,6 +139,10 @@ public sealed partial class GroupConversationViewModel : PageViewModel
 
     public GroupId GroupId => groupId;
 
+    public ObservableCollection<GroupMemberItemViewModel> Members { get; } = [];
+
+    public ObservableCollection<GroupSuccessorOptionViewModel> SuccessorCandidates { get; } = [];
+
     public ObservableCollection<GroupMemberToAddViewModel> MembersToAdd { get; } = [];
 
     public ObservableCollection<GroupMessageItemViewModel> Messages { get; } = [];
@@ -108,13 +151,23 @@ public sealed partial class GroupConversationViewModel : PageViewModel
 
     public bool HasListsDifferText => ListsDifferText is not null;
 
+    public bool HasEndedOrLeftText => EndedOrLeftText is not null;
+
+    public bool HasMembershipNoticeText => MembershipNoticeText is not null;
+
     public bool HasDeletedText => DeletedText is not null;
 
     public bool IsDeleteChatVisible => !IsConfirmingDeleteChat;
 
-    public string DeleteChatQuestion => Formats.With(Formats.GroupDeleteChatQuestion, GroupName);
+    public bool IsLeaveVisible => CanLeave && !IsConfirmingLeave;
+
+    public string DeleteChatQuestion => IsInactiveGroup
+        ? Formats.With(Formats.GroupDeleteInactiveChatQuestion, GroupName)
+        : Formats.With(Formats.GroupDeleteChatQuestion, GroupName);
 
     private bool IsNotDeletingChat => !IsDeletingChat;
+
+    private bool IsNotLeaving => !IsLeaving;
 
     private bool CanSend => CanWrite && !IsBusy && !string.IsNullOrWhiteSpace(Draft);
 
@@ -137,6 +190,9 @@ public sealed partial class GroupConversationViewModel : PageViewModel
         messenger.Contacts.Changed -= OnContactChanged;
     }
 
+    [RelayCommand]
+    private void ToggleMembers() => IsMembersShown = !IsMembersShown;
+
     [RelayCommand(CanExecute = nameof(CanSend))]
     private async Task SendAsync(CancellationToken cancellationToken)
     {
@@ -152,6 +208,9 @@ public sealed partial class GroupConversationViewModel : PageViewModel
                 GroupSendOutcome.TooLong => UiText.GroupTooLong,
                 GroupSendOutcome.NotSendable => UiText.ConversationNotSendable,
                 GroupSendOutcome.NotCreatedYet => UiText.GroupNotCreatedYet,
+                GroupSendOutcome.Left => UiText.GroupSendLeft,
+                GroupSendOutcome.Removed => UiText.GroupSendRemoved,
+                GroupSendOutcome.Ended => UiText.GroupSendEnded,
                 _ => UiText.GroupNotAGroup,
             };
 
@@ -173,6 +232,64 @@ public sealed partial class GroupConversationViewModel : PageViewModel
     }
 
     [RelayCommand]
+    private void AskLeave()
+    {
+        if (!CanLeave)
+        {
+            return;
+        }
+
+        ErrorMessage = null;
+        IsConfirmingLeave = true;
+    }
+
+    [RelayCommand(CanExecute = nameof(IsNotLeaving))]
+    private void CancelLeave() => IsConfirmingLeave = false;
+
+    [RelayCommand(CanExecute = nameof(IsNotLeaving))]
+    private async Task LeaveGroupAsync(CancellationToken cancellationToken)
+    {
+        if (NeedsSuccessor && SelectedSuccessor is null)
+        {
+            ErrorMessage = UiText.GroupLeaveSuccessorRequired;
+            return;
+        }
+
+        IsLeaving = true;
+        ErrorMessage = null;
+        try
+        {
+            LeaveGroupOutcome outcome = await messenger.LeaveGroupAsync(
+                groupId,
+                NeedsSuccessor ? SelectedSuccessor!.IdentityKey : null,
+                cancellationToken);
+            if (outcome == LeaveGroupOutcome.Left)
+            {
+                IsConfirmingLeave = false;
+                IsMembersShown = false;
+                RefreshGroup();
+            }
+            else if (outcome == LeaveGroupOutcome.SuccessorRequired)
+            {
+                ErrorMessage = UiText.GroupLeaveSuccessorRequired;
+            }
+            else
+            {
+                ErrorMessage = UiText.GroupLeaveFailed;
+            }
+        }
+        catch (Exception exception) when (Failures.IsFailure(exception))
+        {
+            ReportFailure(exception);
+            ErrorMessage = UiText.GroupLeaveFailed;
+        }
+        finally
+        {
+            IsLeaving = false;
+        }
+    }
+
+    [RelayCommand]
     private void AskDeleteChat()
     {
         ErrorMessage = null;
@@ -190,7 +307,7 @@ public sealed partial class GroupConversationViewModel : PageViewModel
         try
         {
             await messenger.DeleteGroupChatAsync(groupId, cancellationToken);
-            DeletedText = UiText.GroupChatDeleted;
+            DeletedText = IsInactiveGroup ? UiText.GroupInactiveChatDeleted : UiText.GroupChatDeleted;
             IsConfirmingDeleteChat = false;
             RefreshMessages();
         }
@@ -202,6 +319,36 @@ public sealed partial class GroupConversationViewModel : PageViewModel
         finally
         {
             IsDeletingChat = false;
+        }
+    }
+
+    private async Task RemoveMemberAsync(GroupMemberItemViewModel item, CancellationToken cancellationToken)
+    {
+        ErrorMessage = null;
+        MembershipNoticeText = null;
+        try
+        {
+            RemoveMemberResult result = await messenger.RemoveGroupMemberAsync(groupId, item.IdentityKey, cancellationToken);
+            if (result.Outcome == RemoveMemberOutcome.Removed)
+            {
+                MembershipNoticeText = Formats.With(Formats.GroupMemberRemoved, item.Name);
+                RefreshGroup();
+            }
+            else if (result.Outcome == RemoveMemberOutcome.EndedGroup)
+            {
+                MembershipNoticeText = Formats.With(Formats.GroupMemberRemovedEnded, item.Name);
+                IsMembersShown = false;
+                RefreshGroup();
+            }
+            else
+            {
+                ErrorMessage = UiText.GroupRemoveMemberFailed;
+            }
+        }
+        catch (Exception exception) when (Failures.IsFailure(exception))
+        {
+            ReportFailure(exception);
+            ErrorMessage = UiText.GroupRemoveMemberFailed;
         }
     }
 
@@ -269,7 +416,7 @@ public sealed partial class GroupConversationViewModel : PageViewModel
 
         return messenger.Contacts.TryGet(memberKey, out Contact? contact)
             ? contact.Name.Value
-            : group.Find(memberKey)?.Name.Value ?? string.Empty;
+            : group.FindAny(memberKey)?.Name.Value ?? string.Empty;
     }
 
     private void RefreshGroup()
@@ -286,7 +433,65 @@ public sealed partial class GroupConversationViewModel : PageViewModel
             string.Join(separator, group.Members.Select(member => member.IdentityKey.Equals(group.OwnKey)
                 ? Formats.With(Formats.GroupYou, NameOf(group, member.IdentityKey))
                 : NameOf(group, member.IdentityKey))));
-        CreatedByText = group.YouCreated ? UiText.GroupCreatedBy : Formats.With(Formats.GroupCreatedBy, NameOf(group, group.Record.Signer));
+        CreatedByText = group.YouCreated ? UiText.GroupCreatedBy : Formats.With(Formats.GroupCreatedBy, NameOf(group, group.Creator));
+        MembersButtonText = Formats.With(Formats.GroupMembersButton, group.Members.Count);
+
+        HashSet<Ed25519PublicKey> confirmingRemove = [.. Members.Where(static item => item.IsConfirmingRemove).Select(static item => item.IdentityKey)];
+        bool lastOther = group.Others.Count() == 1;
+        Members.Clear();
+        foreach (GroupMemberStatus member in group.Members
+            .OrderBy(member => !member.IdentityKey.Equals(group.OwnKey))
+            .ThenBy(member => NameOf(group, member.IdentityKey), StringComparer.CurrentCultureIgnoreCase))
+        {
+            bool isYou = member.IdentityKey.Equals(group.OwnKey);
+            bool isAdmin = member.IdentityKey.Equals(group.AuthorityKey);
+            bool canRemove = group.CanRemoveMembers && !isYou;
+            string memberName = NameOf(group, member.IdentityKey);
+            string question = lastOther
+                ? Formats.WithAll(Formats.GroupRemoveLastMemberQuestion, memberName, group.Name.Value)
+                : Formats.WithAll(Formats.GroupRemoveMemberQuestion, memberName, group.Name.Value);
+            GroupMemberItemViewModel item = new(member.IdentityKey, memberName, isYou, isAdmin, canRemove, question, RemoveMemberAsync)
+            {
+                IsConfirmingRemove = canRemove && confirmingRemove.Contains(member.IdentityKey),
+            };
+            Members.Add(item);
+        }
+
+        Ed25519PublicKey? previousSuccessor = SelectedSuccessor?.IdentityKey;
+        SuccessorCandidates.Clear();
+        if (group.NeedsSuccessorToLeave)
+        {
+            foreach (GroupMemberStatus member in group.Others.OrderBy(member => NameOf(group, member.IdentityKey), StringComparer.CurrentCultureIgnoreCase))
+            {
+                SuccessorCandidates.Add(new GroupSuccessorOptionViewModel(member.IdentityKey, NameOf(group, member.IdentityKey)));
+            }
+        }
+
+        SelectedSuccessor = previousSuccessor is null
+            ? SuccessorCandidates.FirstOrDefault()
+            : SuccessorCandidates.FirstOrDefault(option => option.IdentityKey.Equals(previousSuccessor)) ?? SuccessorCandidates.FirstOrDefault();
+
+        NeedsSuccessor = group.NeedsSuccessorToLeave;
+        CanLeave = group.CanLeave;
+        if (!CanLeave)
+        {
+            IsConfirmingLeave = false;
+        }
+
+        LeaveQuestion = group.NeedsSuccessorToLeave
+            ? Formats.With(Formats.GroupLeaveAdminQuestion, group.Name.Value)
+            : group.IsAuthority && group.Others.Count() == 1
+                ? Formats.With(Formats.GroupLeaveLastMemberQuestion, group.Name.Value)
+                : Formats.With(Formats.GroupLeaveQuestion, group.Name.Value);
+
+        IsInactiveGroup = group.State is GroupState.Left or GroupState.Removed or GroupState.Ended;
+        EndedOrLeftText = group.State switch
+        {
+            GroupState.Left => UiText.GroupLeftBanner,
+            GroupState.Removed => UiText.GroupRemovedBanner,
+            GroupState.Ended => UiText.GroupEndedBanner,
+            _ => null,
+        };
 
         IsJoining = group.State == GroupState.Joining;
         MembersToAdd.Clear();

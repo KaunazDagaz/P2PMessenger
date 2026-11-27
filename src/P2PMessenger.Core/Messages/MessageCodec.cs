@@ -92,6 +92,15 @@ internal static class MessageCodec
             case SessionMessageType.GroupAcknowledgement when GroupAcknowledgement.TryDecodeBody(body, out GroupAcknowledgement? groupAcknowledgement):
                 message = groupAcknowledgement;
                 return true;
+            case SessionMessageType.GroupUpdate when GroupUpdate.TryDecodeBody(body, out GroupUpdate? groupUpdate):
+                message = groupUpdate;
+                return true;
+            case SessionMessageType.GroupLeave when GroupLeave.TryDecodeBody(body, out GroupLeave? groupLeave):
+                message = groupLeave;
+                return true;
+            case SessionMessageType.GroupRemoved when GroupRemoved.TryDecodeBody(body, out GroupRemoved? groupRemoved):
+                message = groupRemoved;
+                return true;
             default:
                 return false;
         }

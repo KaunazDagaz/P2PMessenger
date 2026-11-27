@@ -8,4 +8,7 @@ public enum GroupSendOutcome
     NotSendable = 3,
     NotAGroup = 4,
     NotCreatedYet = 5,
+    Left = 6,
+    Removed = 7,
+    Ended = 8,
 }

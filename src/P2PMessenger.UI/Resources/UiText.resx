@@ -936,6 +936,87 @@
   <data name="GroupMessageNotDeletable" xml:space="preserve">
     <value>A member's app has already received the message, so it was not deleted.</value>
   </data>
+  <data name="GroupMembersButtonFormat" xml:space="preserve">
+    <value>Members ({0})</value>
+  </data>
+  <data name="GroupMemberAdmin" xml:space="preserve">
+    <value>Admin</value>
+  </data>
+  <data name="GroupRemoveMember" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="GroupRemoveMemberQuestionFormat" xml:space="preserve">
+    <value>Remove {0} from {1}? A new group key will be created so they cannot read new messages. Messages from before removal stay on their device.</value>
+  </data>
+  <data name="GroupRemoveLastMemberQuestionFormat" xml:space="preserve">
+    <value>Remove {0} from {1}? No other members will remain, so this group will end on your device. Messages from before removal stay on their device.</value>
+  </data>
+  <data name="GroupMemberRemovedFormat" xml:space="preserve">
+    <value>Removed {0}. A new group key is now in use.</value>
+  </data>
+  <data name="GroupMemberRemovedEndedFormat" xml:space="preserve">
+    <value>Removed {0}. No other members remain in this group.</value>
+  </data>
+  <data name="GroupRemoveMemberFailed" xml:space="preserve">
+    <value>Could not remove that member right now.</value>
+  </data>
+  <data name="GroupLeave" xml:space="preserve">
+    <value>Leave group</value>
+  </data>
+  <data name="GroupLeaveConfirm" xml:space="preserve">
+    <value>Leave</value>
+  </data>
+  <data name="GroupLeaveQuestionFormat" xml:space="preserve">
+    <value>Leave {0}? Your app will stop receiving new messages from this group. Existing messages stay on this device until you delete the chat.</value>
+  </data>
+  <data name="GroupLeaveAdminQuestionFormat" xml:space="preserve">
+    <value>Choose the new group admin before leaving {0}. Your app will stop receiving new messages from this group, and existing messages stay on this device until you delete the chat.</value>
+  </data>
+  <data name="GroupLeaveLastMemberQuestionFormat" xml:space="preserve">
+    <value>Leave {0}? Only one other member will remain, so this group will end. Existing messages stay on this device until you delete the chat.</value>
+  </data>
+  <data name="GroupLeaveSuccessorLabel" xml:space="preserve">
+    <value>New group admin</value>
+  </data>
+  <data name="GroupLeaveSuccessorRequired" xml:space="preserve">
+    <value>Choose who becomes the new group admin before leaving.</value>
+  </data>
+  <data name="GroupLeftBanner" xml:space="preserve">
+    <value>You left this group. Your app no longer receives new messages from it.</value>
+  </data>
+  <data name="GroupRemovedBanner" xml:space="preserve">
+    <value>You were removed from this group. Your app no longer receives new messages from it.</value>
+  </data>
+  <data name="GroupEndedBanner" xml:space="preserve">
+    <value>No other members remain in this group.</value>
+  </data>
+  <data name="GroupLeaveFailed" xml:space="preserve">
+    <value>Could not leave this group right now.</value>
+  </data>
+  <data name="GroupItemLeft" xml:space="preserve">
+    <value>You left</value>
+  </data>
+  <data name="GroupItemRemoved" xml:space="preserve">
+    <value>Removed</value>
+  </data>
+  <data name="GroupItemEnded" xml:space="preserve">
+    <value>No other members</value>
+  </data>
+  <data name="GroupSendLeft" xml:space="preserve">
+    <value>You left this group and can no longer send messages in it.</value>
+  </data>
+  <data name="GroupSendRemoved" xml:space="preserve">
+    <value>You were removed from this group and can no longer send messages in it.</value>
+  </data>
+  <data name="GroupSendEnded" xml:space="preserve">
+    <value>No other members remain in this group.</value>
+  </data>
+  <data name="GroupDeleteInactiveChatQuestionFormat" xml:space="preserve">
+    <value>Delete the chat of {0}? Its messages are removed from this device only. Other members' apps keep their copies.</value>
+  </data>
+  <data name="GroupInactiveChatDeleted" xml:space="preserve">
+    <value>The chat was deleted on this device only. Other members' apps keep their copies.</value>
+  </data>
   <data name="ContactListSendCopy" xml:space="preserve">
     <value>Copy chats to PC</value>
   </data>

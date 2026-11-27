@@ -12,6 +12,21 @@ public interface IGroupStore
 
     ValueTask UpdateMembersAsync(GroupId groupId, IReadOnlyCollection<GroupMemberStatus> members, CancellationToken cancellationToken);
 
+    ValueTask AdvanceEpochAsync(
+        GroupRecord record,
+        GroupKey key,
+        Ed25519PublicKey authorityKey,
+        IReadOnlyCollection<GroupMemberStatus> members,
+        IReadOnlyCollection<Ed25519PublicKey> removeLeaveProofs,
+        CancellationToken cancellationToken);
+
+    ValueTask SaveMembershipAsync(
+        GroupId groupId,
+        Ed25519PublicKey authorityKey,
+        IReadOnlyCollection<GroupMemberStatus> members,
+        GroupLeave? saveLeaveProof,
+        CancellationToken cancellationToken);
+
     ValueTask<IReadOnlyList<GroupChatMessage>> LoadMessagesAsync(CancellationToken cancellationToken);
 
     ValueTask<bool> AddMessageAsync(GroupChatMessage message, CancellationToken cancellationToken);

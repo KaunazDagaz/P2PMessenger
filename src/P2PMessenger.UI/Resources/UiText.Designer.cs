@@ -1489,6 +1489,15 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Delete the chat of {0}? Its messages are removed from this device only. Other members&apos; apps keep their copies..
+        /// </summary>
+        public static string GroupDeleteInactiveChatQuestionFormat {
+            get {
+                return ResourceManager.GetString("GroupDeleteInactiveChatQuestionFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to {0}: {1}.
         /// </summary>
         public static string GroupDeliveryMemberFormat {
@@ -1543,11 +1552,47 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to No other members remain in this group..
+        /// </summary>
+        public static string GroupEndedBanner {
+            get {
+                return ResourceManager.GetString("GroupEndedBanner", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The chat was deleted on this device only. Other members&apos; apps keep their copies..
+        /// </summary>
+        public static string GroupInactiveChatDeleted {
+            get {
+                return ResourceManager.GetString("GroupInactiveChatDeleted", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No other members.
+        /// </summary>
+        public static string GroupItemEnded {
+            get {
+                return ResourceManager.GetString("GroupItemEnded", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Not joined yet: open it to see whom to add.
         /// </summary>
         public static string GroupItemJoining {
             get {
                 return ResourceManager.GetString("GroupItemJoining", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to You left.
+        /// </summary>
+        public static string GroupItemLeft {
+            get {
+                return ResourceManager.GetString("GroupItemLeft", resourceCulture);
             }
         }
 
@@ -1566,6 +1611,15 @@ namespace P2PMessenger.UI.Resources {
         public static string GroupItemMembersFormat {
             get {
                 return ResourceManager.GetString("GroupItemMembersFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Removed.
+        /// </summary>
+        public static string GroupItemRemoved {
+            get {
+                return ResourceManager.GetString("GroupItemRemoved", resourceCulture);
             }
         }
 
@@ -1597,11 +1651,128 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Leave group.
+        /// </summary>
+        public static string GroupLeave {
+            get {
+                return ResourceManager.GetString("GroupLeave", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Choose the new group admin before leaving {0}. Your app will stop receiving new messages from this group, and existing messages stay on this device until you delete the chat..
+        /// </summary>
+        public static string GroupLeaveAdminQuestionFormat {
+            get {
+                return ResourceManager.GetString("GroupLeaveAdminQuestionFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Leave.
+        /// </summary>
+        public static string GroupLeaveConfirm {
+            get {
+                return ResourceManager.GetString("GroupLeaveConfirm", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Could not leave this group right now..
+        /// </summary>
+        public static string GroupLeaveFailed {
+            get {
+                return ResourceManager.GetString("GroupLeaveFailed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Leave {0}? Only one other member will remain, so this group will end. Existing messages stay on this device until you delete the chat..
+        /// </summary>
+        public static string GroupLeaveLastMemberQuestionFormat {
+            get {
+                return ResourceManager.GetString("GroupLeaveLastMemberQuestionFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Leave {0}? Your app will stop receiving new messages from this group. Existing messages stay on this device until you delete the chat..
+        /// </summary>
+        public static string GroupLeaveQuestionFormat {
+            get {
+                return ResourceManager.GetString("GroupLeaveQuestionFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to New group admin.
+        /// </summary>
+        public static string GroupLeaveSuccessorLabel {
+            get {
+                return ResourceManager.GetString("GroupLeaveSuccessorLabel", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Choose who becomes the new group admin before leaving..
+        /// </summary>
+        public static string GroupLeaveSuccessorRequired {
+            get {
+                return ResourceManager.GetString("GroupLeaveSuccessorRequired", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to You left this group. Your app no longer receives new messages from it..
+        /// </summary>
+        public static string GroupLeftBanner {
+            get {
+                return ResourceManager.GetString("GroupLeftBanner", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to The member lists of this group do not match: {0} joined with a different list than yours. Nobody can write in this group; create a new one with the people you trust..
         /// </summary>
         public static string GroupListsDifferFormat {
             get {
                 return ResourceManager.GetString("GroupListsDifferFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Admin.
+        /// </summary>
+        public static string GroupMemberAdmin {
+            get {
+                return ResourceManager.GetString("GroupMemberAdmin", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Removed {0}. No other members remain in this group..
+        /// </summary>
+        public static string GroupMemberRemovedEndedFormat {
+            get {
+                return ResourceManager.GetString("GroupMemberRemovedEndedFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Removed {0}. A new group key is now in use..
+        /// </summary>
+        public static string GroupMemberRemovedFormat {
+            get {
+                return ResourceManager.GetString("GroupMemberRemovedFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Members ({0}).
+        /// </summary>
+        public static string GroupMembersButtonFormat {
+            get {
+                return ResourceManager.GetString("GroupMembersButtonFormat", resourceCulture);
             }
         }
 
@@ -1656,6 +1827,78 @@ namespace P2PMessenger.UI.Resources {
         public static string GroupNotCreatedYet {
             get {
                 return ResourceManager.GetString("GroupNotCreatedYet", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to You were removed from this group. Your app no longer receives new messages from it..
+        /// </summary>
+        public static string GroupRemovedBanner {
+            get {
+                return ResourceManager.GetString("GroupRemovedBanner", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Remove {0} from {1}? No other members will remain, so this group will end on your device. Messages from before removal stay on their device..
+        /// </summary>
+        public static string GroupRemoveLastMemberQuestionFormat {
+            get {
+                return ResourceManager.GetString("GroupRemoveLastMemberQuestionFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Remove.
+        /// </summary>
+        public static string GroupRemoveMember {
+            get {
+                return ResourceManager.GetString("GroupRemoveMember", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Could not remove that member right now..
+        /// </summary>
+        public static string GroupRemoveMemberFailed {
+            get {
+                return ResourceManager.GetString("GroupRemoveMemberFailed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Remove {0} from {1}? A new group key will be created so they cannot read new messages. Messages from before removal stay on their device..
+        /// </summary>
+        public static string GroupRemoveMemberQuestionFormat {
+            get {
+                return ResourceManager.GetString("GroupRemoveMemberQuestionFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No other members remain in this group..
+        /// </summary>
+        public static string GroupSendEnded {
+            get {
+                return ResourceManager.GetString("GroupSendEnded", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to You left this group and can no longer send messages in it..
+        /// </summary>
+        public static string GroupSendLeft {
+            get {
+                return ResourceManager.GetString("GroupSendLeft", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to You were removed from this group and can no longer send messages in it..
+        /// </summary>
+        public static string GroupSendRemoved {
+            get {
+                return ResourceManager.GetString("GroupSendRemoved", resourceCulture);
             }
         }
 

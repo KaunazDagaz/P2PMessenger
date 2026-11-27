@@ -6,18 +6,120 @@
              x:DataType="vm:GroupConversationViewModel">
     <DockPanel Margin="16">
         <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-            <Button x:Name="DeleteChatButton"
-                    DockPanel.Dock="Right"
-                    Margin="8,0,0,0"
-                    VerticalAlignment="Top"
-                    Content="{x:Static res:UiText.ConversationDeleteChat}"
-                    Command="{Binding AskDeleteChatCommand}"
-                    IsVisible="{Binding IsDeleteChatVisible}" />
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" Margin="8,0,0,0" VerticalAlignment="Top">
+                <Button x:Name="MembersButton"
+                        Content="{Binding MembersButtonText}"
+                        Command="{Binding ToggleMembersCommand}" />
+                <Button x:Name="DeleteChatButton"
+                        Content="{x:Static res:UiText.ConversationDeleteChat}"
+                        Command="{Binding AskDeleteChatCommand}"
+                        IsVisible="{Binding IsDeleteChatVisible}" />
+            </StackPanel>
             <StackPanel Spacing="2">
                 <TextBlock x:Name="MembersText" Text="{Binding MembersText}" TextWrapping="Wrap" />
                 <TextBlock x:Name="CreatedByText" Text="{Binding CreatedByText}" FontSize="12" TextWrapping="Wrap" />
             </StackPanel>
         </DockPanel>
+        <Border x:Name="MembersPanel"
+                DockPanel.Dock="Top"
+                Margin="0,0,0,8"
+                Padding="12"
+                BorderThickness="1"
+                CornerRadius="4"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                IsVisible="{Binding IsMembersShown}">
+            <StackPanel Spacing="8">
+                <ItemsControl x:Name="MembersItems" ItemsSource="{Binding Members}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:GroupMemberItemViewModel">
+                            <StackPanel Margin="0,0,0,8" Spacing="4">
+                                <DockPanel>
+                                    <Button Name="RemoveMemberButton"
+                                            DockPanel.Dock="Right"
+                                            Margin="8,0,0,0"
+                                            VerticalAlignment="Top"
+                                            Content="{x:Static res:UiText.GroupRemoveMember}"
+                                            Command="{Binding AskRemoveCommand}"
+                                            IsVisible="{Binding IsRemoveButtonVisible}" />
+                                    <StackPanel Spacing="2">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                            <TextBlock Text="{x:Static res:UiText.GroupMemberAdmin}"
+                                                       FontSize="12"
+                                                       VerticalAlignment="Center"
+                                                       IsVisible="{Binding IsAdmin}" />
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding Fingerprint}" FontFamily="monospace" FontSize="12" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </DockPanel>
+                                <Border Padding="8"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        BorderBrush="{DynamicResource SystemControlErrorTextForegroundBrush}"
+                                        IsVisible="{Binding IsConfirmingRemove}">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Name="RemoveMemberQuestionText" Text="{Binding RemoveQuestion}" FontSize="12" TextWrapping="Wrap" />
+                                        <WrapPanel>
+                                            <Button Name="RemoveMemberConfirmButton"
+                                                    Margin="0,0,8,0"
+                                                    Content="{x:Static res:UiText.GroupRemoveMember}"
+                                                    Command="{Binding ConfirmRemoveCommand}" />
+                                            <Button Name="RemoveMemberCancelButton"
+                                                    Content="{x:Static res:UiText.CommonCancel}"
+                                                    Command="{Binding CancelRemoveCommand}" />
+                                        </WrapPanel>
+                                        <ProgressBar Name="RemoveMemberBusyBar"
+                                                     IsIndeterminate="True"
+                                                     IsVisible="{Binding IsRemoving}"
+                                                     AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Button x:Name="LeaveGroupButton"
+                        HorizontalAlignment="Left"
+                        Content="{x:Static res:UiText.GroupLeave}"
+                        Command="{Binding AskLeaveCommand}"
+                        IsVisible="{Binding IsLeaveVisible}" />
+                <Border x:Name="LeaveGroupPanel"
+                        Padding="8"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        BorderBrush="{DynamicResource SystemControlErrorTextForegroundBrush}"
+                        IsVisible="{Binding IsConfirmingLeave}">
+                    <StackPanel Spacing="8">
+                        <TextBlock x:Name="LeaveGroupQuestionText" Text="{Binding LeaveQuestion}" TextWrapping="Wrap" />
+                        <StackPanel Spacing="4" IsVisible="{Binding NeedsSuccessor}">
+                            <TextBlock Text="{x:Static res:UiText.GroupLeaveSuccessorLabel}" FontSize="12" />
+                            <ComboBox x:Name="SuccessorPicker"
+                                      ItemsSource="{Binding SuccessorCandidates}"
+                                      SelectedItem="{Binding SelectedSuccessor}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate DataType="vm:GroupSuccessorOptionViewModel">
+                                        <TextBlock Text="{Binding Name}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+                        <WrapPanel>
+                            <Button x:Name="LeaveGroupConfirmButton"
+                                    Margin="0,0,8,0"
+                                    Content="{x:Static res:UiText.GroupLeaveConfirm}"
+                                    Command="{Binding LeaveGroupCommand}" />
+                            <Button x:Name="LeaveGroupCancelButton"
+                                    Content="{x:Static res:UiText.CommonCancel}"
+                                    Command="{Binding CancelLeaveCommand}" />
+                        </WrapPanel>
+                        <ProgressBar x:Name="LeaveGroupBusyBar"
+                                     IsIndeterminate="True"
+                                     IsVisible="{Binding IsLeaving}"
+                                     AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Border>
         <Border x:Name="DeleteChatPanel"
                 DockPanel.Dock="Top"
                 Margin="0,0,0,8"
@@ -52,6 +154,26 @@
                 BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
                 IsVisible="{Binding HasDeletedText}">
             <TextBlock x:Name="DeletedText" Text="{Binding DeletedText}" TextWrapping="Wrap" />
+        </Border>
+        <Border x:Name="MembershipNoticePanel"
+                DockPanel.Dock="Top"
+                Margin="0,0,0,8"
+                Padding="12"
+                BorderThickness="1"
+                CornerRadius="4"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                IsVisible="{Binding HasMembershipNoticeText}">
+            <TextBlock x:Name="MembershipNoticeText" Text="{Binding MembershipNoticeText}" TextWrapping="Wrap" />
+        </Border>
+        <Border x:Name="EndedOrLeftPanel"
+                DockPanel.Dock="Top"
+                Margin="0,0,0,8"
+                Padding="12"
+                BorderThickness="1"
+                CornerRadius="4"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                IsVisible="{Binding HasEndedOrLeftText}">
+            <TextBlock x:Name="EndedOrLeftText" Text="{Binding EndedOrLeftText}" TextWrapping="Wrap" />
         </Border>
         <Border x:Name="JoiningPanel"
                 DockPanel.Dock="Top"
