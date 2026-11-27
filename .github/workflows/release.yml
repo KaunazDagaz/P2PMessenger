@@ -266,8 +266,13 @@ jobs:
           find "$publish_dir" -type f \( -name '*.pdb' -o -name '*.xml' \) -delete
           cp THIRD-PARTY-NOTICES.txt "$publish_dir/THIRD-PARTY-NOTICES.txt"
           mkdir -p "$publish_dir/licenses/tor"
-          for doc in tor.txt openssl.txt libevent.txt zlib.txt; do
+          for doc in tor.txt openssl.txt libevent.txt; do
             cp "tools/tor/linux-x86_64/docs/$doc" "$publish_dir/licenses/tor/$doc"
+          done
+          for doc in zlib.txt zstd-bsd.txt; do
+            if [ -f "tools/tor/linux-x86_64/docs/$doc" ]; then
+              cp "tools/tor/linux-x86_64/docs/$doc" "$publish_dir/licenses/tor/$doc"
+            fi
           done
           chmod +x "$publish_dir/P2PMessenger.Desktop" "$publish_dir/tor/tor"
           pwsh -File tools/verify-release.ps1 -Mode Desktop -Path "$publish_dir" -Platform linux-x64
@@ -408,8 +413,8 @@ jobs:
           fi
           if [ "$SIGNED" = "true" ]; then
             "$apksigner" verify --print-certs "$apk_out" | tee "$RUNNER_TEMP/apksigner.txt"
-            sha=$(grep -i 'Signer #1 certificate SHA-256 digest:' "$RUNNER_TEMP/apksigner.txt" | head -n 1 | awk -F: '{print $2}' | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')
-            if [ -z "$sha" ]; then
+            sha=$(grep -i 'certificate SHA-256 digest:' "$RUNNER_TEMP/apksigner.txt" | head -n 1 | awk -F: '{print $NF}' | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]' || true)
+            if ! [[ "$sha" =~ ^[0-9A-F]{64}$ ]]; then
               echo "::error::Could not extract SHA-256 signing certificate fingerprint"
               exit 1
             fi
@@ -461,7 +466,8 @@ jobs:
           cp THIRD-PARTY-NOTICES.txt release/assets/THIRD-PARTY-NOTICES.txt
           (
             cd release/assets
-            LC_ALL=C sha256sum $(ls -1 | LC_ALL=C sort) > SHA256SUMS.txt
+            LC_ALL=C sha256sum $(ls -1 | LC_ALL=C sort) > ../SHA256SUMS.txt
+            mv ../SHA256SUMS.txt SHA256SUMS.txt
           )
           cert_info=$(cat release/assets/signing-certificate-sha256.txt)
           checksums=$(cat release/assets/SHA256SUMS.txt)

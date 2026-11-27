@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using P2PMessenger.Application.Chats;
 using P2PMessenger.Application.Contacts;
 using P2PMessenger.Application.Groups;
@@ -297,9 +298,9 @@ public sealed class GroupTests
         var groupId = GroupId.Create();
         var forBob = GroupRecord.Create(groupId, 1, Name("Team"), key, [new(aliceKeys.IdentityKey, Name("Alice")), new(Key(bob), Name("Bob")), new(carolKeys.IdentityKey, Name("Carol"))], aliceKeys);
         var forCarol = GroupRecord.Create(groupId, 1, Name("Team"), key, [new(aliceKeys.IdentityKey, Name("Alice")), new(Key(bob), Name("Bob")), new(carolKeys.IdentityKey, Name("Carol")), new(eveKeys.IdentityKey, Name("Eve"))], aliceKeys);
-        await alice.SendAsync(GroupInvitation.Create(key, forBob), cancellationToken);
-        await alice.NextAsync<Acknowledgement>(cancellationToken);
-        var bobsJoin = await alice.NextAsync<GroupJoin>(cancellationToken);
+        var invitation = GroupInvitation.Create(key, forBob);
+        await alice.SendAsync(invitation, cancellationToken);
+        var bobsJoin = await WaitForAckAndJoinAsync(alice, invitation.NoticeId, groupId, cancellationToken);
         Assert.True(bobsJoin.RecordHash.SequenceEqual(forBob.Hash));
 
         await carol.SendAsync(GroupJoin.Create(forCarol), cancellationToken);
@@ -338,6 +339,35 @@ public sealed class GroupTests
         Assert.True((await carol.NextAsync<GroupJoin>(cancellationToken)).RecordHash.SequenceEqual(record.Hash));
         await carol.SendAsync(GroupJoin.Create(record), cancellationToken);
         Assert.Equal(GroupNotices.JoinId(record.Hash, carolKeys.IdentityKey), (await carol.NextAsync<Acknowledgement>(cancellationToken)).Id);
+    }
+
+    private static async Task<GroupJoin> WaitForAckAndJoinAsync(RawContact contact, MessageId expectedAckId, GroupId groupId, CancellationToken cancellationToken)
+    {
+        var seenAck = false;
+        GroupJoin? join = null;
+        var deadline = Stopwatch.StartNew();
+        var limit = TimeSpan.FromSeconds(20);
+        while (!(seenAck && join is not null) && deadline.Elapsed < limit)
+        {
+            var next = await contact.NextWithinAsync(limit - deadline.Elapsed, cancellationToken);
+            if (next is null)
+            {
+                break;
+            }
+
+            if (next is Acknowledgement ack && ack.Id.Equals(expectedAckId))
+            {
+                seenAck = true;
+            }
+            else if (next is GroupJoin groupJoin && groupJoin.GroupId.Equals(groupId))
+            {
+                join = groupJoin;
+            }
+        }
+
+        Assert.True(seenAck, $"Expected acknowledgement for {expectedAckId} within 20 s.");
+        Assert.NotNull(join);
+        return join;
     }
 
     private static Ed25519PublicKey Key(AppPeer peer) => peer.Identity.Keys.IdentityKey;
