@@ -10,7 +10,7 @@ public sealed class InMemoryGroupStore : IGroupStore, IDisposable
 {
     private readonly ISeenMessageIds seen;
     private readonly Lock gate = new();
-    private readonly Dictionary<GroupId, (GroupRecord Record, byte[] Key, List<GroupMemberStatus> Members)> groups = [];
+    private readonly Dictionary<GroupId, StoredEntry> groups = [];
     private readonly List<GroupChatMessage> messages = [];
     private readonly Dictionary<GroupId, IReadOnlyList<AuthorSequenceRange>> deletedByGroup = [];
     private readonly Dictionary<(GroupId GroupId, MessageId MessageId, Ed25519PublicKey RecipientKey), GroupAcknowledgement> acknowledgements = [];
@@ -27,9 +27,15 @@ public sealed class InMemoryGroupStore : IGroupStore, IDisposable
         lock (gate)
         {
             List<LoadedGroup> loaded = [];
-            foreach ((GroupRecord record, byte[] key, List<GroupMemberStatus> members) in groups.Values)
+            foreach (StoredEntry entry in groups.Values)
             {
-                loaded.Add(new LoadedGroup(record, GroupKey.TryImport(key, out GroupKey? copy) ? copy : throw new InvalidOperationException("A kept key cannot be read."), [.. members]));
+                loaded.Add(new LoadedGroup(
+                    entry.History[^1],
+                    GroupKey.TryImport(entry.Key, out GroupKey? copy) ? copy : throw new InvalidOperationException("A kept key cannot be read."),
+                    [.. entry.Members],
+                    entry.AuthorityKey,
+                    [.. entry.History],
+                    [.. entry.LeaveProofs]));
             }
 
             return ValueTask.FromResult<IReadOnlyList<LoadedGroup>>(loaded);
@@ -46,7 +52,7 @@ public sealed class InMemoryGroupStore : IGroupStore, IDisposable
         key.Export(raw);
         lock (gate)
         {
-            if (!groups.TryAdd(record.GroupId, (record, raw, [.. members])))
+            if (!groups.TryAdd(record.GroupId, new StoredEntry([record], raw, record.Signer, [.. members], [])))
             {
                 CryptographicOperations.ZeroMemory(raw);
                 throw new InvalidOperationException("The group is already kept.");
@@ -63,18 +69,84 @@ public sealed class InMemoryGroupStore : IGroupStore, IDisposable
 
         lock (gate)
         {
-            if (!groups.TryGetValue(groupId, out (GroupRecord Record, byte[] Key, List<GroupMemberStatus> Members) group))
+            if (!groups.TryGetValue(groupId, out StoredEntry? group))
             {
                 throw new InvalidOperationException("The group is not kept.");
             }
 
-            foreach (GroupMemberStatus member in members)
+            UpdateMembersLocked(group.Members, members);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask AdvanceEpochAsync(
+        GroupRecord record,
+        GroupKey key,
+        Ed25519PublicKey authorityKey,
+        IReadOnlyCollection<GroupMemberStatus> members,
+        IReadOnlyCollection<Ed25519PublicKey> removeLeaveProofs,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(record);
+        ArgumentNullException.ThrowIfNull(key);
+        ArgumentNullException.ThrowIfNull(authorityKey);
+        ArgumentNullException.ThrowIfNull(members);
+        ArgumentNullException.ThrowIfNull(removeLeaveProofs);
+        if (record.Epoch < 2 || !record.Fits(key) || !record.HasMember(authorityKey))
+        {
+            throw new ArgumentException("The epoch update record, key, or authority is not valid.", nameof(record));
+        }
+
+        byte[] raw = new byte[GroupKey.Length];
+        key.Export(raw);
+        lock (gate)
+        {
+            if (!groups.TryGetValue(record.GroupId, out StoredEntry? entry))
             {
-                int index = group.Members.FindIndex(kept => kept.IdentityKey.Equals(member.IdentityKey));
-                if (index >= 0)
-                {
-                    group.Members[index] = member;
-                }
+                CryptographicOperations.ZeroMemory(raw);
+                throw new InvalidOperationException("The group is not kept.");
+            }
+
+            CryptographicOperations.ZeroMemory(entry.Key);
+            entry.Key = raw;
+            entry.History.Add(record);
+            entry.AuthorityKey = authorityKey;
+            UpdateMembersLocked(entry.Members, members);
+            if (removeLeaveProofs.Count > 0)
+            {
+                HashSet<Ed25519PublicKey> clear = [.. removeLeaveProofs];
+                entry.LeaveProofs.RemoveAll(proof => clear.Contains(proof.MemberKey));
+            }
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask SaveMembershipAsync(
+        GroupId groupId,
+        Ed25519PublicKey authorityKey,
+        IReadOnlyCollection<GroupMemberStatus> members,
+        GroupLeave? saveLeaveProof,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(groupId);
+        ArgumentNullException.ThrowIfNull(authorityKey);
+        ArgumentNullException.ThrowIfNull(members);
+
+        lock (gate)
+        {
+            if (!groups.TryGetValue(groupId, out StoredEntry? entry))
+            {
+                throw new InvalidOperationException("The group is not kept.");
+            }
+
+            entry.AuthorityKey = authorityKey;
+            UpdateMembersLocked(entry.Members, members);
+            if (saveLeaveProof is not null)
+            {
+                entry.LeaveProofs.RemoveAll(proof => proof.MemberKey.Equals(saveLeaveProof.MemberKey));
+                entry.LeaveProofs.Add(saveLeaveProof);
             }
         }
 
@@ -222,12 +294,24 @@ public sealed class InMemoryGroupStore : IGroupStore, IDisposable
     {
         lock (gate)
         {
-            foreach ((GroupRecord _, byte[] key, List<GroupMemberStatus> _) in groups.Values)
+            foreach (StoredEntry entry in groups.Values)
             {
-                CryptographicOperations.ZeroMemory(key);
+                CryptographicOperations.ZeroMemory(entry.Key);
             }
 
             groups.Clear();
+        }
+    }
+
+    private static void UpdateMembersLocked(List<GroupMemberStatus> existing, IReadOnlyCollection<GroupMemberStatus> updates)
+    {
+        foreach (GroupMemberStatus member in updates)
+        {
+            int index = existing.FindIndex(kept => kept.IdentityKey.Equals(member.IdentityKey));
+            if (index >= 0)
+            {
+                existing[index] = member;
+            }
         }
     }
 
@@ -237,5 +321,32 @@ public sealed class InMemoryGroupStore : IGroupStore, IDisposable
         {
             deletedByGroup[groupId] = [.. deleted];
         }
+    }
+
+    private sealed class StoredEntry
+    {
+        public StoredEntry(
+            List<GroupRecord> history,
+            byte[] key,
+            Ed25519PublicKey authorityKey,
+            List<GroupMemberStatus> members,
+            List<GroupLeave> leaveProofs)
+        {
+            History = history;
+            Key = key;
+            AuthorityKey = authorityKey;
+            Members = members;
+            LeaveProofs = leaveProofs;
+        }
+
+        public List<GroupRecord> History { get; }
+
+        public byte[] Key { get; set; }
+
+        public Ed25519PublicKey AuthorityKey { get; set; }
+
+        public List<GroupMemberStatus> Members { get; }
+
+        public List<GroupLeave> LeaveProofs { get; }
     }
 }

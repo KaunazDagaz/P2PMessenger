@@ -69,7 +69,7 @@ public sealed class PcCopyService
         List<CopyCandidate> candidates = [];
         foreach (Group group in groups.All)
         {
-            if (!group.IsCreated)
+            if (!IsCopyable(group))
             {
                 continue;
             }
@@ -235,7 +235,7 @@ public sealed class PcCopyService
         Dictionary<CopyOriginId, Group> groupsByOrigin = [];
         foreach (Group group in groups.All)
         {
-            if (group.IsCreated)
+            if (IsCopyable(group))
             {
                 groupsByOrigin[CopyOriginId.ForGroup(identity.Keys.IdentityKey, group.Id)] = group;
             }
@@ -313,8 +313,11 @@ public sealed class PcCopyService
                 item.AuthorKey.Equals(identity.Keys.IdentityKey) ? null : ResolveGroupAuthorName(group, item),
                 item.Text));
 
+    private bool IsCopyable(Group group) =>
+        group.IsCreated || (group.State is GroupState.Left or GroupState.Removed or GroupState.Ended && groupChats.MessagesIn(group.Id).Count > 0);
+
     private DisplayName ResolveGroupAuthorName(Group group, GroupChatMessage item) =>
-        group.Find(item.AuthorKey)?.Name
+        group.FindAny(item.AuthorKey)?.Name
             ?? (contacts.TryGet(item.AuthorKey, out Contact? contact) ? contact.Name : group.Name);
 
     private int SelectNewestStartIndex<T>(IReadOnlyList<T> all, Func<T, int> measureBytes)

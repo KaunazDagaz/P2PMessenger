@@ -4,7 +4,7 @@ Each device keeps its data in one SQLite database of its own. There is no server
 
 This file documents the database: the design rules, the logical schema, how stored data is protected, the data dictionary, normalisation, migrations, and how to create and inspect a database. The schema is created and changed only by the numbered scripts in [`Migrations`](Migrations); nothing is created by hand.
 
-**Status:** the schema, its migrations, the encryption described in [How stored data is protected](#how-stored-data-is-protected) and the repositories exist, with their tests. The app keeps its identity, contacts, messages, its groups with their signed member lists, keys and messages, the delivery state of its own messages for each recipient, relayed signed group acknowledgements for other members' messages, the IDs of seen messages and read-only chats copied from a phone to a PC here, on Windows, Linux and Android, and deletes a chat (one-to-one or group), a waiting message, a copied chat or all its data here, keeping what a deleted group chat had so that it does not come back. On Android the data key is wrapped by the Android Keystore.
+**Status:** the schema, its migrations, the encryption described in [How stored data is protected](#how-stored-data-is-protected) and the repositories exist, with their tests. The app keeps its identity, contacts, messages, its groups with their signed member lists, epoch keys, current admin authority, member leaving/removal states and signed leave proofs, the delivery state of its own messages for each recipient, relayed signed group acknowledgements for other members' messages, the IDs of seen messages and read-only chats copied from a phone to a PC here, on Windows, Linux and Android, and deletes a chat (one-to-one or group), a waiting message, a copied chat or all its data here, keeping what a deleted group chat had so that it does not come back. On Android the data key is wrapped by the Android Keystore.
 
 ## Contents
 
@@ -81,6 +81,7 @@ erDiagram
         BLOB shared_id_mac UK "MAC"
         BLOB shared_id_enc "encrypted"
         BLOB name_enc "encrypted"
+        BLOB authority_enc "encrypted, optional"
     }
     group_member {
         INTEGER group_id PK, FK
@@ -89,6 +90,10 @@ erDiagram
         INTEGER joined "0 to 2"
         INTEGER invitation_state "0 to 2"
         INTEGER join_state "0 to 2"
+        INTEGER update_state "0 to 2"
+        INTEGER leave_state "0 to 2"
+        INTEGER removed_state "0 to 2"
+        INTEGER removed_epoch "0 or >= 2"
     }
     group_key {
         INTEGER group_id PK, FK
@@ -125,6 +130,11 @@ erDiagram
         INTEGER recipient_person_id PK, FK
         BLOB ack_enc "encrypted"
     }
+    group_leave_proof {
+        INTEGER group_id PK, FK
+        INTEGER member_person_id PK, FK
+        BLOB proof_enc "encrypted"
+    }
     seen_message {
         BLOB message_id_mac PK "MAC"
     }
@@ -149,7 +159,7 @@ The model in words:
 
 - A **person** is anyone the app knows by an identity key: the user of this device (through `identity`), the user's contacts (through `contact`), and members of the user's groups whom the user has not added as contacts yet. Messages, group memberships and deliveries refer to persons, so the user and everyone else are handled the same way, and a group message keeps its author when the author is not, or no longer, a contact.
 - A **contact** is a person whose contact code the user has added. A **chat** (`conversation`) belongs either to one contact or to one group, never both.
-- A **group** (`chat_group`) has members (`group_member`) and one key per epoch (`group_key`). Removing a member starts a new epoch with a new key.
+- A **group** (`chat_group`) has members (`group_member`), one key and signed record per epoch (`group_key`), a current admin authority (`authority_enc`), and signed leave proofs (`group_leave_proof`) held while still needed to prove leaving or admin handover across members. Removing or losing a member rotates a new epoch with a new key while keeping earlier epoch records so stored history and handover chains validate cleanly.
 - A **message** belongs to a chat and has an author. For the user's own messages, `message_delivery` holds one state per recipient. The **outbox** is a view: the deliveries still waiting. For an incoming group message written by another member, `group_acknowledgement` holds signed confirmations from other recipients while this device passes them back toward the author or through other members, deleted once the author confirms receipt.
 - `seen_message` remembers the IDs of received messages, and `data_key` holds the key that encrypts everything else. Both stand alone.
 - `copied_conversation` and `copied_message` exist on the user's PC only: a read-only copy of chats from the user's phone, kept apart from the PC's own chats and not linked to its contacts.
@@ -172,7 +182,7 @@ The data key is 32 random bytes made on the device. It is never stored unwrapped
 All cryptography comes from libsodium through NSec (`Protection/RecordKeys.cs`).
 
 - **Two keys from the data key.** HKDF-SHA-256 extracts a pseudorandom key from the data key with the salt `P2PM/storage/v1` and expands two keys from it: with the info `P2PM/storage/v1/record-key` the XChaCha20-Poly1305 key for `_enc` values, and with `P2PM/storage/v1/lookup-key` the BLAKE2b-256 key for `_mac` values. The data key itself is cleared from memory once the two keys exist.
-- **An encrypted value** is a random 24-byte nonce, then the ciphertext, then the 16-byte tag. The associated data is the ASCII text `P2PM/storage/v1`, a zero byte, the table name, a zero byte, the column name, a zero byte and the row's key as a big-endian 64-bit integer. For example, the name in row 2 of `person` is bound to the bytes of `P2PM/storage/v1`, `00`, `person`, `00`, `display_name_enc`, `00` and `00 00 00 00 00 00 00 02`. For `group_acknowledgement`, the 64-bit row key packs `(message_id << 32) | recipient_person_id`, so moving a relayed acknowledgement to another message or recipient fails authentication. For `copied_message`, the 64-bit row key packs `(copied_conversation_id << 32) | (written_by_owner << 31) | position`, so moving a message between copied chats, reordering it or flipping `written_by_owner` fails authentication too. A value copied to another row, column or table does not decrypt.
+- **An encrypted value** is a random 24-byte nonce, then the ciphertext, then the 16-byte tag. The associated data is the ASCII text `P2PM/storage/v1`, a zero byte, the table name, a zero byte, the column name, a zero byte and the row's key as a big-endian 64-bit integer. For example, the name in row 2 of `person` is bound to the bytes of `P2PM/storage/v1`, `00`, `person`, `00`, `display_name_enc`, `00` and `00 00 00 00 00 00 00 02`. For `group_acknowledgement`, the 64-bit row key packs `(message_id << 32) | recipient_person_id`, so moving a relayed acknowledgement to another message or recipient fails authentication. For `group_leave_proof`, the 64-bit row key packs `(group_id << 32) | member_person_id`, so moving a leave proof to another group or member fails authentication too. For `copied_message`, the 64-bit row key packs `(copied_conversation_id << 32) | (written_by_owner << 31) | position`, so moving a message between copied chats, reordering it or flipping `written_by_owner` fails authentication too. A value copied to another row, column or table does not decrypt.
 - **A MAC** is BLAKE2b-256 under the lookup key of `P2PM/lookup/v1/` and a domain name (`identity-key`, `static-key`, `message-id`, `group-id` or `copy-origin`), a zero byte and the value. The same message ID gives the same MAC in `message` and in `seen_message`.
 - **What is inside an encrypted value:** public keys as their 32 bytes, the user's private keys as one 97-byte block (a version byte and the three 32-byte private keys), a copied conversation's origin ID as its 32 bytes, names and texts as UTF-8, a contact code's signature as its 64 bytes, a message ID as its 16 bytes, times as an 8-byte big-endian count of 100-nanosecond ticks since 0001-01-01 UTC, and a sequence number as an 8-byte big-endian integer of at least 1.
 - **Reading checks everything.** Every value must decrypt with its own associated data, every MAC (including `copied_conversation.origin_mac` against `origin_enc`) must match the value it was made from, every copied message list must have contiguous positions from 1, every relayed group acknowledgement must match its message, group, epoch and recipient and carry a valid Ed25519 signature, and a contact code rebuilt from its parts must carry a valid signature. If anything fails, the app reads nothing and says that the stored data was changed or damaged.
@@ -254,6 +264,7 @@ A small group of contacts.
 | `shared_id_mac` | BLOB | No | UK | MAC | MAC of the group's ID; finds the group of an incoming group message |
 | `shared_id_enc` | BLOB | No | | Encrypted | The group's random ID, the same on every member's device and carried in group messages |
 | `name_enc` | BLOB | No | | Encrypted | The group's name |
+| `authority_enc` | BLOB | Yes | | Encrypted | The 32-byte identity key of the current admin authority (NULL falls back to epoch 1's signer for legacy rows; verified to appear in the group's epoch history). Added by `0009_group_membership.sql` |
 
 ### `group_member`
 
@@ -263,12 +274,26 @@ Who is, or was, in a group, the user included. `WITHOUT ROWID`.
 | --- | --- | --- | --- | --- | --- |
 | `group_id` | INTEGER | No | PK, FK `chat_group.id` | Plain | The group; deleting the group deletes its members |
 | `person_id` | INTEGER | No | PK, FK `person.id` | Plain | The member |
-| `state` | INTEGER | No | | Plain | 1 = member, 2 = removed by another member, 3 = left the group; this version writes and reads only 1 |
+| `state` | INTEGER | No | | Plain | 1 = active member, 2 = removed, 3 = left the group |
 | `joined` | INTEGER | No | | Plain | 0 = not joined yet, 1 = joined with the same member list as this device's, 2 = joined with another member list. The person who signed the group's record counts as joined. Added by `0005_groups.sql` |
 | `invitation_state` | INTEGER | No | | Plain | The invitation that this device sends that member as the group's creator: 0 = none, 1 = waiting, 2 = received by the member's app. Added by `0005_groups.sql` |
 | `join_state` | INTEGER | No | | Plain | The user's own join, sent to that member: 0 = none, 1 = waiting, 2 = received by the member's app. Added by `0005_groups.sql` |
+| `update_state` | INTEGER | No | | Plain | The current-epoch `GroupUpdate` notice state for that member: 0 = none, 1 = waiting, 2 = received. Added by `0009_group_membership.sql` |
+| `leave_state` | INTEGER | No | | Plain | The user's `GroupLeave` notice state for that member after the user leaves: 0 = none, 1 = waiting, 2 = received. Added by `0009_group_membership.sql` |
+| `removed_state` | INTEGER | No | | Plain | The current admin's `GroupRemoved` notice state for a removed member: 0 = none, 1 = waiting, 2 = received. Added by `0009_group_membership.sql` |
+| `removed_epoch` | INTEGER | No | | Plain | Epoch at which a removed member was removed (0 when active/left or unknown; at least 2 when known or carrying `removed_state > 0`). Added by `0009_group_membership.sql` |
 
 Index `ix_group_member_person (person_id)`: the groups of a person. Whether a member still has to be added as a contact is not stored: it is a member whose person has no `contact` row.
+
+### `group_leave_proof`
+
+Signed `GroupLeave` proofs kept for pending leave notices and admin handover chains so offline members can verify authority changes across epochs. `WITHOUT ROWID`.
+
+| Column | Type | Null | Key | Class | Description |
+| --- | --- | --- | --- | --- | --- |
+| `group_id` | INTEGER | No | PK, FK `chat_group.id` | Plain | The group |
+| `member_person_id` | INTEGER | No | PK, FK `person.id` | Plain | The member who signed the leave proof |
+| `proof_enc` | BLOB | No | | Encrypted | The 117-byte or 149-byte signed `GroupLeave` notice, bound to `(group_id << 32) \| member_person_id` and verified on load |
 
 ### `group_key`
 
@@ -395,7 +420,7 @@ Every primary key and `UNIQUE` constraint has its own index as well.
 The schema is in third normal form:
 
 - **1NF:** every column holds one value. A contact code is not stored as one blob: its parts are columns of `person` and `contact`, and the code is rebuilt from them.
-- **2NF:** in the tables with composite keys (`group_member`, `group_key`, `message_delivery`, `group_acknowledgement`, `copied_message`), every other column depends on the whole key.
+- **2NF:** in the tables with composite keys (`group_member`, `group_key`, `group_leave_proof`, `message_delivery`, `group_acknowledgement`, `copied_message`), every other column depends on the whole key.
 - **3NF:** no column depends on another non-key column. Facts that follow from other rows are queried, not stored: whether a group member still has to be added (no `contact` row), whether the user is in a group (the user's `group_member` row), whether a chat is one-to-one or a group chat (which foreign key is set), and which messages wait (the `outbox` view).
 
 Two kinds of derived values are kept on purpose:
@@ -417,6 +442,7 @@ Two kinds of derived values are kept on purpose:
   | `0006_deleted_group_messages.sql` | Adds `conversation.deleted_ranges_enc`, empty for every existing chat |
   | `0007_copied_conversation_origin.sql` | Adds `copied_conversation.origin_enc`, storing the encrypted 32-byte copy origin ID so `origin_mac` is verified on every load. No earlier version wrote rows to `copied_conversation` |
   | `0008_group_acknowledgements.sql` | Creates the `group_acknowledgement` table (`STRICT, WITHOUT ROWID`) to persist verified relayed signed group acknowledgements keyed by `(message_id, recipient_person_id)` with `ON DELETE CASCADE` on `message (id)` |
+  | `0009_group_membership.sql` | Adds `chat_group.authority_enc`, adds `update_state`, `leave_state`, `removed_state` and `removed_epoch` to `group_member`, and creates the `group_leave_proof` table (`STRICT, WITHOUT ROWID`) |
 
 - `MigrationRunner.MigrateAsync` reads the schema version from `PRAGMA user_version`, applies every newer script in order, and records the new version. Each script runs in one transaction together with the version update, so a failing script leaves the database at the previous version.
 - A database whose version is newer than the newest script is refused, not changed.
@@ -435,7 +461,7 @@ A database can be built from the scripts in two ways: with the SQLite command-li
 ### Create a database
 
 ```
-sqlite3 review.db ".read src/P2PMessenger.Storage/Migrations/0001_initial.sql" ".read src/P2PMessenger.Storage/Migrations/0002_message_id.sql" ".read src/P2PMessenger.Storage/Migrations/0003_outgoing_delivery.sql" ".read src/P2PMessenger.Storage/Migrations/0004_sent_sequence.sql" ".read src/P2PMessenger.Storage/Migrations/0005_groups.sql" ".read src/P2PMessenger.Storage/Migrations/0006_deleted_group_messages.sql" ".read src/P2PMessenger.Storage/Migrations/0007_copied_conversation_origin.sql" ".read src/P2PMessenger.Storage/Migrations/0008_group_acknowledgements.sql"
+sqlite3 review.db ".read src/P2PMessenger.Storage/Migrations/0001_initial.sql" ".read src/P2PMessenger.Storage/Migrations/0002_message_id.sql" ".read src/P2PMessenger.Storage/Migrations/0003_outgoing_delivery.sql" ".read src/P2PMessenger.Storage/Migrations/0004_sent_sequence.sql" ".read src/P2PMessenger.Storage/Migrations/0005_groups.sql" ".read src/P2PMessenger.Storage/Migrations/0006_deleted_group_messages.sql" ".read src/P2PMessenger.Storage/Migrations/0007_copied_conversation_origin.sql" ".read src/P2PMessenger.Storage/Migrations/0008_group_acknowledgements.sql" ".read src/P2PMessenger.Storage/Migrations/0009_group_membership.sql"
 ```
 
 Read the scripts in number order. The shell leaves `user_version` at 0, because the migration runner, not the script, records the version.
@@ -520,6 +546,7 @@ The tests build temporary databases with `MigrationRunner` and `SqliteDatabase`,
 - a message of the user without its delivery, a delivery for another person, and a received message with a delivery are refused as damaged;
 - a group comes back with the same signed record, key and member states, a member who is not a contact is stored as a person with the name from the record, a group key that does not fit the record or that was moved to another group's row is refused, and a group message keeps its signed envelope and one delivery per member, of which only the one for the member who confirmed it becomes received; a second message with an author's used sequence number is not stored;
 - relayed signed group acknowledgements save only for locally stored incoming group messages of a matching epoch from another group member, round-trip across reopen, cascade-delete on group chat deletion leaving no plaintext or sealed bytes in the database files, refuse every flipped bit, moved row or re-sealed forged signature on load, and are erased by `EraseEverything` (`GroupAcknowledgementRepositoryTests`, `0008_group_acknowledgements.sql`);
+- group membership state, epoch advancement, authority handover and leave proofs round-trip across reopen, clear settled leave proofs on epoch advance, refuse forged or mismatched leave proofs, non-member authorities and invalid removed/left notice states on load, and are erased by `EraseEverything` (`GroupMembershipRepositoryTests`, `0009_group_membership.sql`);
 - copied conversations and copied messages save, replace atomically by origin ID, delete cleanly with `secure_delete` and journal truncation leaving no plaintext in the database files, refuse any flipped bit of any encrypted column or `origin_mac`, refuse a value moved to another row, column or position, refuse a flipped `written_by_owner` flag, and refuse gaps in message positions (`CopiedConversationRepositoryTests`, `CopiedFilesTests`, `0007_copied_conversation_origin.sql`);
 - the key derivation and XChaCha20-Poly1305 give the published test vectors (RFC 5869, draft-irtf-cfrg-xchacha), and the associated data, two encrypted values and the MACs match an independent Python implementation;
 - every flipped bit of every stored encrypted value and MAC, and a value moved to another row or column, is refused;

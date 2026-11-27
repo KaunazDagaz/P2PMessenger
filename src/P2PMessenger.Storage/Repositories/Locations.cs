@@ -36,9 +36,14 @@ internal static class Locations
 
     public static RecordLocation GroupName(long groupId) => new("chat_group", "name_enc", groupId);
 
+    public static RecordLocation GroupAuthority(long groupId) => new("chat_group", "authority_enc", groupId);
+
     public static RecordLocation GroupKey(long groupId, long epoch) => new("group_key", "key_enc", GroupKeyRow(groupId, epoch));
 
     public static RecordLocation GroupRecord(long groupId, long epoch) => new("group_key", "record_enc", GroupKeyRow(groupId, epoch));
+
+    public static RecordLocation GroupLeaveProof(long groupId, long memberPersonId) =>
+        new("group_leave_proof", "proof_enc", GroupLeaveProofRow(groupId, memberPersonId));
 
     public static RecordLocation GroupAcknowledgement(long messageId, long recipientPersonId) =>
         new("group_acknowledgement", "ack_enc", GroupAcknowledgementRow(messageId, recipientPersonId));
@@ -67,6 +72,11 @@ internal static class Locations
         messageId is >= 1 and <= int.MaxValue && recipientPersonId is >= 1 and <= uint.MaxValue
             ? (messageId << 32) | recipientPersonId
             : throw new ArgumentOutOfRangeException(nameof(messageId), "A group acknowledgement row needs a message row from 1 to 2^31 - 1 and a person row from 1 to 2^32 - 1.");
+
+    private static long GroupLeaveProofRow(long groupId, long memberPersonId) =>
+        groupId is >= 1 and <= int.MaxValue && memberPersonId is >= 1 and <= uint.MaxValue
+            ? (groupId << 32) | memberPersonId
+            : throw new ArgumentOutOfRangeException(nameof(groupId), "A group leave proof row needs a group row from 1 to 2^31 - 1 and a person row from 1 to 2^32 - 1.");
 
     private static long CopiedMessageRow(long conversationId, long position, bool writtenByOwner) =>
         conversationId is >= 1 and <= int.MaxValue && position is >= 1 and <= int.MaxValue

@@ -5,7 +5,7 @@ P2PMessenger has no server, so it has no HTTP API, no OpenAPI description, no RE
 1. **The wire protocol** (Sections 1 to 9): every format that two apps exchange, over the local network, over Tor or through another channel. This is the interface between two running apps, and the one that an independent implementation would have to follow. The data is binary, not JSON, because every connection is an encrypted Noise session with padded frames.
 2. **The application interface** (Section 10): the operations, events and result values through which the screens use the back-end libraries inside one app.
 
-**Status:** this document describes the version on the `main` branch. Small groups (6.7 to 6.15) are specified for creating a group, joining it, sending group messages directly to each member, passing missed group messages on between members, and relaying signed group acknowledgements through members to track delivery per member, and copying chosen chats from a phone to a PC over the local network is specified in Section 9; leaving or removing group members is not built yet and will add its own message types. A change to any format changes this document in the same change, and the tests named below compare the code with the reference vectors byte by byte.
+**Status:** this document describes the version on the `main` branch. Small groups (6.7 to 6.18) are specified for creating a group, joining it, sending group messages directly to each member, passing missed group messages on between members, relaying signed group acknowledgements through members to track delivery per member, leaving a group with creator/admin handover, admin member removal with epoch and key rotation, and keyless removal notices; copying chosen chats from a phone to a PC over the local network is specified in Section 9. A change to any format changes this document in the same change, and the tests named below compare the code with the reference vectors byte by byte.
 
 ## Where the code is
 
@@ -14,7 +14,7 @@ P2PMessenger has no server, so it has no HTTP API, no OpenAPI description, no RE
 | Contact codes, fingerprints, onion addresses (Section 3) | `src/P2PMessenger.Core/Contacts`, `src/P2PMessenger.Core/Identity` | `tests/P2PMessenger.Core.Tests` |
 | Pairwise key, hint, prologue, handshake, frames (Sections 4 and 5) | `src/P2PMessenger.Core/Sessions`, `src/P2PMessenger.Core/Noise` | `tests/P2PMessenger.Core.Tests` |
 | Message types (Section 6) | `src/P2PMessenger.Core/Messages` | `tests/P2PMessenger.Core.Tests` |
-| Groups (Sections 6.7 to 6.15) | `src/P2PMessenger.Core/Groups`, `src/P2PMessenger.Application/Groups` | `tests/P2PMessenger.Core.Tests`, `tests/P2PMessenger.Storage.Tests`, `tests/P2PMessenger.Application.Tests`, `tests/P2PMessenger.Integration.Tests` |
+| Groups (Sections 6.7 to 6.18) | `src/P2PMessenger.Core/Groups`, `src/P2PMessenger.Application/Groups` | `tests/P2PMessenger.Core.Tests`, `tests/P2PMessenger.Storage.Tests`, `tests/P2PMessenger.Application.Tests`, `tests/P2PMessenger.Integration.Tests` |
 | Connections, admission, reconnects (Section 4.9) | `src/P2PMessenger.Transport/Connections`, `src/P2PMessenger.Transport/Admission`, `src/P2PMessenger.Transport/Tcp` | `tests/P2PMessenger.Transport.Tests`, `tests/P2PMessenger.Integration.Tests` |
 | Discovery on the local network (Section 7) | `src/P2PMessenger.Core/Discovery`, `src/P2PMessenger.Transport/Discovery` | `tests/P2PMessenger.Core.Tests`, `tests/P2PMessenger.Transport.Tests` |
 | Onion service (Section 8) | `src/P2PMessenger.Transport/Tor`, `src/P2PMessenger.Core/Identity` | `tests/P2PMessenger.Transport.Tests`, `tests/P2PMessenger.Integration.Tests` |
@@ -54,7 +54,7 @@ These apply to every format below.
 | Session 1 (`P2PM/session/v1`) | The pairwise key, the connection hint, the prologue and the KK handshake of Section 4 |
 | Frames 1 | 2-byte length, four size classes (Section 5) |
 | Text 1, acknowledgement 1, keep-alive 1 | The message types of Section 6 |
-| Group record 1, group invitation 1, group join 1, group message 1, group summary 1, group acknowledgement 1 | Small groups (6.7 to 6.15) |
+| Group record 1, group invitation 1, group join 1, group message 1, group summary 1, group acknowledgement 1, group update 1, group leave 1, group removed 1 | Small groups (6.7 to 6.18) |
 | Connection rules 1 | TCP, either side opens, one session per contact and the choice between two, a keep-alive after 15 s without another frame, closing after 45 s without a frame (Section 4.9) |
 | Connection rules 2 | Every session has a route, nearby or Tor; a Tor session replaces a nearby one, and a nearby one replaces a Tor one only if the Tor session counted 10 s or more earlier; over Tor 10 s for the hint and 20 s for the handshake (Section 4.9) |
 | Announcement 1 (`P2PM/announcement/v1`) | The announcement key, the 274-byte announcement, multicast, directed broadcast and the sweep, a random listening port (Section 7) |
@@ -312,6 +312,9 @@ content = type (1 byte) | version (1 byte) | body.
 | 6 | 1 | Group message | 6.11 | 191 to 16,382 bytes |
 | 7 | 1 | Group summary | 6.12 | 23 to 16,382 bytes |
 | 8 | 1 | Group acknowledgement | 6.13 | 134 bytes |
+| 9 | 1 | Group update | 6.14 | 171 to 15,769 bytes |
+| 10 | 1 | Group leave | 6.15 | 119 or 151 bytes |
+| 11 | 1 | Group removed | 6.16 | 150 bytes |
 
 Any other type or version is refused, and the session closes. All apps of a conversation must run the same protocol version. A later release that adds a type or a version needs a new session version or a way for the apps to tell each other what they understand.
 
@@ -361,6 +364,7 @@ A group is a small set of people who have all added each other as contacts. Grou
 - **Delivery.** The author's app sends a group message directly to every other member and keeps sending it to each one until that member's app confirms receipt with a signed group acknowledgement (6.13). Receivers reply with a signed `GroupAcknowledgement` for every accepted group message (direct and passed-on, duplicates included). The author updates a member's state to received only after verifying the signature in a `GroupAcknowledgement` from that member, whether it arrives directly from them or relayed through one or more other members holding the message; unsigned type-2 `Acknowledgement`s never mark a group message received. Relayed type-8 acknowledgements are confirmed back to the sender with a derived type-2 `Acknowledgement` (6.14) so passing members stop resending and delete stored relayed acknowledgements once the message's author confirms them. The author sees how many and which members' apps have confirmed each message.
 - **Passing messages on.** When two members connect, each app sends one group summary (6.12) per shared created group (and sends one when a group reaches the created state while already connected) listing the sequence ranges it holds per current member. The peer replies with the signed group messages (6.11) it holds that the summary does not cover, whoever wrote them, skipping the peer's own messages and the sender's own messages still waiting for that peer. While two members are already connected, a newly arrived group message from a third member is not forwarded immediately; instead the receiving app schedules one delayed group summary after a short pause (2 seconds, coalesced per group and skipped if that peer already holds the message). A peer receiving a summary that newly advertises a current member's range it does not hold replies with its own group summary so only truly missing messages are passed on. A receiver verifies membership, epoch, author signature, seen IDs and deleted ranges on every passed-on message exactly as on a direct one, and never shows a message twice.
 - **Deleting on one device.** A user can delete a group chat on their own device, and their own group message while no member's app has acknowledged it; nothing is sent about it, and any member's app that has a message keeps its copy and can pass it on to other members. The device keeps the IDs of the deleted messages (6.5) and, per author, the ranges of sequence numbers it had, and includes those ranges in its group summaries (6.12) so other members do not pass deleted messages back. A resent copy of a deleted message is acknowledged but not shown; a different message whose author and sequence number fall in a deleted range is dropped without an acknowledgement, as for a number already used; and the user's next group message is numbered after the highest of their own, deleted ones included, so no number is used twice.
+- **Single-authority membership, leaving and removal.** A group has one current admin authority (`AuthorityKey`): initially the epoch-1 creator (`History[0].Signer`). Only the current admin can remove another active member (whether the group is `Created`, `WaitingForMembers` or `Joining`), immediately and without waiting for approvals, and sign epoch `k + 1` records (`1 < 2 < 3 < ...`) with a freshly generated `GroupKey`. Any active member can leave: a non-admin signs a `GroupLeave` (`HasSuccessor = 0`, 6.15) that remaining members relay to `AuthorityKey` so the admin rotates to the next epoch; an admin leaving with at least two remaining other active members names one active member as `SuccessorKey` in a signed `GroupLeave` (`HasSuccessor = 1`), transferring `AuthorityKey` to that successor, who generates the fresh `GroupKey` and signs and distributes the next-epoch `GroupUpdate` (6.14) preceded by stored handover proofs in ascending epoch order. Reducing active members below two transitions locally to read-only `Ended`. On departure, removed members receive a keyless `GroupRemoved` (6.16) carrying no new `GroupKey` and no remaining member list, never receive new-epoch `GroupUpdate`s or new messages, keep past messages read-only (`Left`, `Removed` or `Ended`), and ignore new-epoch traffic. Peers detecting a peer on an older epoch (from an incoming `GroupSummary`, `GroupMessage` or `GroupJoin`) queue any needed handover proofs followed by the latest `GroupUpdate` (or `GroupRemoved` if authority removing that peer).
 
 ### 6.8 Group record, version 1
 
@@ -444,11 +448,51 @@ For deduplication and confirmation of relayed signed acknowledgements, each `Gro
 
 Each recipient sends its own signed `GroupAcknowledgement` whenever it accepts a group message (direct or passed-on, duplicates included). Direct acknowledgements delivered from the recipient straight to the message's author (`senderKey == RecipientKey` for the author's own message) are not answered with a type-2 `Acknowledgement`; when a `GroupAcknowledgement` arrives at a non-author relayer (whether directly from the recipient for a passed-on message or relayed from another member) or arrives for an already-deleted message whose `message_id` is in `seen_message` for the same group and epoch with a valid signature, the receiver answers with `Acknowledgement(NoticeId)` so the sender stops resending. When a `GroupAcknowledgement` arrives for another member's incoming group message that is stored locally in the same group and epoch (and `RecipientKey` is a group member distinct from the message author and the user), the receiver persists it encrypted in SQLite, delivers it directly to the message's author when connected (and permanently deletes it when the author replies with `Acknowledgement(NoticeId)`), and relays it to other connected current members who already hold that message (determined from their group summaries or accepted messages/direct acks, excluding the signer and the peer that sent the ack, deduplicated per session and paced through the outbox). Once a group chat has been deleted locally, incoming `GroupAcknowledgement`s for known seen message IDs of the matching group and epoch still verify the signature and return `Acknowledgement(NoticeId)` without storing anything.
 
-### 6.14 Acknowledgements of group notices and messages
+### 6.14 Group update, version 1
 
-Direct acceptance of a group message is confirmed with a signed `GroupAcknowledgement` (6.13) from the accepting member. An invitation, a join, and a `GroupAcknowledgement` delivered to or through a non-author member carry or derive a 16-byte notice ID acknowledged with a type-2 `Acknowledgement` (6.3): the first 16 bytes of BLAKE2b-256 of `P2PM/group-invitation-id/v1` and the record hash for an invitation, of `P2PM/group-join-id/v1`, the record hash and the joining member's identity key for a join, and of `P2PM/group-ack-id/v1`, group ID, 4-byte big-endian epoch, message ID and recipient identity key for a `GroupAcknowledgement`. Unsigned type-2 acknowledgements never mark a user's group message as received.
+content (`09 01` + body) = group key (32 bytes) | group record (6.8, epoch 2 or higher). Total content length is 171 to 15,769 bytes.
 
-### 6.15 Reference vectors
+| Offset in the body | Size | Field | Rule |
+| --- | --- | --- | --- |
+| 0 | 32 | Group key | New 32-byte key for the record's epoch; must match the record's key check |
+| 32 | r | Group record | Valid epoch `>= 2` record signed by the current authority, with the same group ID and name, and members a strict subset of the receiver's previous epoch's members; updates for unknown groups or records omitting the receiver are rejected |
+
+Notice ID: `BLAKE2b-256("P2PM/group-update-id/v1" | record_hash)[0..16]`, where the label is 23 ASCII bytes. Delivered only to active remaining members (preceded by any stored handover `GroupLeave` proofs in ascending epoch order); never sent to removed or left members.
+
+### 6.15 Group leave, version 1
+
+117 bytes (`HasSuccessor = 0`, 119 bytes content) or 149 bytes (`HasSuccessor = 1`, 151 bytes content), fitting the 256-byte padded class (274-byte wire frame):
+
+| Offset in the body | Size | Field | Rule |
+| --- | --- | --- | --- |
+| 0 | 16 | Group ID | The group's ID |
+| 16 | 4 | Epoch | Big-endian, 1 to `2^31 - 1` |
+| 20 | 32 | Member key | Ed25519 identity public key of the leaving member |
+| 52 | 1 | Has successor | `0` (regular leave) or `1` (admin handover) |
+| 53 (when `HasSuccessor = 1`) | 32 | Successor key | Ed25519 identity public key of the active member named as new admin; must differ from `MemberKey` |
+| 53 or 85 | 64 | Signature | Ed25519 signature by `MemberKey` over the 19 ASCII bytes `P2PM/group-leave/v1` followed by the unsigned prefix (53 or 85 bytes) |
+
+Notice ID: `BLAKE2b-256("P2PM/group-leave-id/v1" | unsigned_prefix)[0..16]`, where the label is 22 ASCII bytes. A receiver checks the signature, that `senderKey` and `MemberKey` belong to the group, and for `HasSuccessor = 1` that `MemberKey` equals the current `AuthorityKey`, `SuccessorKey` is a current active member and `Epoch >= current.Record.Epoch`; for `HasSuccessor = 0`, `Epoch <= current.Record.Epoch`. Non-admins relay unconfirmed non-handover leaves to `AuthorityKey` and relay handover proofs in ascending epoch order.
+
+### 6.16 Group removed, version 1
+
+Fixed 148-byte body (`0b 01` + 148 = 150 bytes content, fitting the 256-byte padded class and producing a 274-byte wire frame). Carries neither a `GroupKey` nor the remaining member list:
+
+| Offset in the body | Size | Field | Rule |
+| --- | --- | --- | --- |
+| 0 | 16 | Group ID | The group's ID |
+| 16 | 4 | New epoch | Big-endian, 2 to `2^31 - 1` |
+| 20 | 32 | Removed member key | Ed25519 identity public key of the removed member |
+| 52 | 32 | Signer key | Ed25519 identity public key of the current admin authority; must differ from `RemovedMemberKey` |
+| 84 | 64 | Signature | Ed25519 signature by `SignerKey` over the 21 ASCII bytes `P2PM/group-removed/v1` followed by bytes 0 to 83 |
+
+Notice ID: `BLAKE2b-256("P2PM/group-removed-id/v1" | unsigned_prefix)[0..16]`, where the label is 24 ASCII bytes. Accepted only when `RemovedMemberKey` equals the receiver's own identity key, `SignerKey` equals the receiver's current `AuthorityKey`, `NewEpoch > current.Record.Epoch`, and the Ed25519 signature verifies; transitions the receiver's local group state to read-only `Removed`. When the receiver has no local record of `GroupId` (for instance, never received the initial invitation or already deleted the group locally), a validly signed direct notice from `SignerKey == senderKey` naming the receiver is still acknowledged with `Acknowledgement(NoticeId)` without creating local state so the sender stops retrying.
+
+### 6.17 Acknowledgements of group notices and messages
+
+Direct acceptance of a group message is confirmed with a signed `GroupAcknowledgement` (6.13) from the accepting member. An invitation, a join, a `GroupAcknowledgement` delivered to or through a non-author member, a `GroupUpdate` (6.14), a `GroupLeave` (6.15) and a `GroupRemoved` (6.16) carry or derive a 16-byte notice ID acknowledged with a type-2 `Acknowledgement` (6.3): the first 16 bytes of BLAKE2b-256 of `P2PM/group-invitation-id/v1` and the record hash for an invitation, of `P2PM/group-join-id/v1`, the record hash and the joining member's identity key for a join, of `P2PM/group-ack-id/v1`, group ID, 4-byte big-endian epoch, message ID and recipient identity key for a `GroupAcknowledgement`, of `P2PM/group-update-id/v1` and the epoch `>= 2` record hash for a `GroupUpdate`, of `P2PM/group-leave-id/v1` and the unsigned prefix for a `GroupLeave`, and of `P2PM/group-removed-id/v1` and bytes 0 to 83 for a `GroupRemoved`. Unsigned type-2 acknowledgements never mark a user's group message as received.
+
+### 6.18 Reference vectors
 
 Computed with an independent Python implementation (PyNaCl and `cryptography`). The group ID is `00112233445566778899aabbccddeeff`, the epoch 1, the group key the bytes `00` to `1f`, the name `Field team`, and the members Alice (identity key of RFC 8032 test 1), Bob (test 3) and Carol (test 2), Alice signing.
 
@@ -475,6 +519,23 @@ Alice's group message with the nonce `40` to `57`, the message ID `ffeeddccbbaa9
 `060100112233445566778899aabbccddeeff00000001d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a404142434445464748494a4b4c4d4e4f50515253545556572bd7d8bc6b4ae09ef892d2fa9cbe749292baadc41359539b6a31fce4ddc345905e9c6e023abea4778ddd813cfbad9273fde0c21b36a11a91c81c5c147838ce584662138f5fb5c3f270ad490894d195e1bbe3bd3a4077d0ed7531f03ff4ba801392bdec5231eb41848077a69bb5786115adeafea024c8521630700109`
 
 The content of the invitation is the type and version `0401`, the group key and the record; it is in `GroupNoticeTests`. The group summary vectors are in `GroupSummaryTests`, and the group acknowledgement vectors (for `MessageId = ffeeddccbbaa99887766554433221100`, epoch 1) are in `GroupAcknowledgementTests`.
+
+Epoch-2 membership rotation, leave, handover and removal vectors (with epoch-2 group key `1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100`, remaining members Alice and Bob, Alice signing, computed in pure Python):
+
+| Value | Hex |
+| --- | --- |
+| Epoch-2 group record (`GroupRecord2`) | `0100112233445566778899aabbccddeeff000000023c765f76f310f11feb298a29fdf9b6777354afb04d52f1685df9000693f8bf2a0a4669656c64207465616d02d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a05416c696365fc51cd8e6218a1a38da47ed00230f0580816ed13ba3303ac5deb91154890802503426f62d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511ad628db7682719514391035afb9190e8f5ea6a11a811a4ef99ad24b67ad42cda470ffbdcbdaf39fe8010e0dd4c11bdc2d2de698a0301a7f96e8d7f01ceacb1106` |
+| Epoch-2 record hash | `d5e58a0c97379bc5ecfa87e7084cbf810ce6122a39a21061d0ceeaacece2c07f` |
+| Content of epoch-2 `GroupUpdate` | `09011f1e1d1c1b1a191817161514131211100f0e0d0c0b0a090807060504030201000100112233445566778899aabbccddeeff000000023c765f76f310f11feb298a29fdf9b6777354afb04d52f1685df9000693f8bf2a0a4669656c64207465616d02d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a05416c696365fc51cd8e6218a1a38da47ed00230f0580816ed13ba3303ac5deb91154890802503426f62d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511ad628db7682719514391035afb9190e8f5ea6a11a811a4ef99ad24b67ad42cda470ffbdcbdaf39fe8010e0dd4c11bdc2d2de698a0301a7f96e8d7f01ceacb1106` |
+| Derived notice ID of `GroupUpdate` | `d9cf5fff7e7f3e8d21e002d15726b972` |
+| Content of Carol's `GroupLeave` (119 bytes) | `0a0100112233445566778899aabbccddeeff000000013d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c0018400c4ae9fc43e3f1b908d5b92cb65a50103f54b71f58980dfd7969737f2da5965e7679b42bd9712fd8eb0fe67ff0c2ff826ac79a0cb544edf9a989ccb39d04` |
+| Derived notice ID of Carol's `GroupLeave` | `e9b7797d11794d97e727c299ff073497` |
+| Content of Alice -> Bob handover `GroupLeave` (151 bytes) | `0a0100112233445566778899aabbccddeeff00000001d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a01fc51cd8e6218a1a38da47ed00230f0580816ed13ba3303ac5deb9115489080253a02609d8384f245a3b206222e7c0bf5d954c8e2064ccfb37ced6e18fd293cbc372b668534fb9235322a24f18894aaf0eaa7a7d3d813588860ec28a002d80c04` |
+| Derived notice ID of Alice's `GroupLeave` | `884d5bc12b23752711376ae6357f91f3` |
+| Content of Carol's `GroupRemoved` (150 bytes) | `0b0100112233445566778899aabbccddeeff000000023d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660cd75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a52058d0493068beea024691d21b1074c21578337d7720d0c1c9d17663306a28d88419ab1a25fd87f1bb472e5bd62c2459a256f6c245cf6d190b43b3b29bc5f05` |
+| Derived notice ID of Carol's `GroupRemoved` | `de60a98f08c72f3e0d24dfb188ddd48d` |
+
+These membership vectors are checked in `GroupMembershipTests`.
 
 ## 7. Discovery on the local network
 
@@ -659,7 +720,9 @@ The screens in `P2PMessenger.UI` reach the back-end only through `P2PMessenger.A
 | `DeleteChatAsync(contactKey, CancellationToken)` | Deletes the chat with a contact on this device and cancels its waiting messages; returns the number of messages deleted |
 | `DeleteWaitingAsync(contactKey, MessageId, CancellationToken)` | Deletes one message that is still waiting; returns whether it was waiting |
 | `CreateGroupAsync(string? name, IReadOnlyCollection<Ed25519PublicKey> contactKeys, CancellationToken)` | Creates a group of the user and the given contacts and hands the invitations to the outbox; returns `CreateGroupResult(Outcome, Group)` |
-| `SendToGroupAsync(GroupId, string? text, CancellationToken)` | Seals and signs a group message, records it with one waiting delivery per other member and hands it to the outbox; returns `GroupSendResult(Outcome, Message)` |
+| `RemoveGroupMemberAsync(GroupId, Ed25519PublicKey memberKey, CancellationToken)` | Admin-only removal of an active member (immediately, rotating to a new epoch and key or ending a two-member group); returns `RemoveMemberResult(Outcome, Group)` |
+| `LeaveGroupAsync(GroupId, Ed25519PublicKey? successorKey, CancellationToken)` | Leaves an active group (signing a `GroupLeave`, naming a successor active member when the leaving user is admin with two or more remaining active members); returns `LeaveGroupOutcome` |
+| `SendToGroupAsync(GroupId, string? text, CancellationToken)` | Seals and signs a group message, records it with one waiting delivery per other active member in the current epoch and hands it to the outbox; returns `GroupSendResult(Outcome, Message)` |
 | `DeleteGroupChatAsync(GroupId, CancellationToken)` | Deletes a group's messages on this device and stops sending the user's waiting ones; the group and the membership stay. Returns the number of messages deleted |
 | `DeleteWaitingGroupMessageAsync(GroupId, MessageId, CancellationToken)` | Deletes one of the user's group messages that no member's app has acknowledged; returns whether it was deleted |
 | `DeleteCopiedChatAsync(CopyOriginId, CancellationToken)` | Deletes one copied conversation from this device's encrypted database without touching the phone; returns whether it existed |
@@ -672,7 +735,7 @@ The screens in `P2PMessenger.UI` reach the back-end only through `P2PMessenger.A
 | `IdentityService` | `LoadAsync`; `CreateAsync(name, ct)` returns `CreateIdentityResult` | None |
 | `ContactBook` | `All`; `TryGet(identityKey, out Contact)`; `Check(text)` and `Check(ContactCode)` return `CodeCheck`; `AddAsync(check[, CodeExchange], ct)` returns `AddContactResult`; `SetKeyComparisonAsync(identityKey, KeyComparison, ct)`; `MarkScannedInPersonAsync(check, ct)` | `Changed` (`ContactChangedEventArgs`) |
 | `ChatLog` | `MessagesWith`, `WaitingFor`, `ContactsWithWaitingMessages`, `UnreadCount`, `MarkRead`; `ReceiveAsync`, `MarkReceivedAsync`, `DeleteChatAsync`, `DeleteWaitingAsync` | `Changed` (`ChatChangedEventArgs`) |
-| `GroupBook` | `All`; `TryGet(groupId, out Group)`; `MembersToAdd(group)`, the members who are not yet contacts whose first connection has succeeded; `CreateAsync(name, contactKeys, ct)`. A `Group` has its `Record`, its `Members` (`GroupMemberStatus`: identity key, name, `MemberJoin`, and the `NoticeState` of the invitation and of the user's own join for that member) and its `GroupState` | `Changed` (`GroupChangedEventArgs`) |
+| `GroupBook` | `All`; `TryGet(groupId, out Group)`; `MembersToAdd(group)`, `CreateAsync(name, contactKeys, ct)`, `RemoveMemberAsync(groupId, memberKey, ct)`, `LeaveAsync(groupId, successorKey, ct)`. A `Group` holds `Record`, `History`, `AuthorityKey`, `LeaveProofs`, `AllMembers`, `Members` (active only), `IsAuthority`, `IsLeft`, `IsRemoved`, `IsEnded`, `CanRemoveMembers`, `CanLeave`, `NeedsSuccessorToLeave`, each member's `GroupMemberStatus` (`GroupMemberState`, `MemberJoin`, `RemovedEpoch` and notice states) and its `GroupState` | `Changed` (`GroupChangedEventArgs`) |
 | `GroupChats` | `MessagesIn(groupId)`, `UnreadCount`, `MarkRead`. A `GroupChatMessage` has its signed `Envelope`, author, direction, ID, sequence, times, text and, for the user's own message, one `DeliveryState` per other member with `ReceivedCount`, `RecipientCount` and `CanBeDeleted` (no member's app has it yet) | `Changed` (`GroupChatChangedEventArgs`: a message `Added`, `Updated` or `Removed`, or the chat `IsCleared`) |
 | `CopiedChatBook` | `All`; `TryGet(origin, out CopiedConversation)`; `SaveAsync(conversation, ct)`; `DeleteAsync(origin, ct)`. Each `CopiedConversation` holds its `Origin`, `Title`, `CopiedAt` and read-only `Messages` (`CopiedMessage`) | `Changed` (`CopiedChatChangedEventArgs`: `Saved` or `Deleted`) |
 | `PcCopyService` | `ListCandidates()` (added one-to-one chats and created groups with copyable and total message counts); `static TryParsePairingCode(text, out code, out error)`; `StartReceivingAsync(ct)` returns `StartReceiveResult` with a one-time `PcCopyReceiver` (`PairingCode`, `PairingCodeText`, `RunAsync(progress, ct)`); `ConnectAsync(pairingCode, ct)` returns `PcCopyConnectResult` with a `PcCopySender` (`SendAsync(origins, progress, ct)`) | None (progress reported through `IProgress<PcCopyProgress>` and `IProgress<PcCopySendProgress>`) |
@@ -685,10 +748,13 @@ The screens in `P2PMessenger.UI` reach the back-end only through `P2PMessenger.A
 | Type | Values |
 | --- | --- |
 | `CreateGroupOutcome` | `Created`; `NameNotValid` (the rules of a display name); `NoMembers`; `TooManyMembers` (more than 160 with the user); `NotAnAddedContact` (a chosen contact's first connection has not succeeded) |
-| `GroupSendOutcome` | `Queued`; `Empty`; `TooLong` (more than 16,192 bytes of UTF-8); `NotSendable`; `NotAGroup`; `NotCreatedYet` (not every member has joined, or the member lists do not match) |
-| `GroupState` | `Joining` (the user has not joined: some members are not yet their contacts); `WaitingForMembers`; `Created`; `ListsDiffer` (a member joined with another record) |
+| `RemoveMemberOutcome` | `Removed`; `EndedGroup` (removed the only other active member); `NotAGroup`; `NotAuthorized` (caller is not the current `AuthorityKey`); `NotAMember`; `CannotRemoveSelf`; `NotActive` |
+| `LeaveGroupOutcome` | `Left`; `NotAGroup`; `NotActive`; `SuccessorRequired` (admin leaving with two or more remaining active members); `InvalidSuccessor` |
+| `GroupSendOutcome` | `Queued`; `Empty`; `TooLong` (more than 16,192 bytes of UTF-8); `NotSendable`; `NotAGroup`; `NotCreatedYet` (not every member has joined, or the member lists do not match); `Left`; `Removed`; `Ended` |
+| `GroupState` | `Joining` (the user has not joined: some members are not yet their contacts); `WaitingForMembers`; `Created`; `ListsDiffer` (a member joined with another record); `Left`; `Removed`; `Ended` |
+| `GroupMemberState` | `Member`; `Removed`; `Left` |
 | `MemberJoin` | `NotYet`; `Joined`; `JoinedAnotherList` |
-| `NoticeState` | `None`; `Waiting`; `Received` (an invitation or the user's own join, per member) |
+| `NoticeState` | `None`; `Waiting`; `Received` (invitation, join, update, leave or removal notices per member) |
 | `SendOutcome` | `Queued` (stored and waiting for the contact's app to confirm it); `Empty` (no text or only white space); `TooLong` (more than 16,348 bytes of UTF-8); `NotSendable` (the text format refuses it); `NotAContact`; `WaitingForFirstConnection` (the contact is not yet added because no connection has succeeded) |
 | `CodeCheckOutcome` | `New`; `NewConnectionKeys` (a known person with new connection keys); `LooksLikeContact` (a new person with the name of a contact); `AlreadyContact`; `OwnCode`; `KeysInUse` (the keys belong to this device or to another contact); `NotACode`; `UnsupportedVersion`; `Damaged` |
 | `AddContactOutcome` | `Added`; `KeysReplaced`; `NotAddable` (the check does not allow adding); `Stale` (the contact list changed since the check) |

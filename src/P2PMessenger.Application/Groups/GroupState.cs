@@ -6,4 +6,7 @@ public enum GroupState
     WaitingForMembers = 1,
     Created = 2,
     ListsDiffer = 3,
+    Left = 4,
+    Removed = 5,
+    Ended = 6,
 }

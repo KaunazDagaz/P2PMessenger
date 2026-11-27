@@ -732,10 +732,40 @@ public sealed class ConnectionService : IAsyncDisposable
                             service.groupPassOn.QueueOwnAcknowledgement(contactKey, groupAck);
                         }
                     }
+                    else if (service.groups.TryGet(groupMessage.GroupId, out Group? currentGroup) && groupMessage.Epoch < currentGroup.Record.Epoch && currentGroup.Record.Epoch >= 2)
+                    {
+                        await service.groups.NotifyPeerStaleEpochAsync(contactKey, groupMessage.GroupId, groupMessage.Epoch, cancellationToken).ConfigureAwait(false);
+                    }
 
                     break;
                 case GroupSummary summary:
+                    if (service.groups.TryGet(summary.GroupId, out Group? summaryGroup) && summary.Epoch < summaryGroup.Record.Epoch && summaryGroup.Record.Epoch >= 2)
+                    {
+                        await service.groups.NotifyPeerStaleEpochAsync(contactKey, summary.GroupId, summary.Epoch, cancellationToken).ConfigureAwait(false);
+                    }
+
                     service.groupPassOn.ReceiveSummary(connection, summary);
+                    break;
+                case GroupUpdate groupUpdate:
+                    if (await service.groups.ReceiveUpdateAsync(contactKey, groupUpdate, cancellationToken).ConfigureAwait(false))
+                    {
+                        _ = connection.SendAsync(Acknowledgement.Create(groupUpdate.NoticeId), CancellationToken.None);
+                    }
+
+                    break;
+                case GroupLeave groupLeave:
+                    if (await service.groups.ReceiveLeaveAsync(contactKey, groupLeave, cancellationToken).ConfigureAwait(false))
+                    {
+                        _ = connection.SendAsync(Acknowledgement.Create(groupLeave.NoticeId), CancellationToken.None);
+                    }
+
+                    break;
+                case GroupRemoved groupRemoved:
+                    if (await service.groups.ReceiveRemovedAsync(contactKey, groupRemoved, cancellationToken).ConfigureAwait(false))
+                    {
+                        _ = connection.SendAsync(Acknowledgement.Create(groupRemoved.NoticeId), CancellationToken.None);
+                    }
+
                     break;
                 case GroupAcknowledgement groupAcknowledgement:
                     GroupAcknowledgementResult ackResult = await service.groupChats

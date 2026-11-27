@@ -194,6 +194,89 @@ public sealed class GroupTests
         Assert.True(alice.Shows("Bob: Received by their app"));
     }
 
+    [AvaloniaFact]
+    [Trait("Story", "US-14")]
+    [Trait("NFR", "NFR-13")]
+    public async Task ThreePeopleInAGroup_AliceRemovesCarolAndBobLeaves_CarolReceivesNothingNewAndAllStatesHold()
+    {
+        LoopbackDiscovery hub = new();
+        await using Device alice = new(hub, "Alice");
+        await using Device bob = new(hub, "Bob");
+        await using Device carol = new(hub, "Carol");
+        foreach (Device device in new[] { alice, bob, carol })
+        {
+            await device.LaunchAsync();
+            await Flows.CreateIdentityAsync(device);
+        }
+
+        foreach ((Device first, Device second) in new[] { (alice, bob), (alice, carol), (bob, carol) })
+        {
+            await Flows.AddEachOtherAsync(first, second);
+            await Flows.WaitUntilConnectedAsync(first, second);
+            await Flows.GoBackToContactsAsync(first);
+            await Flows.GoBackToContactsAsync(second);
+        }
+
+        alice.ClickButton("NewGroupButton");
+        await alice.WaitForTitleAsync(UiText.NewGroupTitle);
+        alice.Type("NameBox", "Field team");
+        alice.Click(Candidate(alice, "Bob"));
+        alice.Click(Candidate(alice, "Carol"));
+        alice.ClickButton("CreateButton");
+        await alice.WaitForTitleAsync("Field team");
+        await alice.WaitUntilAsync(() => alice.TryNamed<TextBox>("DraftBox") is not null, "Alice can write once Bob and Carol have joined");
+        foreach (Device member in new[] { bob, carol })
+        {
+            await OpenGroupAsync(member, "Field team");
+            await member.WaitUntilAsync(() => member.TryNamed<TextBox>("DraftBox") is not null, $"{member.Name} can write once everyone has joined");
+        }
+
+        await Flows.SendAsync(alice, "Epoch one check.");
+        await bob.WaitForTextAsync("Epoch one check.");
+        await carol.WaitForTextAsync("Epoch one check.");
+
+        alice.ClickButton("MembersButton");
+        await alice.WaitUntilAsync(() => alice.TryNamed<Border>("MembersPanel") is { IsEffectivelyVisible: true }, "Members panel opens");
+        alice.Click(MemberRemoveButton(alice, "Carol"));
+        await alice.WaitUntilAsync(() => MemberConfirmRemoveButton(alice) is not null, "Remove confirmation shows");
+        alice.Click(MemberConfirmRemoveButton(alice)!);
+
+        await alice.WaitForTextAsync(UiText.GroupMemberRemovedFormat.Replace("{0}", "Carol", StringComparison.Ordinal));
+        await carol.WaitForTextAsync(UiText.GroupRemovedBanner);
+        Assert.True(carol.TryNamed<TextBox>("DraftBox") is not { IsEffectivelyVisible: true });
+
+        await Flows.SendAsync(alice, "Epoch two secret.");
+        await bob.WaitForTextAsync("Epoch two secret.");
+        await Task.Delay(300);
+        Assert.False(carol.Shows("Epoch two secret."));
+        Assert.True(carol.Shows("Epoch one check."));
+
+        bob.ClickButton("MembersButton");
+        await bob.WaitUntilAsync(() => bob.TryNamed<Button>("LeaveGroupButton") is { IsEffectivelyVisible: true }, "Bob sees leave button");
+        bob.ClickButton("LeaveGroupButton");
+        await bob.WaitUntilAsync(() => bob.TryNamed<Button>("LeaveGroupConfirmButton") is { IsEffectivelyVisible: true }, "Bob confirms leave");
+        bob.ClickButton("LeaveGroupConfirmButton");
+
+        await bob.WaitForTextAsync(UiText.GroupLeftBanner);
+        await alice.WaitForTextAsync(UiText.GroupEndedBanner);
+    }
+
+    private static Button MemberRemoveButton(Device device, string name) =>
+        device.Named<ItemsControl>("MembersItems")
+            .GetVisualDescendants()
+            .OfType<DockPanel>()
+            .First(panel => panel.GetVisualDescendants().OfType<TextBlock>().Any(text => string.Equals(text.Text, name, StringComparison.Ordinal))
+                && panel.GetVisualDescendants().OfType<Button>().Any(button => string.Equals(button.Name, "RemoveMemberButton", StringComparison.Ordinal) && button.IsEffectivelyVisible))
+            .GetVisualDescendants()
+            .OfType<Button>()
+            .First(button => string.Equals(button.Name, "RemoveMemberButton", StringComparison.Ordinal) && button.IsEffectivelyVisible);
+
+    private static Button? MemberConfirmRemoveButton(Device device) =>
+        device.Named<ItemsControl>("MembersItems")
+            .GetVisualDescendants()
+            .OfType<Button>()
+            .FirstOrDefault(button => string.Equals(button.Name, "RemoveMemberConfirmButton", StringComparison.Ordinal) && button.IsEffectivelyVisible);
+
     private static Button DeliveryButton(Device device) =>
         device.Named<ItemsControl>("MessageItems").GetVisualDescendants().OfType<Button>()
             .First(button => string.Equals(button.Name, "DeliveryStateButton", StringComparison.Ordinal) && button.IsEffectivelyVisible);

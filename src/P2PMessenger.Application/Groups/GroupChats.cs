@@ -233,16 +233,41 @@ public sealed class GroupChats : IDisposable
             return new GroupSendResult(tooLong ? GroupSendOutcome.TooLong : GroupSendOutcome.NotSendable, null);
         }
 
-        if (!groups.TryGetKey(groupId, out Group? group, out GroupKey? key))
+        GroupSendResult result = await groups.WithLockedGroupKeyAsync(
+            groupId,
+            (group, key, token) =>
+            {
+                if (group is null || key is null)
+                {
+                    return Task.FromResult(new GroupSendResult(GroupSendOutcome.NotAGroup, null));
+                }
+
+                return group.State switch
+                {
+                    GroupState.Created => SendCreatedLockedAsync(group, key, text, token),
+                    GroupState.Left => Task.FromResult(new GroupSendResult(GroupSendOutcome.Left, null)),
+                    GroupState.Removed => Task.FromResult(new GroupSendResult(GroupSendOutcome.Removed, null)),
+                    GroupState.Ended => Task.FromResult(new GroupSendResult(GroupSendOutcome.Ended, null)),
+                    _ => Task.FromResult(new GroupSendResult(GroupSendOutcome.NotCreatedYet, null)),
+                };
+            },
+            cancellationToken).ConfigureAwait(false);
+
+        if (result.Message is { } message)
         {
-            return new GroupSendResult(GroupSendOutcome.NotAGroup, null);
+            Changed?.Invoke(this, new GroupChatChangedEventArgs(groupId, message, null));
+            foreach (Ed25519PublicKey member in message.Deliveries.Keys)
+            {
+                DeliveryNeeded?.Invoke(this, member);
+            }
         }
 
-        if (group.State != GroupState.Created)
-        {
-            return new GroupSendResult(GroupSendOutcome.NotCreatedYet, null);
-        }
+        return result;
+    }
 
+    private async Task<GroupSendResult> SendCreatedLockedAsync(Group group, GroupKey key, string text, CancellationToken cancellationToken)
+    {
+        GroupId groupId = group.Id;
         GroupChatMessage message;
         await writing.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -278,65 +303,72 @@ public sealed class GroupChats : IDisposable
             writing.Release();
         }
 
-        Changed?.Invoke(this, new GroupChatChangedEventArgs(groupId, message, null));
-        foreach (Ed25519PublicKey member in message.Deliveries.Keys)
-        {
-            DeliveryNeeded?.Invoke(this, member);
-        }
-
         return new GroupSendResult(GroupSendOutcome.Queued, message);
     }
 
     internal async Task<MessageId?> ReceiveAsync(Ed25519PublicKey senderKey, GroupMessage envelope, CancellationToken cancellationToken)
     {
-        if (!groups.TryGetKey(envelope.GroupId, out Group? group, out GroupKey? key)
-            || group.Find(senderKey) is null
-            || group.Find(envelope.AuthorKey) is null
-            || envelope.Epoch != group.Record.Epoch
-            || !envelope.TryOpen(key, out GroupText? text))
-        {
-            return null;
-        }
-
-        GroupChatMessage message;
-        await writing.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            if (await seen.ContainsAsync(text.Id, cancellationToken).ConfigureAwait(false))
+        (MessageId? id, GroupChatMessage? arrived) = await groups.WithLockedGroupKeyAsync<(MessageId? Id, GroupChatMessage? Message)>(
+            envelope.GroupId,
+            async (group, key, token) =>
             {
-                return text.Id;
-            }
-
-            lock (gate)
-            {
-                if (ConversationOf(group.Id).Deleted.Contains(envelope.AuthorKey, text.Sequence))
+                if (group is null
+                    || key is null
+                    || group.State is GroupState.Left or GroupState.Removed or GroupState.Ended
+                    || group.Find(senderKey) is null
+                    || group.Find(envelope.AuthorKey) is null
+                    || envelope.Epoch != group.Record.Epoch
+                    || !envelope.TryOpen(key, out GroupText? text))
                 {
-                    return null;
+                    return (null, null);
                 }
-            }
 
-            message = new GroupChatMessage(envelope, text.Id, text.Sequence, text.WrittenAt, text.Text, timeProvider.GetUtcNow(), new Dictionary<Ed25519PublicKey, DeliveryState>());
-            if (envelope.AuthorKey.Equals(own.Keys.IdentityKey) || !await store.AddMessageAsync(message, cancellationToken).ConfigureAwait(false))
-            {
-                return null;
-            }
+                await writing.WaitAsync(token).ConfigureAwait(false);
+                try
+                {
+                    if (await seen.ContainsAsync(text.Id, token).ConfigureAwait(false))
+                    {
+                        return (text.Id, null);
+                    }
 
-            lock (gate)
-            {
-                Conversation conversation = ConversationOf(group.Id);
-                conversation.Insert(message, own.Keys.IdentityKey);
-                messagesById[message.Id] = message;
-                conversation.Unread++;
-            }
-        }
-        finally
+                    lock (gate)
+                    {
+                        if (ConversationOf(group.Id).Deleted.Contains(envelope.AuthorKey, text.Sequence))
+                        {
+                            return (null, null);
+                        }
+                    }
+
+                    GroupChatMessage message = new(envelope, text.Id, text.Sequence, text.WrittenAt, text.Text, timeProvider.GetUtcNow(), new Dictionary<Ed25519PublicKey, DeliveryState>());
+                    if (envelope.AuthorKey.Equals(own.Keys.IdentityKey) || !await store.AddMessageAsync(message, token).ConfigureAwait(false))
+                    {
+                        return (null, null);
+                    }
+
+                    lock (gate)
+                    {
+                        Conversation conversation = ConversationOf(group.Id);
+                        conversation.Insert(message, own.Keys.IdentityKey);
+                        messagesById[message.Id] = message;
+                        conversation.Unread++;
+                    }
+
+                    return (text.Id, message);
+                }
+                finally
+                {
+                    writing.Release();
+                }
+            },
+            cancellationToken).ConfigureAwait(false);
+
+        if (arrived is not null)
         {
-            writing.Release();
+            Changed?.Invoke(this, new GroupChatChangedEventArgs(envelope.GroupId, arrived, null));
+            MessageArrived?.Invoke(this, new GroupMessageArrivedEventArgs(senderKey, arrived));
         }
 
-        Changed?.Invoke(this, new GroupChatChangedEventArgs(group.Id, message, null));
-        MessageArrived?.Invoke(this, new GroupMessageArrivedEventArgs(senderKey, message));
-        return text.Id;
+        return id;
     }
 
     internal async Task<bool> MarkReceivedAsync(Ed25519PublicKey memberKey, MessageId id, CancellationToken cancellationToken)
@@ -381,7 +413,7 @@ public sealed class GroupChats : IDisposable
         ArgumentNullException.ThrowIfNull(acknowledgement);
 
         if (!groups.TryGet(acknowledgement.GroupId, out Group? group)
-            || group.State == GroupState.ListsDiffer
+            || group.State is GroupState.ListsDiffer or GroupState.Left or GroupState.Removed or GroupState.Ended
             || group.Find(senderKey) is null
             || group.Find(acknowledgement.RecipientKey) is null
             || acknowledgement.RecipientKey.Equals(own.Keys.IdentityKey))
@@ -549,6 +581,7 @@ public sealed class GroupChats : IDisposable
             .. candidates.Where(relayed =>
                 groups.TryGet(relayed.GroupId, out Group? group)
                 && group.State == GroupState.Created
+                && relayed.Acknowledgement.Epoch == group.Record.Epoch
                 && group.Find(authorKey) is not null
                 && group.Find(relayed.RecipientKey) is not null),
         ];
@@ -588,6 +621,7 @@ public sealed class GroupChats : IDisposable
                 .Where(relayed =>
                     groups.TryGet(relayed.GroupId, out Group? group)
                     && group.State == GroupState.Created
+                    && relayed.Acknowledgement.Epoch == group.Record.Epoch
                     && group.Find(relayed.AuthorKey) is not null
                     && group.Find(relayed.RecipientKey) is not null)
                 .Select(static relayed => relayed.AuthorKey)
@@ -597,39 +631,78 @@ public sealed class GroupChats : IDisposable
 
     internal IReadOnlyList<PendingSend> WaitingFor(Ed25519PublicKey memberKey)
     {
+        List<GroupChatMessage> candidates;
         lock (gate)
         {
-            return
+            candidates =
             [
                 .. conversations.Values
                     .SelectMany(static conversation => conversation.Messages)
                     .Where(message => message.IsWaitingFor(memberKey))
-                    .OrderBy(static message => message.Sequence)
-                    .Select(static message => new PendingSend(message.Id, message.Envelope)),
+                    .OrderBy(static message => message.Sequence),
             ];
         }
+
+        return
+        [
+            .. candidates
+                .Where(message =>
+                    groups.TryGet(message.GroupId, out Group? group)
+                    && group.State == GroupState.Created
+                    && message.Envelope.Epoch == group.Record.Epoch
+                    && group.Find(memberKey) is not null)
+                .Select(static message => new PendingSend(message.Id, message.Envelope)),
+        ];
     }
 
     internal bool IsWaitingFor(Ed25519PublicKey memberKey, MessageId id)
     {
+        GroupChatMessage? message;
         lock (gate)
         {
-            return messagesById.TryGetValue(id, out GroupChatMessage? message) && message.IsWaitingFor(memberKey);
+            if (!messagesById.TryGetValue(id, out message) || !message.IsWaitingFor(memberKey))
+            {
+                return false;
+            }
         }
+
+        return groups.TryGet(message.GroupId, out Group? group)
+            && group.State == GroupState.Created
+            && message.Envelope.Epoch == group.Record.Epoch
+            && group.Find(memberKey) is not null;
     }
 
     internal IReadOnlyList<Ed25519PublicKey> MembersWithWaitingMessages()
     {
+        List<GroupChatMessage> snapshot;
         lock (gate)
         {
-            return
+            snapshot =
             [
-                .. conversations.Values
-                    .SelectMany(static conversation => conversation.Messages)
-                    .SelectMany(static message => message.Deliveries.Where(static delivery => delivery.Value == DeliveryState.Waiting).Select(static delivery => delivery.Key))
-                    .Distinct(),
+                .. conversations.Values.SelectMany(static conversation => conversation.Messages),
             ];
         }
+
+        HashSet<Ed25519PublicKey> waiting = [];
+        foreach (GroupChatMessage message in snapshot)
+        {
+            if (!groups.TryGet(message.GroupId, out Group? group)
+                || group.State != GroupState.Created
+                || message.Envelope.Epoch != group.Record.Epoch)
+            {
+                continue;
+            }
+
+            foreach ((Ed25519PublicKey memberKey, DeliveryState state) in message.Deliveries)
+            {
+                if (state == DeliveryState.Waiting && group.Find(memberKey) is not null)
+                {
+                    waiting.Add(memberKey);
+                }
+            }
+        }
+
+        return [.. waiting];
     }
 
     internal long VersionOf(GroupId groupId)
@@ -774,7 +847,10 @@ public sealed class GroupChats : IDisposable
         List<IDisposable> turns = [];
         try
         {
-            foreach (Ed25519PublicKey memberKey in group.Others.Select(static member => member.IdentityKey).OrderBy(static key => key.Bytes.ToArray(), KeyOrder.Instance))
+            foreach (Ed25519PublicKey memberKey in group.AllMembers
+                .Where(member => !member.IdentityKey.Equals(own.Keys.IdentityKey))
+                .Select(static member => member.IdentityKey)
+                .OrderBy(static key => key.Bytes.ToArray(), KeyOrder.Instance))
             {
                 turns.Add(await enterDelivery(memberKey, cancellationToken).ConfigureAwait(false));
             }
@@ -814,6 +890,7 @@ public sealed class GroupChats : IDisposable
     private sealed class Conversation
     {
         private int cachedEpoch;
+        private int cachedMemberCount;
         private long cachedVersion = -1;
         private Dictionary<Ed25519PublicKey, List<SequenceRange>> cachedHeld = [];
 
@@ -879,7 +956,8 @@ public sealed class GroupChats : IDisposable
         public Dictionary<Ed25519PublicKey, List<SequenceRange>> HeldByAuthor(Group group)
         {
             int epoch = group.Record.Epoch;
-            if (cachedVersion == Version && cachedEpoch == epoch)
+            int memberCount = group.Members.Count;
+            if (cachedVersion == Version && cachedEpoch == epoch && cachedMemberCount == memberCount)
             {
                 return cachedHeld;
             }
@@ -908,6 +986,7 @@ public sealed class GroupChats : IDisposable
             }
 
             cachedEpoch = epoch;
+            cachedMemberCount = memberCount;
             cachedVersion = Version;
             cachedHeld = merged;
             return merged;

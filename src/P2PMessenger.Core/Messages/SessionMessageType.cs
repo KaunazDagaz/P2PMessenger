@@ -11,4 +11,7 @@ public enum SessionMessageType
     GroupMessage = 6,
     GroupSummary = 7,
     GroupAcknowledgement = 8,
+    GroupUpdate = 9,
+    GroupLeave = 10,
+    GroupRemoved = 11,
 }

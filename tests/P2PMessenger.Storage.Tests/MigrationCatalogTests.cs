@@ -92,8 +92,23 @@ public sealed class MigrationCatalogTests
     {
         var migrations = MigrationCatalog.Load();
 
-        Assert.Equal(8, migrations.Count);
         Assert.Equal("0008_group_acknowledgements", migrations[7].Name);
         Assert.Contains("CREATE TABLE group_acknowledgement", migrations[7].Script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("Story", "US-14")]
+    public void Load_NinthScript_AddsGroupMembershipStatesAndLeaveProofs()
+    {
+        var migrations = MigrationCatalog.Load();
+
+        Assert.Equal(9, migrations.Count);
+        Assert.Equal("0009_group_membership", migrations[8].Name);
+        Assert.Contains("ADD COLUMN authority_enc", migrations[8].Script, StringComparison.Ordinal);
+        Assert.Contains("ADD COLUMN update_state", migrations[8].Script, StringComparison.Ordinal);
+        Assert.Contains("ADD COLUMN leave_state", migrations[8].Script, StringComparison.Ordinal);
+        Assert.Contains("ADD COLUMN removed_state", migrations[8].Script, StringComparison.Ordinal);
+        Assert.Contains("ADD COLUMN removed_epoch", migrations[8].Script, StringComparison.Ordinal);
+        Assert.Contains("CREATE TABLE group_leave_proof", migrations[8].Script, StringComparison.Ordinal);
     }
 }

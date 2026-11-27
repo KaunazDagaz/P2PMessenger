@@ -21,6 +21,9 @@ public sealed class GroupItemViewModel : ViewModelBase
             GroupState.Created => Formats.With(Formats.GroupItemMembers, group.Members.Count),
             GroupState.Joining => UiText.GroupItemJoining,
             GroupState.WaitingForMembers => Formats.WithAll(Formats.GroupItemWaiting, group.Members.Count - joined, group.Members.Count),
+            GroupState.Left => UiText.GroupItemLeft,
+            GroupState.Removed => UiText.GroupItemRemoved,
+            GroupState.Ended => UiText.GroupItemEnded,
             _ => UiText.GroupItemListsDiffer,
         };
         int unread = messenger.GroupChats.UnreadCount(group.Id);

@@ -16,6 +16,7 @@ public sealed class SchemaTests
         "data_key",
         "group_acknowledgement",
         "group_key",
+        "group_leave_proof",
         "group_member",
         "identity",
         "message",
