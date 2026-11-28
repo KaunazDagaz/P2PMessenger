@@ -5,46 +5,42 @@
              xmlns:c="using:P2PMessenger.UI.Controls"
              x:Class="P2PMessenger.UI.Views.ReceiveCopyView"
              x:DataType="vm:ReceiveCopyViewModel">
-    <ScrollViewer>
-        <StackPanel Margin="16" Spacing="8" MaxWidth="640">
-            <TextBlock x:Name="IntroText" Text="{x:Static res:UiText.ReceiveCopyIntro}" TextWrapping="Wrap" />
-            <StackPanel x:Name="QrPanel" Spacing="8" IsVisible="{Binding HasQrCode}">
-                <c:QrCodeView x:Name="QrCode"
-                              Matrix="{Binding QrCode}"
-                              Width="280"
-                              Height="280"
-                              HorizontalAlignment="Center"
-                              AutomationProperties.Name="{x:Static res:UiText.ReceiveCopyQrLabel}" />
-            </StackPanel>
+    <c:PageContainer>
+        <StackPanel Spacing="16">
+            <Border Classes="card" IsVisible="{Binding HasQrCode}">
+                <StackPanel x:Name="QrPanel" Spacing="8" IsVisible="{Binding HasQrCode}">
+                    <Border Classes="qr">
+                        <c:QrCodeView x:Name="QrCode"
+                                      Matrix="{Binding QrCode}"
+                                      HorizontalAlignment="Center"
+                                      AutomationProperties.Name="{x:Static res:UiText.ReceiveCopyQrLabel}" />
+                    </Border>
+                </StackPanel>
+            </Border>
             <ProgressBar x:Name="BusyBar"
                          IsIndeterminate="True"
                          IsVisible="{Binding IsBusy}"
                          AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
-            <Border x:Name="StatusPanel"
-                    Padding="12"
-                    BorderThickness="1"
-                    CornerRadius="4"
-                    BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                    IsVisible="{Binding HasStatus}">
+            <Border x:Name="StatusPanel" Classes="notice success" IsVisible="{Binding HasStatus}">
                 <TextBlock x:Name="StatusText" Text="{Binding StatusMessage}" TextWrapping="Wrap" />
             </Border>
-            <TextBlock x:Name="ErrorText"
-                       Text="{Binding ErrorMessage}"
-                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
-                       TextWrapping="Wrap" />
-            <WrapPanel>
+            <Border Classes="notice danger" IsVisible="{Binding #ErrorText.IsVisible}">
+                <TextBlock x:Name="ErrorText"
+                           Text="{Binding ErrorMessage}"
+                           IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           TextWrapping="Wrap" />
+            </Border>
+            <WrapPanel Classes="actions">
                 <Button x:Name="RetryButton"
-                        Margin="0,0,8,8"
                         Content="{Binding RetryButtonText}"
                         Command="{Binding RetryCommand}"
                         IsVisible="{Binding CanShowRetry}" />
                 <Button x:Name="DoneButton"
-                        Margin="0,0,8,8"
+                        Classes="primary"
                         Content="{x:Static res:UiText.ReceiveCopyDone}"
                         Command="{Binding DoneCommand}"
                         IsVisible="{Binding IsCompleted}" />
             </WrapPanel>
         </StackPanel>
-    </ScrollViewer>
+    </c:PageContainer>
 </UserControl>

@@ -2,183 +2,254 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:P2PMessenger.UI.ViewModels"
              xmlns:s="using:P2PMessenger.UI.Services"
+             xmlns:v="using:P2PMessenger.UI.Views"
              xmlns:res="using:P2PMessenger.UI.Resources"
+             xmlns:c="using:P2PMessenger.UI.Controls"
              x:Class="P2PMessenger.UI.Views.ContactListView"
              x:DataType="vm:ContactListViewModel">
-    <DockPanel Margin="16">
-        <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-            <Button x:Name="AddInPersonButton" Margin="0,0,8,8" Content="{x:Static res:UiText.ContactListAddInPerson}" Command="{Binding AddInPersonCommand}" />
-            <Button x:Name="AddContactButton" Margin="0,0,8,8" Content="{x:Static res:UiText.ContactListAddContact}" Command="{Binding AddContactCommand}" />
-            <Button x:Name="MyCodeButton" Margin="0,0,8,8" Content="{x:Static res:UiText.ContactListMyCode}" Command="{Binding MyCodeCommand}" />
-            <Button x:Name="NewGroupButton"
-                    Margin="0,0,8,8"
-                    Content="{x:Static res:UiText.ContactListNewGroup}"
-                    Command="{Binding NewGroupCommand}"
-                    IsVisible="{Binding HasContacts}" />
-            <Button x:Name="SendCopyButton"
-                    Margin="0,0,8,8"
-                    Content="{x:Static res:UiText.ContactListSendCopy}"
-                    Command="{Binding SendPcCopyCommand}"
-                    IsVisible="{Binding OffersSendPcCopy}" />
-            <Button x:Name="ReceiveCopyButton"
-                    Margin="0,0,8,8"
-                    Content="{x:Static res:UiText.ContactListReceiveCopy}"
-                    Command="{Binding ReceivePcCopyCommand}"
-                    IsVisible="{Binding OffersReceivePcCopy}" />
-            <Button x:Name="PassphraseButton"
-                    Margin="0,0,8,8"
-                    Content="{x:Static res:UiText.ContactListPassphrase}"
-                    Command="{Binding PassphraseCommand}"
-                    IsVisible="{Binding OffersPassphrase}" />
-            <Button x:Name="BackgroundButton"
-                    Margin="0,0,8,8"
-                    Content="{x:Static res:UiText.ContactListBackground}"
-                    Command="{Binding BackgroundCommand}"
-                    IsVisible="{Binding OffersBackground}" />
-            <Button x:Name="DeleteAllDataButton"
-                    Margin="0,0,8,8"
-                    Content="{x:Static res:UiText.ContactListDeleteAllData}"
-                    Command="{Binding DeleteAllDataCommand}" />
-            <Button x:Name="NetworkButton"
-                    Margin="0,0,8,8"
-                    Content="{x:Static res:UiText.ContactListNetwork}"
-                    Command="{Binding NetworkCommand}"
-                    IsVisible="{x:Static s:BuildInfo.IsDebug}" />
-        </WrapPanel>
-        <Border x:Name="NoNetworkPanel"
-                DockPanel.Dock="Top"
-                Margin="0,0,0,12"
-                Padding="12"
-                BorderThickness="1"
-                CornerRadius="4"
-                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                IsVisible="{Binding HasNoNetwork}">
-            <TextBlock x:Name="NoNetworkText" Text="{x:Static res:UiText.ContactListNoNetwork}" TextWrapping="Wrap" />
-        </Border>
-        <DockPanel x:Name="InternetRoutePanel" DockPanel.Dock="Top" Margin="0,0,0,12">
-            <Button x:Name="SwitchTorButton"
-                    DockPanel.Dock="Right"
-                    Margin="12,0,0,0"
-                    VerticalAlignment="Center"
-                    Content="{Binding TorSwitchText}"
-                    Command="{Binding SwitchTorCommand}"
-                    IsVisible="{Binding CanSwitchTor}" />
-            <TextBlock x:Name="InternetRouteText"
-                       VerticalAlignment="Center"
-                       Text="{Binding InternetRouteText}"
-                       TextWrapping="Wrap" />
-        </DockPanel>
-        <ProgressBar x:Name="SwitchTorBusyBar"
-                     DockPanel.Dock="Top"
-                     Margin="0,0,0,12"
-                     IsIndeterminate="True"
-                     IsVisible="{Binding IsSwitchingTor}"
-                     AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
-        <TextBlock x:Name="EmptyText"
-                   DockPanel.Dock="Top"
-                   Text="{x:Static res:UiText.ContactListEmpty}"
-                   TextWrapping="Wrap"
-                   IsVisible="{Binding IsEmpty}" />
-        <DockPanel x:Name="SearchPanel" DockPanel.Dock="Top" Margin="0,0,0,12" IsVisible="{Binding HasSearchableItems}">
-            <Button x:Name="ClearSearchButton"
-                    DockPanel.Dock="Right"
-                    Margin="8,0,0,0"
-                    Content="{x:Static res:UiText.ContactListSearchClear}"
-                    Command="{Binding ClearSearchCommand}"
-                    IsVisible="{Binding HasSearchText}" />
-            <TextBox x:Name="SearchBox"
-                     Text="{Binding SearchText}"
-                     PlaceholderText="{x:Static res:UiText.ContactListSearchLabel}"
-                     AutomationProperties.Name="{x:Static res:UiText.ContactListSearchLabel}" />
-        </DockPanel>
-        <TextBlock x:Name="NoMatchesText"
-                   DockPanel.Dock="Top"
-                   Text="{x:Static res:UiText.ContactListNoMatches}"
-                   TextWrapping="Wrap"
-                   IsVisible="{Binding HasNoMatches}" />
-        <ScrollViewer>
-            <StackPanel>
-                <TextBlock x:Name="GroupsHeading"
-                           Margin="0,0,0,8"
-                           Text="{x:Static res:UiText.ContactListGroupsHeading}"
-                           FontWeight="SemiBold"
-                           IsVisible="{Binding HasGroups}" />
-                <ItemsControl x:Name="GroupItems" ItemsSource="{Binding Groups}" IsVisible="{Binding HasGroups}">
-                    <ItemsControl.ItemTemplate>
+    <c:PageContainer>
+        <c:PageContainer.Overlay>
+            <Panel>
+                <c:Dialog x:Name="SettingsMenu"
+                          IsMenu="True"
+                          AnchorWidth="688"
+                          CardMaxWidth="320"
+                          IsOpen="{Binding IsMenuOpen}"
+                          CancelCommand="{Binding CloseMenuCommand}">
+                    <StackPanel Spacing="2">
+                        <Button x:Name="PassphraseButton"
+                                Classes="menuitem iconic"
+                                c:Icons.Glyph="{StaticResource IconLock}"
+                                Content="{x:Static res:UiText.ContactListPassphrase}"
+                                Command="{Binding PassphraseCommand}"
+                                IsVisible="{Binding OffersPassphrase}" />
+                        <Button x:Name="BackgroundButton"
+                                Classes="menuitem iconic"
+                                c:Icons.Glyph="{StaticResource IconActivity}"
+                                Content="{x:Static res:UiText.ContactListBackground}"
+                                Command="{Binding BackgroundCommand}"
+                                IsVisible="{Binding OffersBackground}" />
+                        <Button x:Name="SendCopyButton"
+                                Classes="menuitem iconic"
+                                c:Icons.Glyph="{StaticResource IconUpload}"
+                                Content="{x:Static res:UiText.ContactListSendCopy}"
+                                Command="{Binding SendPcCopyCommand}"
+                                IsVisible="{Binding OffersSendPcCopy}" />
+                        <Button x:Name="ReceiveCopyButton"
+                                Classes="menuitem iconic"
+                                c:Icons.Glyph="{StaticResource IconDownload}"
+                                Content="{x:Static res:UiText.ContactListReceiveCopy}"
+                                Command="{Binding ReceivePcCopyCommand}"
+                                IsVisible="{Binding OffersReceivePcCopy}" />
+                        <Button x:Name="NetworkButton"
+                                Classes="menuitem iconic"
+                                c:Icons.Glyph="{StaticResource IconWifi}"
+                                Content="{x:Static res:UiText.ContactListNetwork}"
+                                Command="{Binding NetworkCommand}"
+                                IsVisible="{x:Static s:BuildInfo.IsDebug}" />
+                        <Border Classes="separator" />
+                        <Button x:Name="DeleteAllDataButton"
+                                Classes="menuitem iconic danger"
+                                c:Icons.Glyph="{StaticResource IconTrash}"
+                                Content="{x:Static res:UiText.ContactListDeleteAllData}"
+                                Command="{Binding DeleteAllDataCommand}" />
+                    </StackPanel>
+                </c:Dialog>
+                <v:DeleteAllDataDialog x:Name="DeleteAllDialog" DataContext="{Binding DeleteAll}" />
+            </Panel>
+        </c:PageContainer.Overlay>
+        <StackPanel Spacing="14">
+            <DockPanel>
+                <Button x:Name="MenuButton"
+                        DockPanel.Dock="Right"
+                        Classes="icononly"
+                        Margin="8,0,0,8"
+                        VerticalAlignment="Top"
+                        Command="{Binding OpenMenuCommand}"
+                        AutomationProperties.Name="{x:Static res:UiText.ContactListSettingsHeading}">
+                    <c:Icon Data="{StaticResource IconSliders}" Size="20" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Button>
+                <WrapPanel Classes="actions">
+                    <Button x:Name="AddInPersonButton"
+                            Classes="primary iconic"
+                            c:Icons.Glyph="{StaticResource IconUserPlus}"
+                            Content="{x:Static res:UiText.ContactListAddInPerson}"
+                            Command="{Binding AddInPersonCommand}" />
+                    <Button x:Name="AddContactButton"
+                            Classes="iconic"
+                            c:Icons.Glyph="{StaticResource IconPlus}"
+                            Content="{x:Static res:UiText.ContactListAddContact}"
+                            Command="{Binding AddContactCommand}" />
+                    <Button x:Name="MyCodeButton"
+                            Classes="iconic"
+                            c:Icons.Glyph="{StaticResource IconQr}"
+                            Content="{x:Static res:UiText.ContactListMyCode}"
+                            Command="{Binding MyCodeCommand}" />
+                    <Button x:Name="NewGroupButton"
+                            Classes="iconic"
+                            c:Icons.Glyph="{StaticResource IconUsers}"
+                            Content="{x:Static res:UiText.ContactListNewGroup}"
+                            Command="{Binding NewGroupCommand}"
+                            IsVisible="{Binding HasContacts}" />
+                </WrapPanel>
+            </DockPanel>
+            <Border x:Name="NoNetworkPanel" Classes="notice warning" IsVisible="{Binding HasNoNetwork}">
+                <DockPanel>
+                    <c:Icon DockPanel.Dock="Left"
+                            Classes="warning"
+                            Margin="0,0,10,0"
+                            VerticalAlignment="Top"
+                            Data="{StaticResource IconWifi}" />
+                    <TextBlock x:Name="NoNetworkText" Text="{x:Static res:UiText.ContactListNoNetwork}" TextWrapping="Wrap" />
+                </DockPanel>
+            </Border>
+            <Border Classes="card flat" Padding="14,10">
+                <DockPanel x:Name="InternetRoutePanel">
+                    <Button x:Name="SwitchTorButton"
+                            DockPanel.Dock="Right"
+                            Margin="12,0,0,0"
+                            Classes="chip"
+                            VerticalAlignment="Center"
+                            Content="{Binding TorSwitchText}"
+                            Command="{Binding SwitchTorCommand}"
+                            IsVisible="{Binding CanSwitchTor}" />
+                    <c:Icon DockPanel.Dock="Left"
+                            Classes="muted"
+                            Margin="0,0,10,0"
+                            VerticalAlignment="Center"
+                            Data="{StaticResource IconGlobe}" />
+                    <TextBlock x:Name="InternetRouteText"
+                               Classes="muted"
+                               VerticalAlignment="Center"
+                               Text="{Binding InternetRouteText}" />
+                </DockPanel>
+            </Border>
+            <ProgressBar x:Name="SwitchTorBusyBar"
+                         IsIndeterminate="True"
+                         IsVisible="{Binding IsSwitchingTor}"
+                         AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
+            <StackPanel Spacing="12" Margin="0,24,0,12" IsVisible="{Binding IsEmpty}">
+                <Border Classes="heroIcon">
+                    <c:Icon Classes="accent"
+                            Size="34"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Data="{StaticResource IconUsers}" />
+                </Border>
+                <TextBlock x:Name="EmptyText"
+                           Classes="muted centered"
+                           MaxWidth="420"
+                           Text="{x:Static res:UiText.ContactListEmpty}"
+                           IsVisible="{Binding IsEmpty}" />
+            </StackPanel>
+            <DockPanel x:Name="SearchPanel" IsVisible="{Binding HasSearchableItems}">
+                <Button x:Name="ClearSearchButton"
+                        DockPanel.Dock="Right"
+                        Margin="8,0,0,0"
+                        Classes="quiet"
+                        Content="{x:Static res:UiText.ContactListSearchClear}"
+                        Command="{Binding ClearSearchCommand}"
+                        IsVisible="{Binding HasSearchText}" />
+                <TextBox x:Name="SearchBox"
+                         Text="{Binding SearchText}"
+                         PlaceholderText="{x:Static res:UiText.ContactListSearchLabel}"
+                         AutomationProperties.Name="{x:Static res:UiText.ContactListSearchLabel}">
+                    <TextBox.InnerLeftContent>
+                        <c:Icon Classes="muted"
+                                Margin="14,0,0,0"
+                                VerticalAlignment="Center"
+                                Data="{StaticResource IconSearch}" />
+                    </TextBox.InnerLeftContent>
+                </TextBox>
+            </DockPanel>
+            <TextBlock x:Name="NoMatchesText"
+                       Classes="muted centered"
+                       Margin="0,12"
+                       Text="{x:Static res:UiText.ContactListNoMatches}"
+                       IsVisible="{Binding HasNoMatches}" />
+            <StackPanel Spacing="0">
+                <ItemsControl x:Name="ChatItems" ItemsSource="{Binding Chats}">
+                    <ItemsControl.DataTemplates>
                         <DataTemplate DataType="vm:GroupItemViewModel">
-                            <Button Command="{Binding OpenCommand}"
-                                    HorizontalAlignment="Stretch"
-                                    HorizontalContentAlignment="Stretch"
-                                    Margin="0,0,0,8"
-                                    Padding="12"
+                            <Button Classes="row"
+                                    Classes.selected="{Binding IsSelected}"
+                                    Command="{Binding OpenCommand}"
                                     AutomationProperties.Name="{Binding Name}">
-                                <StackPanel Spacing="2">
-                                    <DockPanel>
-                                        <TextBlock DockPanel.Dock="Right"
-                                                   Text="{Binding UnreadText}"
-                                                   IsVisible="{Binding HasUnread}"
-                                                   FontWeight="SemiBold" />
-                                        <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                    </DockPanel>
-                                    <TextBlock Text="{Binding StateText}" />
-                                </StackPanel>
+                                <DockPanel>
+                                    <c:Avatar DockPanel.Dock="Left"
+                                              Size="46"
+                                              Margin="0,0,14,0"
+                                              VerticalAlignment="Center"
+                                              DisplayName="{Binding Name}" />
+                                    <Border DockPanel.Dock="Right" Classes="badge" IsVisible="{Binding HasUnread}">
+                                        <TextBlock Text="{Binding UnreadText}" />
+                                    </Border>
+                                    <StackPanel Spacing="3" VerticalAlignment="Center">
+                                        <TextBlock Classes="heading" Text="{Binding Name}" />
+                                        <TextBlock Classes="muted" Text="{Binding StateText}" />
+                                    </StackPanel>
+                                </DockPanel>
                             </Button>
                         </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <TextBlock x:Name="ContactsHeading"
-                           Margin="0,8,0,8"
-                           Text="{x:Static res:UiText.ContactListContactsHeading}"
-                           FontWeight="SemiBold"
-                           IsVisible="{Binding ShowContactsHeading}" />
-                <ItemsControl x:Name="ContactItems" ItemsSource="{Binding Contacts}">
-                    <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="vm:ContactItemViewModel">
-                            <Button Command="{Binding OpenCommand}"
-                                    HorizontalAlignment="Stretch"
-                                    HorizontalContentAlignment="Stretch"
-                                    Margin="0,0,0,8"
-                                    Padding="12"
+                            <Button Classes="row"
+                                    Classes.selected="{Binding IsSelected}"
+                                    Command="{Binding OpenCommand}"
                                     AutomationProperties.Name="{Binding Name}">
-                                <StackPanel Spacing="2">
-                                    <DockPanel>
-                                        <TextBlock DockPanel.Dock="Right"
-                                                   Text="{Binding UnreadText}"
-                                                   IsVisible="{Binding HasUnread}"
-                                                   FontWeight="SemiBold" />
-                                        <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                    </DockPanel>
-                                    <TextBlock Text="{Binding Fingerprint}" FontFamily="monospace" FontSize="12" />
-                                    <TextBlock Text="{Binding StatusText}" />
-                                    <TextBlock Text="{Binding KeyText}" />
-                                </StackPanel>
+                                <DockPanel>
+                                    <c:Avatar DockPanel.Dock="Left"
+                                              Size="46"
+                                              Margin="0,0,14,0"
+                                              VerticalAlignment="Center"
+                                              DisplayName="{Binding Name}" />
+                                    <Border DockPanel.Dock="Right" Classes="badge" IsVisible="{Binding HasUnread}">
+                                        <TextBlock Text="{Binding UnreadText}" />
+                                    </Border>
+                                    <StackPanel Spacing="3" VerticalAlignment="Center">
+                                        <TextBlock Classes="heading" Text="{Binding Name}" />
+                                        <StackPanel Orientation="Horizontal" Spacing="7">
+                                            <Ellipse Classes="dot"
+                                                     Classes.online="{Binding IsOnline}"
+                                                     Classes.pending="{Binding IsPending}" />
+                                            <TextBlock Text="{Binding StatusText}" />
+                                        </StackPanel>
+                                        <TextBlock Classes="caption" Text="{Binding KeyText}" />
+                                        <TextBlock Classes="caption mono" Text="{Binding Fingerprint}" />
+                                    </StackPanel>
+                                </DockPanel>
                             </Button>
                         </DataTemplate>
-                    </ItemsControl.ItemTemplate>
+                    </ItemsControl.DataTemplates>
                 </ItemsControl>
                 <TextBlock x:Name="CopiedChatsHeading"
-                           Margin="0,8,0,8"
+                           Classes="section"
+                           Margin="4,4,0,8"
                            Text="{x:Static res:UiText.ContactListCopiedChatsHeading}"
-                           FontWeight="SemiBold"
                            IsVisible="{Binding HasCopiedChats}" />
                 <ItemsControl x:Name="CopiedChatItems" ItemsSource="{Binding CopiedChats}" IsVisible="{Binding HasCopiedChats}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="vm:CopiedChatItemViewModel">
-                            <Button Command="{Binding OpenCommand}"
-                                    HorizontalAlignment="Stretch"
-                                    HorizontalContentAlignment="Stretch"
-                                    Margin="0,0,0,8"
-                                    Padding="12"
+                            <Button Classes="row"
+                                    Classes.selected="{Binding IsSelected}"
+                                    Command="{Binding OpenCommand}"
                                     AutomationProperties.Name="{Binding Title}">
-                                <StackPanel Spacing="2">
-                                    <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Text="{Binding SummaryText}" />
-                                </StackPanel>
+                                <DockPanel>
+                                    <Border DockPanel.Dock="Left" Classes="iconCircle" Width="46" Height="46" CornerRadius="23" Margin="0,0,14,0">
+                                        <c:Icon Classes="accent"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                Data="{StaticResource IconMonitor}" />
+                                    </Border>
+                                    <StackPanel Spacing="3" VerticalAlignment="Center">
+                                        <TextBlock Classes="heading" Text="{Binding Title}" />
+                                        <TextBlock Classes="muted" Text="{Binding SummaryText}" />
+                                    </StackPanel>
+                                </DockPanel>
                             </Button>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </StackPanel>
-        </ScrollViewer>
-    </DockPanel>
+        </StackPanel>
+    </c:PageContainer>
 </UserControl>

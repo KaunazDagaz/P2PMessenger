@@ -10,6 +10,8 @@ public interface INavigationService
 
     void Push(PageViewModel page);
 
+    void Open(PageViewModel page);
+
     void Replace(PageViewModel page);
 
     void ResetTo(PageViewModel page);

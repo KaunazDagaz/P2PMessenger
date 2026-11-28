@@ -27,7 +27,7 @@ public sealed class GroupDeletionViewTests
         await UiHarness.WaitUntilAsync(() => page.Messages.Count == 2 && page.Messages.Single(static item => item.IsOwn).ReceivedCount == 1);
         foreach (var item in page.Messages)
         {
-            item.ToggleExplanationCommand.Execute(null);
+            item.ToggleDetailsCommand.Execute(null);
             item.AskDeleteCommand.Execute(null);
             Assert.False(item.CanDelete);
             Assert.False(item.IsDeleteVisible);
@@ -42,9 +42,7 @@ public sealed class GroupDeletionViewTests
 
         Assert.True(UiHarness.Find<Border>(view, "DeleteChatPanel").IsVisible);
         Assert.False(UiHarness.Find<Button>(view, "DeleteChatButton").IsVisible);
-        Assert.Equal(
-            "Delete the chat of Team? Its messages are removed from this device, and your messages that are still waiting are no longer sent from it. You stay a member and keep receiving new messages. The members' apps keep their copies and can pass them on to other members.",
-            UiHarness.Find<TextBlock>(view, "DeleteChatQuestionText").Text);
+        Assert.Equal("Delete the chat of Team? Its messages are removed from this device only.", UiHarness.Find<TextBlock>(view, "DeleteChatQuestionText").Text);
         page.CancelDeleteChatCommand.Execute(null);
         UiHarness.Flush();
         Assert.False(UiHarness.Find<Border>(view, "DeleteChatPanel").IsVisible);
@@ -58,8 +56,7 @@ public sealed class GroupDeletionViewTests
         Assert.Empty(harness.Messenger.GroupChats.MessagesIn(groupId));
         Assert.True(UiHarness.Find<TextBlock>(view, "EmptyText").IsVisible);
         Assert.False(UiHarness.Find<Border>(view, "DeleteChatPanel").IsVisible);
-        Assert.True(UiHarness.Find<Border>(view, "DeletedPanel").IsVisible);
-        Assert.Equal(UiText.GroupChatDeleted, UiHarness.Find<TextBlock>(view, "DeletedText").Text);
+        Assert.Contains(UiText.GroupChatDeleted, harness.ToastTexts);
         Assert.True(page.CanWrite);
         Assert.True(harness.Messenger.Groups.TryGet(groupId, out _));
         Assert.Equal(["Hi Alice", "Hi team"], bob.GroupChats.MessagesIn(groupId).Select(static message => message.Text).Order(StringComparer.Ordinal));
@@ -94,14 +91,19 @@ public sealed class GroupDeletionViewTests
         Assert.True(item.CanDelete);
         Assert.False(item.IsDeleteVisible);
 
-        item.ToggleExplanationCommand.Execute(null);
+        item.ToggleDetailsCommand.Execute(null);
         UiHarness.Flush();
         Assert.True(item.IsDeleteVisible);
+        Assert.Same(item, page.DetailsMessage);
+        Assert.True(UiHarness.IsShown(UiHarness.Find<StackPanel>(view, "DeliveryDetailsPanel")));
         Assert.Contains(UiText.MessageDelete, UiHarness.Texts(view));
         item.AskDeleteCommand.Execute(null);
         UiHarness.Flush();
         Assert.True(item.IsConfirmingDelete);
         Assert.False(item.IsDeleteVisible);
+        Assert.Same(item, page.DeletingMessage);
+        Assert.True(UiHarness.IsShown(UiHarness.Find<StackPanel>(view, "DeleteMessagePanel")));
+        Assert.True(UiHarness.IsShown(UiHarness.Find<StackPanel>(view, "DeliveryDetailsPanel")));
         Assert.Contains(UiText.GroupMessageDeleteQuestion, UiHarness.Texts(view));
         item.CancelDeleteCommand.Execute(null);
         Assert.False(item.IsConfirmingDelete);
@@ -112,7 +114,7 @@ public sealed class GroupDeletionViewTests
 
         Assert.Empty(page.Messages);
         Assert.Empty(harness.Messenger.GroupChats.WaitingFor(bobKey));
-        Assert.Equal(UiText.GroupMessageDeleted, UiHarness.Find<TextBlock>(view, "DeletedText").Text);
+        Assert.Contains(UiText.GroupMessageDeleted, harness.ToastTexts);
         Assert.Null(page.ErrorMessage);
         harness.Messenger.Identity.Dispose();
     }

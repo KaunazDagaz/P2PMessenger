@@ -176,7 +176,13 @@ Release builds bundle C tor from the official Tor Expert Bundle:
   Official unmodified vc_redist.x64.exe bundled in the Windows x64 installer only,
   subject to Microsoft Software License Terms (https://visualstudio.microsoft.com/license-terms/).
 
-5. License Texts
+5. Icons
+--------
+The 28 stroke icons of the user interface (src/P2PMessenger.UI/Styles/Icons.axaml) are drawn after the
+Feather icon set (https://feathericons.com/), MIT License, Copyright (c) 2013-2023 Cole Bemis. The MIT
+License text in section 6 applies, with that copyright notice.
+
+6. License Texts
 ----------------
 
 --- MIT License (example notice from NSec.Cryptography; applies to MIT-licensed packages) ---

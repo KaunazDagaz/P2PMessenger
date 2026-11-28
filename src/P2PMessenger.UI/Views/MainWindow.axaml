@@ -6,6 +6,11 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="P2PMessenger.UI.Views.MainWindow"
         Icon="/Assets/p2pmessenger.ico"
+        Width="1100"
+        Height="780"
+        MinWidth="340"
+        MinHeight="480"
+        WindowStartupLocation="CenterScreen"
         Title="P2PMessenger">
     <views:MainView />
 </Window>

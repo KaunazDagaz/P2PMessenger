@@ -2,30 +2,69 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:P2PMessenger.UI.ViewModels"
              xmlns:res="using:P2PMessenger.UI.Resources"
+             xmlns:c="using:P2PMessenger.UI.Controls"
              x:Class="P2PMessenger.UI.Views.VerifyContactView"
              x:DataType="vm:VerifyContactViewModel">
-    <ScrollViewer>
-        <StackPanel Margin="16" Spacing="8" MaxWidth="640">
-            <TextBlock x:Name="IntroText" Text="{Binding IntroText}" TextWrapping="Wrap" />
-            <TextBlock x:Name="FirstLabel" Text="{Binding FirstLabel}" FontWeight="SemiBold" Margin="0,8,0,0" />
-            <SelectableTextBlock x:Name="FirstFingerprint" Text="{Binding FirstFingerprint}" FontFamily="monospace" FontSize="18" />
-            <TextBlock x:Name="SecondLabel" Text="{Binding SecondLabel}" FontWeight="SemiBold" Margin="0,8,0,0" />
-            <SelectableTextBlock x:Name="SecondFingerprint" Text="{Binding SecondFingerprint}" FontFamily="monospace" FontSize="18" />
-            <TextBlock x:Name="StatusText" Text="{Binding StatusText}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,8,0,0" />
-            <WrapPanel IsVisible="{Binding IsNotChecked}">
-                <Button x:Name="MatchButton" Margin="0,0,8,8" Content="{x:Static res:UiText.VerifyMatch}" Command="{Binding MatchCommand}" />
-                <Button x:Name="NoMatchButton" Margin="0,0,8,8" Content="{x:Static res:UiText.VerifyNoMatch}" Command="{Binding NoMatchCommand}" />
+    <c:PageContainer>
+        <StackPanel Spacing="16">
+            <Border Classes="card">
+                <StackPanel Spacing="8">
+                    <TextBlock x:Name="FirstLabel" Classes="label" Text="{Binding FirstLabel}" />
+                    <Border Classes="fingerprint">
+                        <SelectableTextBlock x:Name="FirstFingerprint"
+                                             Classes="mono"
+                                             FontSize="18"
+                                             TextWrapping="Wrap"
+                                             Text="{Binding FirstFingerprint}" />
+                    </Border>
+                    <TextBlock x:Name="SecondLabel" Classes="label" Margin="0,10,0,0" Text="{Binding SecondLabel}" />
+                    <Border Classes="fingerprint">
+                        <SelectableTextBlock x:Name="SecondFingerprint"
+                                             Classes="mono"
+                                             FontSize="18"
+                                             TextWrapping="Wrap"
+                                             Text="{Binding SecondFingerprint}" />
+                    </Border>
+                </StackPanel>
+            </Border>
+            <Border Classes="notice plain">
+                <TextBlock x:Name="StatusText" Classes="heading" Text="{Binding StatusText}" TextWrapping="Wrap" />
+            </Border>
+            <WrapPanel Classes="actions" IsVisible="{Binding IsNotChecked}">
+                <Button x:Name="MatchButton"
+                        Classes="primary iconic"
+                        c:Icons.Glyph="{StaticResource IconCheck}"
+                        Content="{x:Static res:UiText.VerifyMatch}"
+                        Command="{Binding MatchCommand}" />
+                <Button x:Name="NoMatchButton"
+                        Classes="iconic"
+                        c:Icons.Glyph="{StaticResource IconClose}"
+                        Content="{x:Static res:UiText.VerifyNoMatch}"
+                        Command="{Binding NoMatchCommand}" />
             </WrapPanel>
-            <Button x:Name="UncheckButton" Content="{x:Static res:UiText.VerifyUncheck}" Command="{Binding UncheckCommand}" IsVisible="{Binding IsChecked}" />
+            <Button x:Name="UncheckButton"
+                    Classes="quiet"
+                    HorizontalAlignment="Left"
+                    Content="{x:Static res:UiText.VerifyUncheck}"
+                    Command="{Binding UncheckCommand}"
+                    IsVisible="{Binding IsChecked}" />
             <ProgressBar x:Name="BusyBar"
                          IsIndeterminate="True"
                          IsVisible="{Binding IsBusy}"
                          AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
-            <TextBlock x:Name="MismatchText"
-                       Text="{Binding MismatchText}"
-                       IsVisible="{Binding MismatchText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
-                       TextWrapping="Wrap" />
+            <Border Classes="notice danger" IsVisible="{Binding #MismatchText.IsVisible}">
+                <DockPanel>
+                    <c:Icon DockPanel.Dock="Left"
+                            Classes="danger"
+                            Margin="0,0,10,0"
+                            VerticalAlignment="Top"
+                            Data="{StaticResource IconAlert}" />
+                    <TextBlock x:Name="MismatchText"
+                               Text="{Binding MismatchText}"
+                               IsVisible="{Binding MismatchText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                               TextWrapping="Wrap" />
+                </DockPanel>
+            </Border>
         </StackPanel>
-    </ScrollViewer>
+    </c:PageContainer>
 </UserControl>

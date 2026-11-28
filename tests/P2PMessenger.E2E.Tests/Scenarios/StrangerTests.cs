@@ -29,7 +29,7 @@ public sealed class StrangerTests
         Assert.True(await IsClosedWithoutAnswerAsync(stream));
         await Flows.GoBackToContactsAsync(alice);
         Assert.Equal("Bob", Assert.Single(alice.ContactNames()));
-        Assert.Null(alice.TryNamed<Avalonia.Controls.Border>("ErrorNoticePanel"));
+        Assert.DoesNotContain(alice.Services.Toasts.Items, static toast => toast.IsError);
 
         await Flows.OpenConversationAsync(alice, "Bob");
         await Flows.SendAsync(alice, "Still working after the stranger.");

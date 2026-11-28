@@ -58,6 +58,8 @@ public sealed class BusyBarTests
         harness.Show(view);
 
         FollowsBusy(UiHarness.Find<ProgressBar>(view, "BusyBar"), busy => page.IsBusy = busy);
+        deleteAll.OpenCommand.Execute(null);
+        UiHarness.Flush();
         FollowsBusy(UiHarness.Descendant<ProgressBar>(view, "DeleteAllBusyBar"), busy => deleteAll.IsBusy = busy);
         harness.Messenger.Identity.Dispose();
     }
@@ -72,6 +74,8 @@ public sealed class BusyBarTests
         harness.Show(view);
 
         FollowsBusy(UiHarness.Find<ProgressBar>(view, "BusyBar"), busy => page.IsBusy = busy);
+        deleteAll.OpenCommand.Execute(null);
+        UiHarness.Flush();
         FollowsBusy(UiHarness.Descendant<ProgressBar>(view, "DeleteAllBusyBar"), busy => deleteAll.IsBusy = busy);
     }
 

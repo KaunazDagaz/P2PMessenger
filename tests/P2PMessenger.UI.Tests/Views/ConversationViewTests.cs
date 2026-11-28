@@ -28,9 +28,9 @@ public sealed class ConversationViewTests
         harness.Show(view);
 
         Assert.True(UiHarness.Find<Border>(view, "WaitingPanel").IsVisible);
-        Assert.StartsWith("Waiting for the first connection with Bob.", UiHarness.Find<TextBlock>(view, "WaitingText").Text, StringComparison.Ordinal);
+        Assert.Equal("Waiting for the first connection with Bob.", UiHarness.Find<TextBlock>(view, "WaitingText").Text);
         Assert.True(UiHarness.Find<Border>(view, "KeyNotComparedPanel").IsVisible);
-        Assert.StartsWith("You have not compared keys with Bob.", UiHarness.Find<TextBlock>(view, "KeyNotComparedText").Text, StringComparison.Ordinal);
+        Assert.Equal("You have not compared keys with Bob.", UiHarness.Find<TextBlock>(view, "KeyNotComparedText").Text);
         Assert.Equal(UiText.ContactWaiting, UiHarness.Find<TextBlock>(view, "StatusText").Text);
         Assert.Equal(contact.Fingerprint.ToGroupedString(), UiHarness.Find<TextBlock>(view, "FingerprintText").Text);
         Assert.True(UiHarness.Find<TextBlock>(view, "EmptyText").IsVisible);
@@ -39,7 +39,7 @@ public sealed class ConversationViewTests
         await page.SendCommand.ExecuteAsync(null);
         UiHarness.Flush();
 
-        Assert.Equal("Not sent: Bob becomes a contact only after the first connection.", UiHarness.Find<TextBlock>(view, "ErrorText").Text);
+        Assert.Equal("Not sent: Bob is not a contact yet.", UiHarness.Find<TextBlock>(view, "ErrorText").Text);
         Assert.Equal("hello", page.Draft);
         Assert.Empty(page.Messages);
         harness.Messenger.Identity.Dispose();
@@ -71,7 +71,7 @@ public sealed class ConversationViewTests
 
     [AvaloniaFact]
     [Trait("Story", "US-04")]
-    public async Task Conversation_InPersonContactMarkedNotCompared_DoesNotClaimTheCodeCameAsText()
+    public async Task Conversation_InPersonContactMarkedNotCompared_ShowsTheKeyAsNotCompared()
     {
         await using var harness = await UiHarness.StartAsync("Alice");
         using var bob = KeySet.Create();
@@ -88,7 +88,7 @@ public sealed class ConversationViewTests
         Assert.True(await harness.Messenger.Contacts.SetKeyComparisonAsync(bob.IdentityKey, KeyComparison.NotCompared, CancellationToken.None));
         await UiHarness.WaitUntilAsync(() => page.IsKeyNotCompared);
 
-        Assert.Equal("The key of Bob is marked as not compared. Compare fingerprints with Bob before you trust this contact.", UiHarness.Find<TextBlock>(view, "KeyNotComparedText").Text);
+        Assert.Equal("The key of Bob is not compared.", UiHarness.Find<TextBlock>(view, "KeyNotComparedText").Text);
         harness.Messenger.Identity.Dispose();
     }
 
@@ -162,7 +162,7 @@ public sealed class ConversationViewTests
     [AvaloniaFact]
     [Trait("Story", "US-16")]
     [Trait("NFR", "NFR-17")]
-    public async Task Conversation_TappingAState_ExplainsInOneLineWhatItConfirms()
+    public async Task Conversation_DeliveryState_ShowsOnlyTheStateAndOffersDeleteWhileTheMessageWaits()
     {
         await using var harness = await UiHarness.StartAsync("Alice");
         var bob = await harness.ConnectPeerAsync("Bob");
@@ -177,28 +177,19 @@ public sealed class ConversationViewTests
         await page.SendCommand.ExecuteAsync(null);
         UiHarness.Flush();
         var message = Assert.Single(page.Messages);
-        Assert.False(message.IsExplanationShown);
-        Assert.DoesNotContain(UiText.DeliveryWaitingExplanation, UiHarness.Texts(view));
-
-        message.ToggleExplanationCommand.Execute(null);
-        UiHarness.Flush();
-
-        Assert.True(message.IsExplanationShown);
-        Assert.Contains(UiText.DeliveryWaitingExplanation, UiHarness.Texts(view));
-        Assert.DoesNotContain("\n", UiText.DeliveryWaitingExplanation, StringComparison.Ordinal);
+        Assert.Equal(UiText.DeliveryWaiting, message.StateText);
+        Assert.Contains(UiText.DeliveryWaiting, UiHarness.Texts(view));
+        Assert.True(message.IsDeleteVisible);
+        Assert.True(UiHarness.Descendant<Button>(view, "DeleteMessageButton").IsEffectivelyVisible);
 
         var sent = harness.Messenger.Chats.MessagesWith(contact.IdentityKey).Single();
         Assert.True(await harness.Messenger.Chats.MarkReceivedAsync(contact.IdentityKey, sent.Id, CancellationToken.None));
         await UiHarness.WaitUntilAsync(() => message.StateText == UiText.DeliveryReceived);
 
         Assert.Same(message, Assert.Single(page.Messages));
-        Assert.Equal(UiText.DeliveryReceivedExplanation, message.StateExplanation);
-        Assert.Contains(UiText.DeliveryReceivedExplanation, UiHarness.Texts(view));
-        Assert.Contains("does not show whether they have read it", UiText.DeliveryReceivedExplanation, StringComparison.Ordinal);
-        message.ToggleExplanationCommand.Execute(null);
-        UiHarness.Flush();
-        Assert.False(message.IsExplanationShown);
-        Assert.DoesNotContain(UiText.DeliveryReceivedExplanation, UiHarness.Texts(view));
+        Assert.Contains(UiText.DeliveryReceived, UiHarness.Texts(view));
+        Assert.False(message.IsDeleteVisible);
+        Assert.False(UiHarness.Descendant<Button>(view, "DeleteMessageButton").IsEffectivelyVisible);
         harness.Messenger.Identity.Dispose();
     }
 
@@ -230,7 +221,7 @@ public sealed class ConversationViewTests
     [AvaloniaFact]
     [Trait("Story", "US-02")]
     [Trait("Story", "US-07")]
-    public async Task Conversation_HeardButRefused_ListsEveryPossibleReason()
+    public async Task Conversation_HeardButRefused_SaysTheAppDidNotAcceptTheConnection()
     {
         await using var harness = await UiHarness.StartAsync("Alice");
         using var bob = KeySet.Create();
@@ -247,10 +238,7 @@ public sealed class ConversationViewTests
 
             Assert.True(UiHarness.Find<Border>(view, "AttemptPanel").IsVisible);
             var attempt = UiHarness.Find<TextBlock>(view, "AttemptText");
-            Assert.StartsWith("Their device was heard nearby, but their app did not accept the connection. Possible reasons:", attempt.Text, StringComparison.Ordinal);
-            Assert.Contains("another program or device now answers at the address where it was heard", attempt.Text, StringComparison.Ordinal);
-            Assert.Contains("too many arrived at once", attempt.Text, StringComparison.Ordinal);
-            Assert.Contains("sent an old announcement of theirs again", attempt.Text, StringComparison.Ordinal);
+            Assert.Equal("Their device was heard nearby, but their app did not accept the connection.", attempt.Text);
         }
 
         Assert.Equal(UiText.ContactWaiting, UiHarness.Find<TextBlock>(view, "StatusText").Text);
@@ -262,7 +250,7 @@ public sealed class ConversationViewTests
 
     [AvaloniaFact]
     [Trait("Story", "US-07")]
-    public async Task Conversation_HeardButNobodyListens_ListsTheReasonsForNoAnswer()
+    public async Task Conversation_HeardButNobodyListens_SaysTheAppDidNotAnswer()
     {
         await using var harness = await UiHarness.StartAsync("Alice");
         using var bob = KeySet.Create();
@@ -281,7 +269,7 @@ public sealed class ConversationViewTests
             await UiHarness.WaitUntilAsync(() => page.AttemptText == UiText.DialUnreachable);
 
             Assert.True(UiHarness.Find<Border>(view, "AttemptPanel").IsVisible);
-            Assert.StartsWith("Their device was heard nearby, but their app did not answer. Possible reasons:", UiHarness.Find<TextBlock>(view, "AttemptText").Text, StringComparison.Ordinal);
+            Assert.Equal("Their device was heard nearby, but their app did not answer.", UiHarness.Find<TextBlock>(view, "AttemptText").Text);
             await Task.Delay(500, TestContext.Current.CancellationToken);
             UiHarness.Flush();
             Assert.True(UiHarness.Find<Border>(view, "AttemptPanel").IsVisible);

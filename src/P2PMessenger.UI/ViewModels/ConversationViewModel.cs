@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using P2PMessenger.Application;
@@ -67,10 +69,6 @@ public sealed partial class ConversationViewModel : PageViewModel
     [NotifyCanExecuteChangedFor(nameof(DeleteChatCommand), nameof(CancelDeleteChatCommand))]
     private bool isDeletingChat;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasDeletedText))]
-    private string? deletedText;
-
     public ConversationViewModel(Messenger messenger, Ed25519PublicKey contactKey, IUiThread uiThread, INavigationService navigation, Pages pages)
         : this(messenger, contactKey, uiThread, navigation, pages, TimeZoneInfo.Local)
     {
@@ -97,21 +95,26 @@ public sealed partial class ConversationViewModel : PageViewModel
         this.navigation = navigation;
         this.pages = pages;
         this.timeZone = timeZone;
+        Messages.CollectionChanged += OnMessagesChanged;
         RefreshContact();
         RefreshMessages();
     }
 
     public override string Title => ContactName;
 
+    public Ed25519PublicKey ContactKey => contactKey;
+
     public ObservableCollection<MessageItemViewModel> Messages { get; } = [];
+
+    public MessageItemViewModel? DeletingMessage => Messages.FirstOrDefault(static message => message.IsConfirmingDelete);
+
+    public bool HasDeletingMessage => DeletingMessage is not null;
 
     public bool IsWaiting => WaitingText is not null;
 
     public bool IsKeyNotCompared => KeyNotComparedText is not null;
 
     public bool HasAttemptText => AttemptText is not null;
-
-    public bool HasDeletedText => DeletedText is not null;
 
     public bool IsDeleteChatVisible => !IsConfirmingDeleteChat;
 
@@ -188,7 +191,7 @@ public sealed partial class ConversationViewModel : PageViewModel
         try
         {
             await messenger.DeleteChatAsync(contactKey, cancellationToken);
-            DeletedText = Formats.With(Formats.ChatDeleted, ContactName);
+            Toasts.Show(ToastKind.Success, Formats.With(Formats.ChatDeleted, ContactName));
             IsConfirmingDeleteChat = false;
             RefreshMessages();
         }
@@ -229,7 +232,7 @@ public sealed partial class ConversationViewModel : PageViewModel
         {
             if (await messenger.DeleteWaitingAsync(contactKey, item.Id, cancellationToken))
             {
-                DeletedText = Formats.With(Formats.MessageDeleted, ContactName);
+                Toasts.Show(ToastKind.Success, Formats.With(Formats.MessageDeleted, ContactName));
             }
             else
             {
@@ -315,5 +318,40 @@ public sealed partial class ConversationViewModel : PageViewModel
         }
 
         IsEmpty = Messages.Count == 0;
+    }
+
+    private void OnMessagesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.OldItems is not null)
+        {
+            foreach (MessageItemViewModel item in e.OldItems)
+            {
+                item.PropertyChanged -= OnMessageChanged;
+            }
+        }
+
+        if (e.NewItems is not null)
+        {
+            foreach (MessageItemViewModel item in e.NewItems)
+            {
+                item.PropertyChanged += OnMessageChanged;
+            }
+        }
+
+        NotifyMessageDialogs();
+    }
+
+    private void OnMessageChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(MessageItemViewModel.IsConfirmingDelete))
+        {
+            NotifyMessageDialogs();
+        }
+    }
+
+    private void NotifyMessageDialogs()
+    {
+        OnPropertyChanged(nameof(DeletingMessage));
+        OnPropertyChanged(nameof(HasDeletingMessage));
     }
 }

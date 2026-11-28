@@ -32,9 +32,7 @@ public sealed class DeletionViewTests
 
         Assert.True(UiHarness.Find<Border>(view, "DeleteChatPanel").IsVisible);
         Assert.False(UiHarness.Find<Button>(view, "DeleteChatButton").IsVisible);
-        Assert.Equal(
-            "Delete the chat with Bob? Its messages are removed from this device, and messages that are still waiting will not be sent. Bob's app keeps its copy.",
-            UiHarness.Find<TextBlock>(view, "DeleteChatQuestionText").Text);
+        Assert.Equal("Delete the chat with Bob? It is removed from this device only.", UiHarness.Find<TextBlock>(view, "DeleteChatQuestionText").Text);
         page.CancelDeleteChatCommand.Execute(null);
         UiHarness.Flush();
         Assert.False(UiHarness.Find<Border>(view, "DeleteChatPanel").IsVisible);
@@ -48,8 +46,7 @@ public sealed class DeletionViewTests
         Assert.Empty(harness.Messenger.Chats.MessagesWith(contact.IdentityKey));
         Assert.True(UiHarness.Find<TextBlock>(view, "EmptyText").IsVisible);
         Assert.False(UiHarness.Find<Border>(view, "DeleteChatPanel").IsVisible);
-        Assert.True(UiHarness.Find<Border>(view, "DeletedPanel").IsVisible);
-        Assert.Equal("The chat was deleted on this device only. Bob's app still has its copy.", UiHarness.Find<TextBlock>(view, "DeletedText").Text);
+        Assert.Contains("The chat with Bob was deleted on this device only.", harness.ToastTexts);
         Assert.Equal(["Hi Alice", "Hi Bob"], bob.Chats.MessagesWith(aliceKey).Select(static message => message.Text).Order(StringComparer.Ordinal));
         Assert.True(harness.Messenger.Contacts.TryGet(contact.IdentityKey, out _));
         await UiHarness.StopPeerAsync(bob);
@@ -76,12 +73,9 @@ public sealed class DeletionViewTests
         var item = Assert.Single(page.Messages);
         Assert.Equal(UiText.DeliveryWaiting, item.StateText);
         Assert.True(item.CanDelete);
-        Assert.False(item.IsDeleteVisible);
-
-        item.ToggleExplanationCommand.Execute(null);
-        UiHarness.Flush();
         Assert.True(item.IsDeleteVisible);
-        Assert.Contains(UiText.MessageDelete, UiHarness.Texts(view));
+        Assert.True(UiHarness.Descendant<Button>(view, "DeleteMessageButton").IsEffectivelyVisible);
+
         item.AskDeleteCommand.Execute(null);
         UiHarness.Flush();
         Assert.True(item.IsConfirmingDelete);
@@ -93,9 +87,7 @@ public sealed class DeletionViewTests
 
         Assert.Empty(page.Messages);
         Assert.Empty(harness.Messenger.Chats.WaitingFor(contact.IdentityKey));
-        Assert.Equal(
-            "The waiting message was deleted on this device and will not be sent again. If it reached Bob's app before its confirmation came back, it stays there.",
-            UiHarness.Find<TextBlock>(view, "DeletedText").Text);
+        Assert.Contains("The waiting message to Bob was deleted.", harness.ToastTexts);
         harness.Messenger.Identity.Dispose();
     }
 
@@ -116,7 +108,6 @@ public sealed class DeletionViewTests
 
         foreach (var item in page.Messages)
         {
-            item.ToggleExplanationCommand.Execute(null);
             item.AskDeleteCommand.Execute(null);
             Assert.False(item.CanDelete);
             Assert.False(item.IsDeleteVisible);
@@ -136,31 +127,35 @@ public sealed class DeletionViewTests
         var view = new MainView { DataContext = harness.Shell };
         harness.Show(view);
         var list = Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage);
+        list.OpenMenuCommand.Execute(null);
+        UiHarness.Flush();
         Assert.True(UiHarness.Descendant<Button>(view, "DeleteAllDataButton").IsVisible);
 
         list.DeleteAllDataCommand.Execute(null);
         UiHarness.Flush();
-        var page = Assert.IsType<DeleteAllDataPageViewModel>(harness.Shell.CurrentPage);
-        Assert.Equal(UiText.DeleteAllDataTitle, UiHarness.Find<TextBlock>(view, "TitleText").Text);
-        Assert.True(page.Panel.IsConfirming);
-        Assert.Equal(UiText.DeleteAllDataWarning, UiHarness.Descendant<TextBlock>(view, "DeleteAllWarningText").Text);
-        Assert.False(UiHarness.Descendant<Button>(view, "DeleteAllOpenButton").IsVisible);
-        page.Panel.CancelCommand.Execute(null);
+        Assert.False(list.IsMenuOpen);
+        Assert.Same(list, harness.Shell.CurrentPage);
+        Assert.True(list.DeleteAll.IsConfirming);
+        Assert.Equal(UiText.ContactListTitle, UiHarness.Find<TextBlock>(view, "TitleText").Text);
+        var dialog = UiHarness.Descendant<DeleteAllDataDialog>(view, "DeleteAllDialog");
+        Assert.True(UiHarness.IsShown(UiHarness.Find<Border>(dialog, "DeleteAllConfirmPanel")));
+        Assert.Equal(UiText.DeleteAllDataWarning, UiHarness.Find<TextBlock>(dialog, "DeleteAllWarningText").Text);
+        list.DeleteAll.CancelCommand.Execute(null);
         UiHarness.Flush();
-        Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage);
+        Assert.Same(list, harness.Shell.CurrentPage);
+        Assert.False(UiHarness.IsShown(UiHarness.Find<Border>(dialog, "DeleteAllConfirmPanel")));
         Assert.NotNull(harness.Services.Messenger);
 
-        list = Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage);
         list.DeleteAllDataCommand.Execute(null);
-        await Assert.IsType<DeleteAllDataPageViewModel>(harness.Shell.CurrentPage).Panel.ConfirmCommand.ExecuteAsync(null);
+        await list.DeleteAll.ConfirmCommand.ExecuteAsync(null);
         UiHarness.Flush();
 
         var create = Assert.IsType<CreateIdentityViewModel>(harness.Shell.CurrentPage);
         Assert.Null(harness.Services.Messenger);
         Assert.False(harness.Services.HasStores);
         Assert.False(harness.Shell.CanGoBack);
-        Assert.Equal(UiText.DeleteAllDataDone, harness.Shell.Notice);
-        Assert.True(UiHarness.Find<Border>(view, "NoticePanel").IsVisible);
+        Assert.Contains(UiText.DeleteAllDataDone, harness.ToastTexts);
+        Assert.Contains(UiText.DeleteAllDataDone, UiHarness.Texts(view));
 
         create.Name = "Alice again";
         await create.CreateCommand.ExecuteAsync(null);
@@ -185,14 +180,15 @@ public sealed class DeletionViewTests
         UiHarness.Flush();
         var problem = Assert.IsType<StorageProblemViewModel>(harness.Shell.CurrentPage);
         Assert.NotNull(problem.DeleteAll);
-        Assert.Equal(UiText.DeleteAllDataIntroProblem, UiHarness.Descendant<TextBlock>(view, "DeleteAllIntroText").Text);
         Assert.True(UiHarness.Descendant<Button>(view, "DeleteAllOpenButton").IsVisible);
-        Assert.False(UiHarness.Descendant<Border>(view, "DeleteAllConfirmPanel").IsVisible);
+        var dialog = UiHarness.Descendant<DeleteAllDataDialog>(view, "DeleteAllDialog");
+        var confirmPanel = UiHarness.Find<Border>(dialog, "DeleteAllConfirmPanel");
+        Assert.False(confirmPanel.IsVisible);
 
         problem.DeleteAll.OpenCommand.Execute(null);
         UiHarness.Flush();
-        Assert.True(UiHarness.Descendant<Border>(view, "DeleteAllConfirmPanel").IsVisible);
-        Assert.False(UiHarness.Descendant<Button>(view, "DeleteAllOpenButton").IsVisible);
+        Assert.True(confirmPanel.IsVisible);
+        Assert.True(UiHarness.IsShown(confirmPanel));
         problem.DeleteAll.CancelCommand.Execute(null);
         Assert.False(problem.DeleteAll.IsConfirming);
         Assert.Equal(0, localData.Deleted);
@@ -203,7 +199,7 @@ public sealed class DeletionViewTests
 
         Assert.Equal(1, localData.Deleted);
         Assert.IsType<CreateIdentityViewModel>(harness.Shell.CurrentPage);
-        Assert.Equal(UiText.DeleteAllDataDone, harness.Shell.Notice);
+        Assert.Contains(UiText.DeleteAllDataDone, harness.ToastTexts);
     }
 
     [AvaloniaFact]
@@ -219,7 +215,7 @@ public sealed class DeletionViewTests
         await problem.DeleteAll.ConfirmCommand.ExecuteAsync(null);
         UiHarness.Flush();
 
-        Assert.Equal(UiText.DeleteAllDataIncomplete, harness.Shell.Notice);
+        Assert.Contains(UiText.DeleteAllDataIncomplete, harness.ToastTexts);
         Assert.IsType<StorageProblemViewModel>(harness.Shell.CurrentPage);
         Assert.Equal(2, localData.Opened);
     }
@@ -238,7 +234,6 @@ public sealed class DeletionViewTests
         UiHarness.Flush();
         var unlock = Assert.IsType<UnlockViewModel>(harness.Shell.CurrentPage);
         Assert.NotNull(unlock.DeleteAll);
-        Assert.Equal(UiText.DeleteAllDataIntroUnlock, UiHarness.Descendant<TextBlock>(view, "DeleteAllIntroText").Text);
         Assert.True(File.Exists(data.DatabasePath));
 
         unlock.DeleteAll.OpenCommand.Execute(null);
@@ -290,13 +285,13 @@ public sealed class DeletionViewTests
 
     [AvaloniaFact]
     [Trait("Story", "US-21")]
-    public async Task DeleteAllPanel_FailingDeletion_SaysSoAndStaysOpen()
+    public async Task DeleteAllDialog_FailingDeletion_SaysSoAndStaysOpen()
     {
-        var panel = new DeleteAllDataViewModel(_ => throw new IOException("locked"), null);
+        var panel = new DeleteAllDataViewModel(_ => throw new IOException("locked"));
         await using var harness = UiHarness.Create();
-        var view = new DeleteAllDataPanel { DataContext = panel };
+        var view = new DeleteAllDataDialog { DataContext = panel };
         harness.Show(view);
-        Assert.False(UiHarness.Find<TextBlock>(view, "DeleteAllIntroText").IsVisible);
+        Assert.False(UiHarness.IsShown(UiHarness.Find<Border>(view, "DeleteAllConfirmPanel")));
 
         panel.OpenCommand.Execute(null);
         await panel.ConfirmCommand.ExecuteAsync(null);
@@ -304,6 +299,7 @@ public sealed class DeletionViewTests
 
         Assert.True(panel.IsConfirming);
         Assert.False(panel.IsBusy);
+        Assert.True(UiHarness.IsShown(UiHarness.Find<Border>(view, "DeleteAllConfirmPanel")));
         Assert.Equal(UiText.DeleteAllDataFailed, UiHarness.Find<TextBlock>(view, "DeleteAllErrorText").Text);
         Assert.Equal(UiText.DeleteAllDataConfirm, UiHarness.Find<Button>(view, "DeleteAllConfirmButton").Content);
         Assert.Equal(UiText.CommonCancel, UiHarness.Find<Button>(view, "DeleteAllCancelButton").Content);

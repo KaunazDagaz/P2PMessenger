@@ -4,6 +4,7 @@ using P2PMessenger.Application;
 using P2PMessenger.Application.Contacts;
 using P2PMessenger.Application.LocalData;
 using P2PMessenger.Core.Crypto;
+using P2PMessenger.UI.Controls;
 using P2PMessenger.UI.Resources;
 using P2PMessenger.UI.Services;
 using P2PMessenger.UI.ViewModels;
@@ -70,7 +71,7 @@ public sealed class BackgroundViewTests
 
     [AvaloniaFact]
     [Trait("Story", "US-18")]
-    public async Task AllowBattery_Refused_ExplainsThatMessagesMayBeDelayedAndKeepsWorking()
+    public async Task AllowBattery_Refused_SaysSoAndKeepsWorking()
     {
         var fake = new FakeBackground { IsAllowed = true };
         await using var harness = UiHarness.Create(new InMemoryLocalData(), null, fake.Ports());
@@ -88,8 +89,7 @@ public sealed class BackgroundViewTests
         Assert.False(page.IsExempt);
         Assert.True(page.BatteryRefused);
         Assert.True(UiHarness.Find<TextBlock>(view, "BatteryRefusedText").IsVisible);
-        Assert.Contains("may delay messages while the phone is idle", UiHarness.Find<TextBlock>(view, "BatteryText").Text, StringComparison.Ordinal);
-        Assert.Contains("keeps working", UiText.BackgroundBatteryRefused, StringComparison.Ordinal);
+        Assert.Equal(UiText.BackgroundBatteryRefused, UiHarness.Find<TextBlock>(view, "BatteryRefusedText").Text);
         Assert.True(fake.IsRunning);
         Assert.NotNull(harness.Services.Messenger);
     }
@@ -117,7 +117,7 @@ public sealed class BackgroundViewTests
 
     [AvaloniaFact]
     [Trait("Story", "US-18")]
-    public async Task Restricted_ByAndroid_SaysThatTheAppStopsAndOffersTheSettings()
+    public async Task Restricted_ByAndroid_SaysSoAndOffersTheSettings()
     {
         var fake = new FakeBackground { IsAllowed = true, IsRestricted = true, LiftsRestriction = true };
         await using var harness = UiHarness.Create(new InMemoryLocalData(), null, fake.Ports());
@@ -129,8 +129,6 @@ public sealed class BackgroundViewTests
 
         Assert.True(page.IsRestricted);
         Assert.Equal(UiText.BackgroundRestricted, UiHarness.Find<TextBlock>(view, "BatteryText").Text);
-        Assert.Contains("stops soon after you leave it", UiText.BackgroundRestricted, StringComparison.Ordinal);
-        Assert.DoesNotContain("keeps working", UiText.BackgroundRestricted, StringComparison.Ordinal);
         Assert.True(UiHarness.Find<Button>(view, "OpenSettingsButton").IsVisible);
         Assert.False(UiHarness.Find<Button>(view, "AllowBatteryButton").IsVisible);
 
@@ -254,7 +252,6 @@ public sealed class BackgroundViewTests
 
         Assert.True(ports.Settings.ShowPreviews);
         Assert.Equal("meet at the gate", Assert.Single(fake.Shown).Preview);
-        Assert.Equal(UiText.BackgroundPreviewsHint, UiHarness.Find<TextBlock>(view, "PreviewsHintText").Text);
         await UiHarness.StopPeerAsync(bob);
     }
 
@@ -367,7 +364,7 @@ public sealed class BackgroundViewTests
         UiHarness.Find<Button>(view, "QuitOpenButton").Command!.Execute(null);
         UiHarness.Flush();
         Assert.True(confirm.IsVisible);
-        Assert.Equal(UiText.BackgroundQuitQuestion, UiHarness.Find<TextBlock>(view, "QuitQuestionText").Text);
+        Assert.Equal(UiText.BackgroundQuitQuestion, UiHarness.Find<DialogHeader>(view, "QuitHeader").Title);
         Assert.Equal(UiText.BackgroundQuitWarning, UiHarness.Find<TextBlock>(view, "QuitWarningText").Text);
         UiHarness.Find<Button>(view, "QuitCancelButton").Command!.Execute(null);
         UiHarness.Flush();
@@ -455,6 +452,9 @@ public sealed class BackgroundViewTests
         {
         }
 
+        public void Open(PageViewModel page)
+        {
+        }
         public void Replace(PageViewModel page)
         {
         }

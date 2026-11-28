@@ -40,8 +40,6 @@ public sealed partial class UnlockViewModel : PageViewModel
 
     public bool OffersDeleteAll => DeleteAll is not null;
 
-    public string Intro => AtStart ? UiText.UnlockStartIntro : UiText.UnlockLockedIntro;
-
     public override string Title => UiText.UnlockTitle;
 
     private bool CanUnlock => !IsBusy && !string.IsNullOrEmpty(Passphrase);

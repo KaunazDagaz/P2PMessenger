@@ -72,43 +72,48 @@ public sealed class GroupMembershipViewTests
             .ToList();
         Assert.Single(adminBadges);
 
-        var busyBar = UiHarness.Find<ItemsControl>(view, "MembersItems")
-            .GetVisualDescendants()
-            .OfType<ProgressBar>()
-            .Single(bar => bar.Name == "RemoveMemberBusyBar" && ReferenceEquals(bar.DataContext, carolItem));
-        Assert.True(busyBar.IsIndeterminate);
-        carolItem.IsRemoving = true;
-        UiHarness.Flush();
-        Assert.True(busyBar.IsVisible);
-        carolItem.IsRemoving = false;
-        UiHarness.Flush();
-        Assert.False(busyBar.IsVisible);
-
         Assert.True(page.NeedsSuccessor);
         page.AskLeaveCommand.Execute(null);
         UiHarness.Flush();
         Assert.True(UiHarness.Find<Border>(view, "LeaveGroupPanel").IsVisible);
-        Assert.True(UiHarness.Find<ComboBox>(view, "SuccessorPicker").IsEffectivelyVisible);
+        Assert.True(UiHarness.IsShown(UiHarness.Find<ComboBox>(view, "SuccessorPicker")));
         Assert.Equal(string.Format(CultureInfo.InvariantCulture, LeaveAdminQuestionFormat, "Field team"), UiHarness.Find<TextBlock>(view, "LeaveGroupQuestionText").Text);
         Assert.Equal(2, page.SuccessorCandidates.Count);
         Assert.NotNull(page.SelectedSuccessor);
         page.CancelLeaveCommand.Execute(null);
         UiHarness.Flush();
 
+        Assert.Null(page.RemovingMember);
+        Assert.False(UiHarness.IsShown(UiHarness.Find<StackPanel>(view, "RemoveMemberPanel")));
         carolItem.AskRemoveCommand.Execute(null);
         UiHarness.Flush();
         Assert.True(carolItem.IsConfirmingRemove);
+        Assert.Same(carolItem, page.RemovingMember);
+        Assert.True(UiHarness.IsShown(UiHarness.Find<StackPanel>(view, "RemoveMemberPanel")));
+        Assert.True(UiHarness.IsShown(UiHarness.Find<Border>(view, "MembersPanel")));
         Assert.Equal(string.Format(CultureInfo.InvariantCulture, RemoveQuestionFormat, "Carol", "Field team"), carolItem.RemoveQuestion);
+        Assert.Equal(carolItem.RemoveQuestion, UiHarness.Find<TextBlock>(view, "RemoveMemberQuestionText").Text);
+        var busyBar = UiHarness.Find<ProgressBar>(view, "RemoveMemberBusyBar");
+        Assert.Same(carolItem, busyBar.DataContext);
+        Assert.True(busyBar.IsIndeterminate);
+        Assert.False(busyBar.IsVisible);
+        carolItem.IsRemoving = true;
+        UiHarness.Flush();
+        Assert.True(busyBar.IsVisible);
+        carolItem.IsRemoving = false;
+        UiHarness.Flush();
+        Assert.False(busyBar.IsVisible);
         carolItem.CancelRemoveCommand.Execute(null);
         UiHarness.Flush();
         Assert.False(carolItem.IsConfirmingRemove);
+        Assert.Null(page.RemovingMember);
+        Assert.False(UiHarness.IsShown(UiHarness.Find<StackPanel>(view, "RemoveMemberPanel")));
 
         carolItem.AskRemoveCommand.Execute(null);
         await carolItem.ConfirmRemoveCommand.ExecuteAsync(null);
         UiHarness.Flush();
 
-        Assert.Equal(string.Format(CultureInfo.InvariantCulture, MemberRemovedFormat, "Carol"), page.MembershipNoticeText);
-        Assert.True(UiHarness.Find<Border>(view, "MembershipNoticePanel").IsVisible);
+        Assert.Contains(string.Format(CultureInfo.InvariantCulture, MemberRemovedFormat, "Carol"), harness.ToastTexts);
         Assert.Equal(2, page.Members.Count);
         Assert.False(page.NeedsSuccessor);
         Assert.True(page.CanWrite);
@@ -164,7 +169,7 @@ public sealed class GroupMembershipViewTests
 
         aliceGroupView.AskDeleteChatCommand.Execute(null);
         await aliceGroupView.DeleteChatCommand.ExecuteAsync(null);
-        Assert.Equal(UiText.GroupInactiveChatDeleted, aliceGroupView.DeletedText);
+        Assert.Contains(UiText.GroupInactiveChatDeleted, aliceHarness.ToastTexts);
 
         var aliceContacts = aliceHarness.Shell.Pages.ContactList();
         var aliceListView = new ContactListView { DataContext = aliceContacts };

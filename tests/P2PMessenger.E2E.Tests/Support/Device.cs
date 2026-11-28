@@ -59,6 +59,7 @@ internal sealed class Device : IAsyncDisposable
 
     public bool CanReceivePcCopy { get; init; }
 
+    public double WindowWidth { get; init; } = 880;
     public string? NextQrScan
     {
         get => qrScanner.NextText;
@@ -104,7 +105,7 @@ internal sealed class Device : IAsyncDisposable
             CanReceivePcCopy = CanReceivePcCopy,
         };
         MainViewModel shell = new(services);
-        window = new MainWindow { DataContext = shell, Width = 900, Height = 1000 };
+        window = new MainWindow { DataContext = shell, Width = WindowWidth, Height = 1000 };
         window.Show();
         Settle();
         await shell.StartAsync(CancellationToken.None);
@@ -146,11 +147,8 @@ internal sealed class Device : IAsyncDisposable
         where T : Control =>
         TryNamed<T>(name) ?? throw new InvalidOperationException($"The window of {Name} shows no {typeof(T).Name} named {name}. It shows: {Summary()}");
 
-    public Button? ButtonLabelled(string label) =>
-        Window.GetVisualDescendants().OfType<Button>().FirstOrDefault(button => button.IsEffectivelyVisible && string.Equals(button.Content as string, label, StringComparison.Ordinal));
-
     public Button? ContactButton(string contactName) =>
-        TryNamed<ItemsControl>("ContactItems")?.GetVisualDescendants().OfType<Button>()
+        TryNamed<ItemsControl>("ChatItems")?.GetVisualDescendants().OfType<Button>()
             .FirstOrDefault(button => button.IsEffectivelyVisible && string.Equals(AutomationProperties.GetName(button), contactName, StringComparison.Ordinal));
 
     public Button? CopiedChatButton(string title) =>
@@ -162,7 +160,7 @@ internal sealed class Device : IAsyncDisposable
             .FirstOrDefault(box => box.IsEffectivelyVisible && string.Equals(AutomationProperties.GetName(box), title, StringComparison.Ordinal));
 
     public IReadOnlyList<string> ContactNames() =>
-        [.. Named<ItemsControl>("ContactItems").GetVisualDescendants().OfType<Button>().Select(static button => AutomationProperties.GetName(button)).OfType<string>()];
+        [.. Named<ItemsControl>("ChatItems").GetVisualDescendants().OfType<Button>().Select(static button => AutomationProperties.GetName(button)).OfType<string>()];
 
     public void Click(Control target)
     {

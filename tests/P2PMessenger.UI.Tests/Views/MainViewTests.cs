@@ -98,7 +98,7 @@ public sealed class MainViewTests
     [Trait("Story", "US-02")]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task FirstConnection_OnAnyPage_SaysInOneLineThatTheKeyWasCheckedNotThePerson(bool onAnotherPage)
+    public async Task FirstConnection_OnAnyPage_ShowsTheNoticeThatTheContactIsAdded(bool onAnotherPage)
     {
         await using var harness = await UiHarness.StartAsync("Alice");
         var view = new MainView { DataContext = harness.Shell };
@@ -109,13 +109,13 @@ public sealed class MainViewTests
         }
 
         var bob = await harness.ConnectPeerAsync("Bob");
-        await UiHarness.WaitUntilAsync(() => UiHarness.Find<Border>(view, "NoticePanel").IsVisible);
+        await UiHarness.WaitUntilAsync(() => harness.ToastTexts.Contains("Bob is added."));
 
-        Assert.Equal("Bob is added. The app checked their key, not who they are.", UiHarness.Find<TextBlock>(view, "NoticeText").Text);
+        Assert.Contains("Bob is added.", UiHarness.Texts(view));
         Assert.DoesNotContain(UiHarness.Texts(view), static text => text.Contains("verified", StringComparison.OrdinalIgnoreCase));
-        harness.Shell.DismissNoticeCommand.Execute(null);
+        harness.Services.Toasts.Items.Single().DismissCommand.Execute(null);
         UiHarness.Flush();
-        Assert.False(UiHarness.Find<Border>(view, "NoticePanel").IsVisible);
+        Assert.DoesNotContain("Bob is added.", UiHarness.Texts(view));
         await UiHarness.StopPeerAsync(bob);
         harness.Messenger.Identity.Dispose();
     }

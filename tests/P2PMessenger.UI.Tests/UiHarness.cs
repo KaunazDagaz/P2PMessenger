@@ -38,6 +38,8 @@ internal sealed class UiHarness : IAsyncDisposable
 
     public AppServices Services { get; }
 
+    public IReadOnlyList<string> ToastTexts => [.. Services.Toasts.Items.Select(static toast => toast.Text)];
+
     public FakePlatform Platform { get; }
 
     public MainViewModel Shell { get; }
@@ -141,12 +143,20 @@ internal sealed class UiHarness : IAsyncDisposable
         root.GetVisualDescendants().OfType<T>().FirstOrDefault(control => string.Equals(control.Name, name, StringComparison.Ordinal))
         ?? throw new InvalidOperationException($"No {typeof(T).Name} named {name} below the root.");
 
+    public static bool IsShown(Control control)
+    {
+        ArgumentNullException.ThrowIfNull(control);
+        return control.IsAttachedToVisualTree() && control.IsEffectivelyVisible;
+    }
+
     public static IReadOnlyList<string> Texts(Control root) =>
         [.. root.GetVisualDescendants().OfType<TextBlock>().Where(static block => block.IsEffectivelyVisible).Select(static block => block.Text ?? string.Empty)];
 
-    public Window Show(Control content)
+    public Window Show(Control content) => Show(content, 800, 900);
+
+    public Window Show(Control content, double width, double height)
     {
-        Window window = new() { Content = content, Width = 800, Height = 900 };
+        Window window = new() { Content = content, Width = width, Height = height };
         windows.Add(window);
         window.Show();
         Flush();

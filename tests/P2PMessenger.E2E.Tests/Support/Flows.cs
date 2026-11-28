@@ -101,4 +101,11 @@ internal static class Flows
         device.ClickButton("BackButton");
         await device.WaitForTitleAsync(UiText.ContactListTitle);
     }
+
+    public static async Task ChooseFromMenuAsync(Device device, string itemName)
+    {
+        device.ClickButton("MenuButton");
+        await device.WaitUntilAsync(() => device.TryNamed<Button>(itemName) is not null, $"{device.Name} shows {itemName} in the settings menu");
+        device.ClickButton(itemName);
+    }
 }

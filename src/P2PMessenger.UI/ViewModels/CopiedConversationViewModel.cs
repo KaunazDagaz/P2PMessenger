@@ -68,6 +68,8 @@ public sealed partial class CopiedConversationViewModel : PageViewModel
 
     public override string Title => ChatTitle;
 
+    public CopyOriginId Origin => origin;
+
     public ObservableCollection<CopiedMessageItemViewModel> Messages { get; } = [];
 
     public bool IsDeleteCopyVisible => !IsConfirmingDeleteCopy;

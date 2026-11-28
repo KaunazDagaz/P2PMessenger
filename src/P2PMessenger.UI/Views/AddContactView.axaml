@@ -2,51 +2,80 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:P2PMessenger.UI.ViewModels"
              xmlns:res="using:P2PMessenger.UI.Resources"
+             xmlns:c="using:P2PMessenger.UI.Controls"
              x:Class="P2PMessenger.UI.Views.AddContactView"
              x:DataType="vm:AddContactViewModel">
-    <ScrollViewer>
-        <StackPanel Margin="16" Spacing="8" MaxWidth="640">
-            <TextBlock Text="{x:Static res:UiText.AddContactIntro}" TextWrapping="Wrap" />
-            <TextBlock Text="{x:Static res:UiText.AddContactCodeLabel}" FontWeight="SemiBold" Margin="0,8,0,0" />
-            <TextBox x:Name="CodeBox"
-                     Text="{Binding CodeText}"
-                     PlaceholderText="{x:Static res:UiText.AddContactCodePlaceholder}"
-                     AcceptsReturn="True"
-                     TextWrapping="Wrap"
-                     MinHeight="96"
-                     FontFamily="monospace"
-                     AutomationProperties.Name="{x:Static res:UiText.AddContactCodeLabel}" />
-            <WrapPanel>
-                <Button x:Name="CheckButton" Margin="0,0,8,8" Content="{x:Static res:UiText.AddContactCheck}" Command="{Binding CheckCommand}" />
-                <Button x:Name="OpenFileButton" Margin="0,0,8,8" Content="{x:Static res:UiText.AddContactOpenFile}" Command="{Binding OpenFileCommand}" />
-            </WrapPanel>
-            <ProgressBar x:Name="BusyBar"
-                         IsIndeterminate="True"
-                         IsVisible="{Binding IsBusy}"
-                         AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
-            <TextBlock x:Name="ErrorText"
-                       Text="{Binding ErrorMessage}"
-                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
-                       TextWrapping="Wrap" />
-            <Border x:Name="PreviewPanel"
-                    Padding="12"
-                    BorderThickness="1"
-                    CornerRadius="4"
-                    BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                    IsVisible="{Binding HasPreview}">
-                <StackPanel Spacing="6">
-                    <TextBlock Text="{x:Static res:UiText.AddContactNameLabel}" FontWeight="SemiBold" />
-                    <TextBlock x:Name="PreviewName" Text="{Binding PreviewName}" FontSize="16" />
-                    <TextBlock Text="{x:Static res:UiText.AddContactFingerprintLabel}" FontWeight="SemiBold" />
-                    <SelectableTextBlock x:Name="PreviewFingerprint" Text="{Binding PreviewFingerprint}" FontFamily="monospace" />
-                    <TextBlock x:Name="PreviewHint" Text="{Binding PreviewHint}" TextWrapping="Wrap" />
+    <c:PageContainer>
+        <StackPanel Spacing="16">
+            <Border Classes="card">
+                <StackPanel Spacing="14">
+                    <c:FormField Label="{x:Static res:UiText.AddContactCodeLabel}">
+                        <TextBox x:Name="CodeBox"
+                                 Classes="mono"
+                                 Text="{Binding CodeText}"
+                                 PlaceholderText="{x:Static res:UiText.AddContactCodePlaceholder}"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 MinHeight="104"
+                                 AutomationProperties.Name="{x:Static res:UiText.AddContactCodeLabel}" />
+                    </c:FormField>
+                    <WrapPanel Classes="actions">
+                        <Button x:Name="CheckButton"
+                                Classes="primary iconic"
+                                c:Icons.Glyph="{StaticResource IconShieldCheck}"
+                                Content="{x:Static res:UiText.AddContactCheck}"
+                                Command="{Binding CheckCommand}" />
+                        <Button x:Name="OpenFileButton"
+                                Classes="iconic"
+                                c:Icons.Glyph="{StaticResource IconUpload}"
+                                Content="{x:Static res:UiText.AddContactOpenFile}"
+                                Command="{Binding OpenFileCommand}" />
+                    </WrapPanel>
+                    <ProgressBar x:Name="BusyBar"
+                                 IsIndeterminate="True"
+                                 IsVisible="{Binding IsBusy}"
+                                 AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
+                    <Border Classes="notice danger" IsVisible="{Binding #ErrorText.IsVisible}">
+                        <TextBlock x:Name="ErrorText"
+                                   Text="{Binding ErrorMessage}"
+                                   IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                   TextWrapping="Wrap" />
+                    </Border>
+                </StackPanel>
+            </Border>
+            <Border x:Name="PreviewPanel" Classes="card" IsVisible="{Binding HasPreview}">
+                <StackPanel Spacing="12">
+                    <DockPanel>
+                        <c:Avatar DockPanel.Dock="Left"
+                                  Size="52"
+                                  Margin="0,0,14,0"
+                                  VerticalAlignment="Center"
+                                  DisplayName="{Binding PreviewName}" />
+                        <StackPanel Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Classes="caption" Text="{x:Static res:UiText.AddContactNameLabel}" />
+                            <TextBlock x:Name="PreviewName" Classes="title" Text="{Binding PreviewName}" />
+                        </StackPanel>
+                    </DockPanel>
+                    <TextBlock Classes="caption" Text="{x:Static res:UiText.AddContactFingerprintLabel}" />
+                    <Border Classes="fingerprint">
+                        <SelectableTextBlock x:Name="PreviewFingerprint"
+                                             Classes="mono"
+                                             TextWrapping="Wrap"
+                                             Text="{Binding PreviewFingerprint}" />
+                    </Border>
+                    <TextBlock x:Name="PreviewHint"
+                               Classes="muted"
+                               Text="{Binding PreviewHint}"
+                               IsVisible="{Binding PreviewHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                     <Button x:Name="AddButton"
+                            Classes="primary"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
                             Content="{Binding AddText}"
                             Command="{Binding AddCommand}"
                             IsVisible="{Binding CanAddPreview}" />
                 </StackPanel>
             </Border>
         </StackPanel>
-    </ScrollViewer>
+    </c:PageContainer>
 </UserControl>

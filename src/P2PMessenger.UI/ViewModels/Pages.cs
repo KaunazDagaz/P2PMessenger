@@ -3,7 +3,6 @@ using P2PMessenger.Application.Contacts;
 using P2PMessenger.Application.LocalData;
 using P2PMessenger.Core.Copy;
 using P2PMessenger.Core.Groups;
-using P2PMessenger.UI.Resources;
 using P2PMessenger.UI.Services;
 
 namespace P2PMessenger.UI.ViewModels;
@@ -31,12 +30,12 @@ public sealed class Pages
     private Messenger Messenger => services.Messenger ?? throw new InvalidOperationException("The messenger has not started yet.");
 
     public StorageProblemViewModel StorageProblem(LocalDataProblem problem) =>
-        Own(new StorageProblemViewModel(problem, restart, Own(new DeleteAllDataViewModel(deleteAll, UiText.DeleteAllDataIntroProblem))));
+        Own(new StorageProblemViewModel(problem, restart, Own(new DeleteAllDataViewModel(deleteAll))));
 
     public UnlockViewModel Unlock(bool atStart, Func<string, CancellationToken, Task<bool>> unlock) =>
-        Own(new UnlockViewModel(atStart, unlock, Own(new DeleteAllDataViewModel(deleteAll, UiText.DeleteAllDataIntroUnlock))));
+        Own(new UnlockViewModel(atStart, unlock, Own(new DeleteAllDataViewModel(deleteAll))));
 
-    public DeleteAllDataPageViewModel DeleteAllData() => Own(new DeleteAllDataPageViewModel(Own(new DeleteAllDataViewModel(deleteAll, null, true, navigation.GoBack))));
+    public DeleteAllDataViewModel DeleteAllData() => Own(new DeleteAllDataViewModel(deleteAll));
 
     public CreateIdentityViewModel CreateIdentity() => Own(new CreateIdentityViewModel(services, navigation, this, StorageProblem));
 
@@ -83,6 +82,7 @@ public sealed class Pages
         where T : ViewModelBase
     {
         viewModel.FailureLog = services.FailureLog;
+        viewModel.Toasts = services.Toasts;
         return viewModel;
     }
 }

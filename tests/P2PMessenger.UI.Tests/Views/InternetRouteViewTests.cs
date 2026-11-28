@@ -15,7 +15,7 @@ namespace P2PMessenger.UI.Tests.Views;
 public sealed class InternetRouteViewTests
 {
     [AvaloniaFact]
-    public async Task ContactList_TorNotInTheBuild_SaysTheInternetRouteIsUnavailableAndNearbyMessagingContinues()
+    public async Task ContactList_TorNotInTheBuild_SaysTheInternetRouteIsUnavailable()
     {
         await using var harness = await UiHarness.StartAsync("Alice");
         var page = Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage);
@@ -26,7 +26,7 @@ public sealed class InternetRouteViewTests
         var line = UiHarness.Find<TextBlock>(view, "InternetRouteText");
         Assert.True(line.IsVisible);
         Assert.Equal(UiText.ContactListTorNotInBuild, line.Text);
-        Assert.Contains("Nearby messaging continues", line.Text, StringComparison.Ordinal);
+        Assert.Equal("Internet route unavailable: Tor is not part of this build.", line.Text);
         harness.Messenger.Identity.Dispose();
     }
 
@@ -74,7 +74,7 @@ public sealed class InternetRouteViewTests
     public void Describe_EveryState_GivesItsOwnLine()
     {
         Assert.Equal(UiText.ContactListTorConnected, InternetRouteLines.Describe(new InternetRouteStatus(InternetRouteState.Connected, 100, InternetRouteProblem.None, true)));
-        Assert.Equal("Connecting to Tor (45 %). Nearby messaging works meanwhile.", InternetRouteLines.Describe(new InternetRouteStatus(InternetRouteState.Starting, 45, InternetRouteProblem.None, false)));
+        Assert.Equal("Connecting to Tor (45 %).", InternetRouteLines.Describe(new InternetRouteStatus(InternetRouteState.Starting, 45, InternetRouteProblem.None, false)));
         Assert.Equal(UiText.ContactListTorNotInBuild, InternetRouteLines.Describe(InternetRouteStatus.NotInBuild));
     }
 
@@ -84,12 +84,11 @@ public sealed class InternetRouteViewTests
     [InlineData(InternetRouteProblem.CannotReachTor, nameof(UiText.ContactListTorCannotReach))]
     [InlineData(InternetRouteProblem.TorFailed, nameof(UiText.ContactListTorFailed))]
     [InlineData(InternetRouteProblem.TorStopped, nameof(UiText.ContactListTorStopped))]
-    public void Describe_Unavailable_SaysWhyAndThatNearbyMessagingContinues(InternetRouteProblem problem, string resource)
+    public void Describe_Unavailable_SaysWhy(InternetRouteProblem problem, string resource)
     {
         var line = InternetRouteLines.Describe(new InternetRouteStatus(InternetRouteState.Unavailable, 10, problem, false));
 
         Assert.Equal(UiText.ResourceManager.GetString(resource, UiText.Culture), line);
         Assert.StartsWith("Internet route unavailable: ", line, StringComparison.Ordinal);
-        Assert.Contains("earby messaging continues", line, StringComparison.Ordinal);
     }
 }

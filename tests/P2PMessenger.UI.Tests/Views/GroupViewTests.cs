@@ -71,8 +71,8 @@ public sealed class GroupViewTests
         conversation.Draft = "Meet at six";
         await conversation.SendCommand.ExecuteAsync(null);
         await UiHarness.WaitUntilAsync(() => conversation.Messages.Count == 1 && conversation.Messages[0].StateText == "Received by 2 of 2 members' apps");
-        conversation.Messages[0].ToggleExplanationCommand.Execute(null);
-        Assert.Equal(UiText.GroupDeliveryReceivedExplanation, conversation.Messages[0].StateExplanation);
+        conversation.Messages[0].ToggleDetailsCommand.Execute(null);
+        Assert.True(conversation.Messages[0].IsDetailsShown);
 
         Assert.Equal(GroupSendOutcome.Queued, (await bob.SendToGroupAsync(conversation.GroupId, "On my way", CancellationToken.None)).Outcome);
         await UiHarness.WaitUntilAsync(() => conversation.Messages.Count == 2);
@@ -101,7 +101,7 @@ public sealed class GroupViewTests
         harness.Shell.Push(list);
         harness.Show(listView);
         await UiHarness.WaitUntilAsync(() => list.Groups.Count == 1);
-        Assert.True(UiHarness.Find<TextBlock>(listView, "GroupsHeading").IsVisible);
+        Assert.Contains(list.Chats, static chat => chat is GroupItemViewModel);
         Assert.Equal(UiText.GroupItemJoining, list.Groups[0].StateText);
 
         list.Groups[0].OpenCommand.Execute(null);
@@ -261,12 +261,11 @@ public sealed class GroupViewTests
         await UiHarness.WaitUntilAsync(() => conversation.Messages.Count == 1 && conversation.Messages[0].StateText == "Received by 1 of 2 members' apps");
 
         var item = Assert.Single(conversation.Messages);
-        item.ToggleExplanationCommand.Execute(null);
+        item.ToggleDetailsCommand.Execute(null);
         UiHarness.Flush();
 
-        Assert.True(item.IsExplanationShown);
+        Assert.True(item.IsDetailsShown);
         Assert.Equal(["Bob: Received by their app", "Carol: Waiting"], item.MemberDeliveries.Select(static member => member.SummaryText));
-        Assert.Equal(UiText.GroupDeliveryReceivedExplanation, item.StateExplanation);
         Assert.DoesNotContain("read", item.StateText!, StringComparison.OrdinalIgnoreCase);
         Assert.All(item.MemberDeliveries, static member => Assert.DoesNotContain("read", member.StatusText, StringComparison.OrdinalIgnoreCase));
         Assert.Contains("Bob: Received by their app", UiHarness.Texts(conversationView));
@@ -337,10 +336,9 @@ public sealed class GroupViewTests
         Assert.Empty(incoming.MemberDeliveries);
         Assert.Null(incoming.StateText);
 
-        outgoing.ToggleExplanationCommand.Execute(null);
+        outgoing.ToggleDetailsCommand.Execute(null);
         UiHarness.Flush();
         Assert.Equal(UiText.DeliveryWaiting, outgoing.StateText);
-        Assert.Equal(UiText.GroupDeliveryWaitingExplanation, outgoing.StateExplanation);
         Assert.DoesNotContain("read", outgoing.StateText!, StringComparison.OrdinalIgnoreCase);
         Assert.All(outgoing.MemberDeliveries, static member => Assert.DoesNotContain("read", member.StatusText, StringComparison.OrdinalIgnoreCase));
         Assert.Equal(["Bob: Waiting", "Carol: Waiting"], outgoing.MemberDeliveries.Select(static member => member.SummaryText));

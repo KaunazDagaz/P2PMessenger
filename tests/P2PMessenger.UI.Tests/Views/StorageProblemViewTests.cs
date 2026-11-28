@@ -60,7 +60,7 @@ public sealed class StorageProblemViewTests
 
         Assert.IsType<CreateIdentityViewModel>(harness.Shell.CurrentPage);
         Assert.Equal(3, localData.Opened);
-        Assert.False(UiHarness.Find<Border>(view, "NoticePanel").IsVisible);
+        Assert.Empty(harness.Services.Toasts.Items);
     }
 
     [AvaloniaFact]
@@ -91,8 +91,10 @@ public sealed class StorageProblemViewTests
         UiHarness.Flush();
 
         Assert.IsType<CreateIdentityViewModel>(harness.Shell.CurrentPage);
-        Assert.True(UiHarness.Find<Border>(view, "NoticePanel").IsVisible);
-        Assert.Equal(UiText.StorageMemoryOnly, UiHarness.Find<TextBlock>(view, "NoticeText").Text);
+        var toast = Assert.Single(harness.Services.Toasts.Items);
+        Assert.Equal(UiText.StorageMemoryOnly, toast.Text);
+        Assert.True(toast.IsSticky);
+        Assert.Contains(UiText.StorageMemoryOnly, UiHarness.Texts(view));
     }
 
     [AvaloniaFact]
@@ -105,6 +107,6 @@ public sealed class StorageProblemViewTests
         await harness.Shell.StartAsync(CancellationToken.None);
         UiHarness.Flush();
 
-        Assert.False(UiHarness.Find<Border>(view, "NoticePanel").IsVisible);
+        Assert.Empty(harness.Services.Toasts.Items);
     }
 }

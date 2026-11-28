@@ -1,0 +1,38 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:P2PMessenger.UI.ViewModels"
+             xmlns:res="using:P2PMessenger.UI.Resources"
+             xmlns:c="using:P2PMessenger.UI.Controls"
+             x:Class="P2PMessenger.UI.Views.DeleteAllDataDialog"
+             x:DataType="vm:DeleteAllDataViewModel">
+    <c:Dialog IsOpen="{Binding IsConfirming}" CancelCommand="{Binding CancelCommand}">
+        <Border x:Name="DeleteAllConfirmPanel" IsVisible="{Binding IsConfirming}">
+            <StackPanel Spacing="14">
+                <c:DialogHeader Classes="danger"
+                                Glyph="{StaticResource IconTrash}"
+                                Title="{x:Static res:UiText.DeleteAllDataTitle}" />
+                <TextBlock x:Name="DeleteAllWarningText" Text="{x:Static res:UiText.DeleteAllDataWarning}" TextWrapping="Wrap" />
+                <TextBlock x:Name="DeleteAllBusyText" Classes="caption" Text="{x:Static res:UiText.DeleteAllDataDeleting}" IsVisible="{Binding IsBusy}" />
+                <ProgressBar x:Name="DeleteAllBusyBar"
+                             IsIndeterminate="True"
+                             IsVisible="{Binding IsBusy}"
+                             AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
+                <TextBlock x:Name="DeleteAllErrorText"
+                           Classes="error"
+                           Text="{Binding ErrorMessage}"
+                           IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           TextWrapping="Wrap" />
+                <StackPanel Classes="dialogActions">
+                    <Button x:Name="DeleteAllCancelButton"
+                            Content="{x:Static res:UiText.CommonCancel}"
+                            Command="{Binding CancelCommand}" />
+                    <Button x:Name="DeleteAllConfirmButton"
+                            Classes="danger iconic"
+                            c:Icons.Glyph="{StaticResource IconTrash}"
+                            Content="{x:Static res:UiText.DeleteAllDataConfirm}"
+                            Command="{Binding ConfirmCommand}" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </c:Dialog>
+</UserControl>

@@ -7,6 +7,9 @@ using P2PMessenger.Application.Connections;
 using P2PMessenger.Application.Contacts;
 using P2PMessenger.Application.Copy;
 using P2PMessenger.Application.Groups;
+using P2PMessenger.Core.Copy;
+using P2PMessenger.Core.Crypto;
+using P2PMessenger.Core.Groups;
 using P2PMessenger.UI.Resources;
 using P2PMessenger.UI.Services;
 
@@ -20,6 +23,7 @@ public sealed partial class ContactListViewModel : PageViewModel
     private readonly Pages pages;
     private readonly Func<bool, CancellationToken, Task>? setTor;
     private readonly TimeZoneInfo timeZone;
+    private object? selection;
 
     [ObservableProperty]
     private bool isEmpty = true;
@@ -52,6 +56,9 @@ public sealed partial class ContactListViewModel : PageViewModel
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SwitchTorCommand))]
     private bool isSwitchingTor;
+
+    [ObservableProperty]
+    private bool isMenuOpen;
 
     public ContactListViewModel(Messenger messenger, IUiThread uiThread, INavigationService navigation, Pages pages, bool offersPassphrase)
         : this(messenger, uiThread, navigation, pages, offersPassphrase, false, null, false, false)
@@ -110,10 +117,13 @@ public sealed partial class ContactListViewModel : PageViewModel
         OffersBackground = offersBackground;
         OffersSendPcCopy = offersSendPcCopy;
         OffersReceivePcCopy = offersReceivePcCopy;
+        DeleteAll = pages.DeleteAllData();
         Refresh();
     }
 
     public override string Title => UiText.ContactListTitle;
+
+    public DeleteAllDataViewModel DeleteAll { get; }
 
     public bool OffersPassphrase { get; }
 
@@ -129,13 +139,11 @@ public sealed partial class ContactListViewModel : PageViewModel
 
     public ObservableCollection<GroupItemViewModel> Groups { get; } = [];
 
+    public ObservableCollection<IChatItem> Chats { get; } = [];
+
     public ObservableCollection<CopiedChatItemViewModel> CopiedChats { get; } = [];
 
-    public bool HasGroups => Groups.Count > 0;
-
     public bool HasCopiedChats => CopiedChats.Count > 0;
-
-    public bool ShowContactsHeading => (HasGroups || HasCopiedChats) && Contacts.Count > 0;
 
     public override void OnShown()
     {
@@ -151,6 +159,7 @@ public sealed partial class ContactListViewModel : PageViewModel
 
     public override void OnHidden()
     {
+        IsMenuOpen = false;
         messenger.Contacts.Changed -= OnContactChanged;
         messenger.Chats.Changed -= OnChatChanged;
         messenger.Connections.Changed -= OnConnectionChanged;
@@ -161,43 +170,73 @@ public sealed partial class ContactListViewModel : PageViewModel
     }
 
     [RelayCommand]
-    private void AddInPerson() => navigation.Push(pages.AddInPerson());
+    private void AddInPerson() => navigation.Open(pages.AddInPerson());
 
     [RelayCommand]
-    private void AddContact() => navigation.Push(pages.AddContact());
+    private void AddContact() => navigation.Open(pages.AddContact());
 
     [RelayCommand]
-    private void MyCode() => navigation.Push(pages.Profile());
+    private void MyCode() => navigation.Open(pages.Profile());
 
     [RelayCommand]
-    private void NewGroup() => navigation.Push(pages.NewGroup());
+    private void NewGroup() => navigation.Open(pages.NewGroup());
 
     [RelayCommand]
-    private void SendPcCopy() => navigation.Push(pages.SendCopy());
+    private void OpenMenu() => IsMenuOpen = true;
 
     [RelayCommand]
-    private void ReceivePcCopy() => navigation.Push(pages.ReceiveCopy());
+    private void CloseMenu() => IsMenuOpen = false;
 
     [RelayCommand]
-    private void Network() => navigation.Push(pages.Network());
+    private void SendPcCopy()
+    {
+        IsMenuOpen = false;
+        navigation.Open(pages.SendCopy());
+    }
 
     [RelayCommand]
-    private void Passphrase() => navigation.Push(pages.Passphrase());
+    private void ReceivePcCopy()
+    {
+        IsMenuOpen = false;
+        navigation.Open(pages.ReceiveCopy());
+    }
 
     [RelayCommand]
-    private void Background() => navigation.Push(pages.Background(false));
+    private void Network()
+    {
+        IsMenuOpen = false;
+        navigation.Open(pages.Network());
+    }
+
+    [RelayCommand]
+    private void Passphrase()
+    {
+        IsMenuOpen = false;
+        navigation.Open(pages.Passphrase());
+    }
+
+    [RelayCommand]
+    private void Background()
+    {
+        IsMenuOpen = false;
+        navigation.Open(pages.Background(false));
+    }
 
     [RelayCommand]
     private void ClearSearch() => SearchText = string.Empty;
 
     [RelayCommand]
-    private void DeleteAllData() => navigation.Push(pages.DeleteAllData());
+    private void DeleteAllData()
+    {
+        IsMenuOpen = false;
+        DeleteAll.OpenCommand.Execute(null);
+    }
 
-    private void Open(Contact contact) => navigation.Push(pages.Conversation(contact));
+    private void Open(Contact contact) => navigation.Open(pages.Conversation(contact));
 
-    private void OpenGroup(Group group) => navigation.Push(pages.GroupConversation(group.Id));
+    private void OpenGroup(Group group) => navigation.Open(pages.GroupConversation(group.Id));
 
-    private void OpenCopiedChat(CopiedConversation conversation) => navigation.Push(pages.CopiedConversation(conversation.Origin));
+    private void OpenCopiedChat(CopiedConversation conversation) => navigation.Open(pages.CopiedConversation(conversation.Origin));
 
     private void OnGroupChanged(object? sender, GroupChangedEventArgs e) => uiThread.Post(Refresh);
 
@@ -238,6 +277,24 @@ public sealed partial class ContactListViewModel : PageViewModel
         }
     }
 
+    public void SetSelection(PageViewModel? open)
+    {
+        object? selected = open switch
+        {
+            ConversationViewModel conversation => conversation.ContactKey,
+            GroupConversationViewModel group => group.GroupId,
+            CopiedConversationViewModel copied => copied.Origin,
+            _ => null,
+        };
+        if (Equals(selected, selection))
+        {
+            return;
+        }
+
+        selection = selected;
+        RefreshContacts();
+    }
+
     private void RefreshInternetRoute()
     {
         InternetRouteText = InternetRouteLines.Describe(messenger.InternetRoute.Status);
@@ -261,7 +318,7 @@ public sealed partial class ContactListViewModel : PageViewModel
         {
             if (filter.Length == 0 || group.Name.Value.Contains(filter, StringComparison.CurrentCultureIgnoreCase))
             {
-                Groups.Add(new GroupItemViewModel(group, messenger, OpenGroup));
+                Groups.Add(new GroupItemViewModel(group, messenger, OpenGroup) { IsSelected = selection is GroupId selectedGroup && selectedGroup.Equals(group.Id) });
             }
         }
 
@@ -271,7 +328,7 @@ public sealed partial class ContactListViewModel : PageViewModel
         {
             if (filter.Length == 0 || contact.Name.Value.Contains(filter, StringComparison.CurrentCultureIgnoreCase))
             {
-                Contacts.Add(new ContactItemViewModel(contact, messenger, Open));
+                Contacts.Add(new ContactItemViewModel(contact, messenger, Open) { IsSelected = selection is Ed25519PublicKey selectedContact && selectedContact.Equals(contact.IdentityKey) });
             }
         }
 
@@ -281,13 +338,19 @@ public sealed partial class ContactListViewModel : PageViewModel
         {
             if (filter.Length == 0 || copied.Title.Value.Contains(filter, StringComparison.CurrentCultureIgnoreCase))
             {
-                CopiedChats.Add(new CopiedChatItemViewModel(copied, timeZone, OpenCopiedChat));
+                CopiedChats.Add(new CopiedChatItemViewModel(copied, timeZone, OpenCopiedChat) { IsSelected = selection is CopyOriginId selectedCopy && selectedCopy.Equals(copied.Origin) });
             }
         }
 
-        OnPropertyChanged(nameof(HasGroups));
+        Chats.Clear();
+        foreach (IChatItem chat in Groups.Cast<IChatItem>().Concat(Contacts)
+            .OrderByDescending(static chat => chat.LastActivity ?? DateTimeOffset.MinValue)
+            .ThenBy(static chat => chat.Name, StringComparer.CurrentCultureIgnoreCase))
+        {
+            Chats.Add(chat);
+        }
+
         OnPropertyChanged(nameof(HasCopiedChats));
-        OnPropertyChanged(nameof(ShowContactsHeading));
         HasContacts = all.Count > 0;
         HasSearchableItems = all.Count + groups.Count + copiedAll.Count > 0;
         IsEmpty = !HasSearchableItems;

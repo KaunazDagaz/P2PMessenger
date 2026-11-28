@@ -2,59 +2,82 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:P2PMessenger.UI.ViewModels"
              xmlns:res="using:P2PMessenger.UI.Resources"
+             xmlns:c="using:P2PMessenger.UI.Controls"
              x:Class="P2PMessenger.UI.Views.PassphraseView"
              x:DataType="vm:PassphraseViewModel">
-    <ScrollViewer>
-        <StackPanel Margin="16" Spacing="12" MaxWidth="560" HorizontalAlignment="Stretch">
-            <TextBlock x:Name="StateText" Text="{Binding StateText}" TextWrapping="Wrap" />
-            <StackPanel Spacing="8" IsVisible="{Binding IsSet}">
-                <TextBlock Text="{x:Static res:UiText.PassphraseCurrentLabel}" FontWeight="SemiBold" />
-                <TextBox x:Name="CurrentBox"
-                         Text="{Binding CurrentPassphrase}"
-                         PasswordChar="•"
-                         AutomationProperties.Name="{x:Static res:UiText.PassphraseCurrentLabel}" />
+    <c:PageContainer ContentMaxWidth="608">
+        <StackPanel Spacing="16">
+            <Border Classes="notice">
+                <DockPanel>
+                    <c:Icon DockPanel.Dock="Left"
+                            Classes="accent"
+                            Margin="0,0,10,0"
+                            VerticalAlignment="Top"
+                            Data="{StaticResource IconShieldCheck}" />
+                    <TextBlock x:Name="StateText" Text="{Binding StateText}" TextWrapping="Wrap" />
+                </DockPanel>
+            </Border>
+            <Border Classes="card">
+                <StackPanel Spacing="16">
+                    <c:FormField Label="{x:Static res:UiText.PassphraseCurrentLabel}" IsVisible="{Binding IsSet}">
+                        <TextBox x:Name="CurrentBox"
+                                 Text="{Binding CurrentPassphrase}"
+                                 PasswordChar="•"
+                                 AutomationProperties.Name="{x:Static res:UiText.PassphraseCurrentLabel}" />
+                    </c:FormField>
+                    <c:FormField Label="{x:Static res:UiText.PassphraseNewLabel}">
+                        <TextBox x:Name="NewBox"
+                                 Text="{Binding NewPassphrase}"
+                                 PasswordChar="•"
+                                 AutomationProperties.Name="{x:Static res:UiText.PassphraseNewLabel}" />
+                    </c:FormField>
+                    <c:FormField Label="{x:Static res:UiText.PassphraseRepeatLabel}">
+                        <TextBox x:Name="RepeatBox"
+                                 Text="{Binding RepeatedPassphrase}"
+                                 PasswordChar="•"
+                                 AutomationProperties.Name="{x:Static res:UiText.PassphraseRepeatLabel}" />
+                    </c:FormField>
+                    <TextBlock x:Name="HintText" Classes="caption" Text="{x:Static vm:PassphraseViewModel.Hint}" />
+                    <Button x:Name="SetButton"
+                            Classes="primary"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Content="{x:Static res:UiText.PassphraseSet}"
+                            Command="{Binding SetCommand}"
+                            IsVisible="{Binding IsNotSet}" />
+                    <Button x:Name="ChangeButton"
+                            Classes="primary"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Content="{x:Static res:UiText.PassphraseChange}"
+                            Command="{Binding ChangeCommand}"
+                            IsVisible="{Binding IsSet}" />
+                </StackPanel>
+            </Border>
+            <TextBlock x:Name="ForgottenText"
+                       Classes="caption"
+                       Text="{x:Static res:UiText.PassphraseForgotten}"
+                       TextWrapping="Wrap"
+                       IsVisible="{Binding IsSet}" />
+            <Button x:Name="RemoveButton"
+                    Classes="danger"
+                    HorizontalAlignment="Left"
+                    Content="{x:Static res:UiText.PassphraseRemove}"
+                    Command="{Binding RemoveCommand}"
+                    IsVisible="{Binding CanOfferRemove}" />
+            <StackPanel Spacing="6" IsVisible="{Binding IsBusy}">
+                <TextBlock x:Name="BusyText" Classes="caption centered" Text="{x:Static res:UiText.PassphraseSaving}" IsVisible="{Binding IsBusy}" />
+                <ProgressBar x:Name="BusyBar"
+                             IsIndeterminate="True"
+                             IsVisible="{Binding IsBusy}"
+                             AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
             </StackPanel>
-            <TextBlock Text="{x:Static res:UiText.PassphraseNewLabel}" FontWeight="SemiBold" />
-            <TextBox x:Name="NewBox"
-                     Text="{Binding NewPassphrase}"
-                     PasswordChar="•"
-                     AutomationProperties.Name="{x:Static res:UiText.PassphraseNewLabel}" />
-            <TextBlock Text="{x:Static res:UiText.PassphraseRepeatLabel}" FontWeight="SemiBold" />
-            <TextBox x:Name="RepeatBox"
-                     Text="{Binding RepeatedPassphrase}"
-                     PasswordChar="•"
-                     AutomationProperties.Name="{x:Static res:UiText.PassphraseRepeatLabel}" />
-            <TextBlock x:Name="HintText" Text="{x:Static vm:PassphraseViewModel.Hint}" TextWrapping="Wrap" />
-            <Button x:Name="SetButton"
-                    Content="{x:Static res:UiText.PassphraseSet}"
-                    Command="{Binding SetCommand}"
-                    IsVisible="{Binding IsNotSet}" />
-            <Button x:Name="ChangeButton"
-                    Content="{x:Static res:UiText.PassphraseChange}"
-                    Command="{Binding ChangeCommand}"
-                    IsVisible="{Binding IsSet}" />
-            <TextBlock x:Name="ChangeNoteText" Text="{x:Static res:UiText.PassphraseChangeNote}" TextWrapping="Wrap" IsVisible="{Binding IsSet}" />
-            <StackPanel Spacing="8" IsVisible="{Binding CanOfferRemove}">
-                <TextBlock x:Name="RemoveWarningText" Text="{x:Static res:UiText.PassphraseRemoveWarning}" TextWrapping="Wrap" />
-                <Button x:Name="RemoveButton"
-                        Content="{x:Static res:UiText.PassphraseRemove}"
-                        Command="{Binding RemoveCommand}" />
-            </StackPanel>
-            <TextBlock x:Name="BusyText" Text="{x:Static res:UiText.PassphraseSaving}" IsVisible="{Binding IsBusy}" />
-            <ProgressBar x:Name="BusyBar"
-                         IsIndeterminate="True"
-                         IsVisible="{Binding IsBusy}"
-                         AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
-            <TextBlock x:Name="StatusText"
-                       Text="{Binding StatusMessage}"
-                       IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                       TextWrapping="Wrap" />
-            <TextBlock x:Name="ErrorText"
-                       Text="{Binding ErrorMessage}"
-                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
-                       TextWrapping="Wrap" />
-            <TextBlock x:Name="ForgottenText" Text="{x:Static res:UiText.PassphraseForgotten}" TextWrapping="Wrap" IsVisible="{Binding IsSet}" />
+            <Border Classes="notice danger" IsVisible="{Binding #ErrorText.IsVisible}">
+                <TextBlock x:Name="ErrorText"
+                           Text="{Binding ErrorMessage}"
+                           IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           TextWrapping="Wrap" />
+            </Border>
         </StackPanel>
-    </ScrollViewer>
+    </c:PageContainer>
 </UserControl>

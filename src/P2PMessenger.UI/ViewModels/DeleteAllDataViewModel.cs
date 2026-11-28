@@ -8,10 +8,8 @@ namespace P2PMessenger.UI.ViewModels;
 public sealed partial class DeleteAllDataViewModel : ViewModelBase
 {
     private readonly Func<CancellationToken, Task<bool>> deleteAll;
-    private readonly Action? cancelled;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsOpenVisible))]
     private bool isConfirming;
 
     [ObservableProperty]
@@ -21,26 +19,12 @@ public sealed partial class DeleteAllDataViewModel : ViewModelBase
     [ObservableProperty]
     private string? errorMessage;
 
-    public DeleteAllDataViewModel(Func<CancellationToken, Task<bool>> deleteAll, string? intro)
-        : this(deleteAll, intro, false, null)
-    {
-    }
-
-    public DeleteAllDataViewModel(Func<CancellationToken, Task<bool>> deleteAll, string? intro, bool confirming, Action? cancelled)
+    public DeleteAllDataViewModel(Func<CancellationToken, Task<bool>> deleteAll)
     {
         ArgumentNullException.ThrowIfNull(deleteAll);
 
         this.deleteAll = deleteAll;
-        this.cancelled = cancelled;
-        Intro = intro;
-        isConfirming = confirming;
     }
-
-    public string? Intro { get; }
-
-    public bool HasIntro => Intro is not null;
-
-    public bool IsOpenVisible => !IsConfirming;
 
     private bool IsIdle => !IsBusy;
 
@@ -55,12 +39,6 @@ public sealed partial class DeleteAllDataViewModel : ViewModelBase
     private void Cancel()
     {
         ErrorMessage = null;
-        if (cancelled is not null)
-        {
-            cancelled();
-            return;
-        }
-
         IsConfirming = false;
     }
 

@@ -1,0 +1,77 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+            <SolidColorBrush x:Key="AppBackgroundBrush" Color="#F3F5F9" />
+            <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="SurfaceAltBrush" Color="#EDF0F6" />
+            <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#F6F8FC" />
+            <SolidColorBrush x:Key="OutlineBrush" Color="#DCE1EA" />
+            <SolidColorBrush x:Key="TextPrimaryBrush" Color="#0F172A" />
+            <SolidColorBrush x:Key="TextMutedBrush" Color="#586174" />
+            <SolidColorBrush x:Key="AccentBrush" Color="#2F5BEA" />
+            <SolidColorBrush x:Key="AccentHoverBrush" Color="#2449C8" />
+            <SolidColorBrush x:Key="AccentPressedBrush" Color="#1D3BA3" />
+            <SolidColorBrush x:Key="AccentSoftBrush" Color="#E8EEFF" />
+            <SolidColorBrush x:Key="AccentTextBrush" Color="#2449C8" />
+            <SolidColorBrush x:Key="OnAccentBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="SuccessBrush" Color="#22A05A" />
+            <SolidColorBrush x:Key="SuccessSoftBrush" Color="#E4F5EA" />
+            <SolidColorBrush x:Key="SuccessTextBrush" Color="#166534" />
+            <SolidColorBrush x:Key="WarningBrush" Color="#E8A317" />
+            <SolidColorBrush x:Key="WarningSoftBrush" Color="#FFF2DC" />
+            <SolidColorBrush x:Key="WarningTextBrush" Color="#8A4B08" />
+            <SolidColorBrush x:Key="DangerBrush" Color="#D92D20" />
+            <SolidColorBrush x:Key="DangerSoftBrush" Color="#FDECEA" />
+            <SolidColorBrush x:Key="DangerTextBrush" Color="#B42318" />
+            <SolidColorBrush x:Key="BubbleOwnBrush" Color="#2F5BEA" />
+            <SolidColorBrush x:Key="BubbleOwnTextBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="BubbleTheirsBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="DisabledTextBrush" Color="#8B93A3" />
+            <SolidColorBrush x:Key="ScrimBrush" Color="#8C0B1220" />
+            <BoxShadows x:Key="CardShadow">0 1 2 0 #14101828, 0 4 14 0 #0C101828</BoxShadows>
+            <BoxShadows x:Key="DialogShadow">0 8 32 0 #33101828, 0 2 8 0 #1A101828</BoxShadows>
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+            <SolidColorBrush x:Key="AppBackgroundBrush" Color="#0E131B" />
+            <SolidColorBrush x:Key="SurfaceBrush" Color="#171E29" />
+            <SolidColorBrush x:Key="SurfaceAltBrush" Color="#1F2835" />
+            <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#1C2431" />
+            <SolidColorBrush x:Key="OutlineBrush" Color="#2B3545" />
+            <SolidColorBrush x:Key="TextPrimaryBrush" Color="#E7ECF4" />
+            <SolidColorBrush x:Key="TextMutedBrush" Color="#A0ABBD" />
+            <SolidColorBrush x:Key="AccentBrush" Color="#3B66F0" />
+            <SolidColorBrush x:Key="AccentHoverBrush" Color="#4D75F5" />
+            <SolidColorBrush x:Key="AccentPressedBrush" Color="#2F5BEA" />
+            <SolidColorBrush x:Key="AccentSoftBrush" Color="#1C2750" />
+            <SolidColorBrush x:Key="AccentTextBrush" Color="#9DB5FF" />
+            <SolidColorBrush x:Key="OnAccentBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="SuccessBrush" Color="#2FBF71" />
+            <SolidColorBrush x:Key="SuccessSoftBrush" Color="#12301F" />
+            <SolidColorBrush x:Key="SuccessTextBrush" Color="#6EE7A0" />
+            <SolidColorBrush x:Key="WarningBrush" Color="#E0A526" />
+            <SolidColorBrush x:Key="WarningSoftBrush" Color="#352610" />
+            <SolidColorBrush x:Key="WarningTextBrush" Color="#FBBF4D" />
+            <SolidColorBrush x:Key="DangerBrush" Color="#F04438" />
+            <SolidColorBrush x:Key="DangerSoftBrush" Color="#3A1816" />
+            <SolidColorBrush x:Key="DangerTextBrush" Color="#FF9A90" />
+            <SolidColorBrush x:Key="BubbleOwnBrush" Color="#3B66F0" />
+            <SolidColorBrush x:Key="BubbleOwnTextBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="BubbleTheirsBrush" Color="#222B39" />
+            <SolidColorBrush x:Key="DisabledTextBrush" Color="#6B7586" />
+            <SolidColorBrush x:Key="ScrimBrush" Color="#B3000000" />
+            <BoxShadows x:Key="CardShadow">0 1 2 0 #40000000</BoxShadows>
+            <BoxShadows x:Key="DialogShadow">0 8 32 0 #99000000</BoxShadows>
+        </ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
+
+    <CornerRadius x:Key="RadiusSmall">8</CornerRadius>
+    <CornerRadius x:Key="RadiusMedium">10</CornerRadius>
+    <CornerRadius x:Key="RadiusLarge">16</CornerRadius>
+    <CornerRadius x:Key="RadiusBubble">16</CornerRadius>
+    <x:Double x:Key="FontSizeCaption">12</x:Double>
+    <x:Double x:Key="FontSizeBody">14</x:Double>
+    <x:Double x:Key="FontSizeHeading">16</x:Double>
+    <x:Double x:Key="FontSizeTitle">22</x:Double>
+    <x:Double x:Key="FontSizeHero">28</x:Double>
+</ResourceDictionary>

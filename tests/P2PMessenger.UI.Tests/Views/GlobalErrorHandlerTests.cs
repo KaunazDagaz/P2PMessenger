@@ -22,13 +22,15 @@ public sealed class GlobalErrorHandlerTests
         harness.Show(view);
         var log = new CapturingLogger();
         var handler = new GlobalErrorHandler(log, new AvaloniaUiThread(), harness.Shell.ShowUnexpectedError);
-        Assert.False(UiHarness.Find<Border>(view, "ErrorNoticePanel").IsVisible);
+        Assert.Empty(harness.Services.Toasts.Items);
 
         Assert.True(handler.Handle(new InvalidOperationException("Bob P2PM1-SECRET"), FailureSource.UiThread));
         UiHarness.Flush();
 
-        Assert.True(UiHarness.Find<Border>(view, "ErrorNoticePanel").IsVisible);
-        Assert.Equal(UiText.AppUnexpectedError, UiHarness.Find<TextBlock>(view, "ErrorNoticeText").Text);
+        var toast = Assert.Single(harness.Services.Toasts.Items);
+        Assert.True(toast.IsError);
+        Assert.Equal(UiText.AppUnexpectedError, toast.Text);
+        Assert.Contains(UiText.AppUnexpectedError, UiHarness.Texts(view));
         var entry = Assert.Single(log.Entries);
         Assert.Equal(LogLevel.Error, entry.Level);
         Assert.Contains("System.InvalidOperationException", entry.Message, StringComparison.Ordinal);
@@ -36,10 +38,11 @@ public sealed class GlobalErrorHandlerTests
         Assert.DoesNotContain("SECRET", entry.Message, StringComparison.Ordinal);
         Assert.Null(entry.Exception);
 
-        harness.Shell.DismissErrorNoticeCommand.Execute(null);
+        toast.DismissCommand.Execute(null);
         UiHarness.Flush();
 
-        Assert.False(UiHarness.Find<Border>(view, "ErrorNoticePanel").IsVisible);
+        Assert.Empty(harness.Services.Toasts.Items);
+        Assert.DoesNotContain(UiText.AppUnexpectedError, UiHarness.Texts(view));
         harness.Messenger.Identity.Dispose();
     }
 
@@ -56,7 +59,7 @@ public sealed class GlobalErrorHandlerTests
         var entry = Assert.Single(log.Entries);
         Assert.Contains("System.TimeoutException", entry.Message, StringComparison.Ordinal);
         Assert.DoesNotContain("Bob", entry.Message, StringComparison.Ordinal);
-        Assert.NotNull(harness.Shell.ErrorNotice);
+        Assert.NotEmpty(harness.Services.Toasts.Items);
         harness.Messenger.Identity.Dispose();
     }
 
@@ -71,7 +74,7 @@ public sealed class GlobalErrorHandlerTests
         UiHarness.Flush();
 
         Assert.Single(log.Entries);
-        Assert.Null(harness.Shell.ErrorNotice);
+        Assert.Empty(harness.Services.Toasts.Items);
         harness.Messenger.Identity.Dispose();
     }
 
@@ -87,7 +90,7 @@ public sealed class GlobalErrorHandlerTests
         UiHarness.Flush();
 
         Assert.Empty(log.Entries);
-        Assert.Null(harness.Shell.ErrorNotice);
+        Assert.Empty(harness.Services.Toasts.Items);
         harness.Messenger.Identity.Dispose();
     }
 
@@ -99,13 +102,13 @@ public sealed class GlobalErrorHandlerTests
         var handler = new GlobalErrorHandler(log, new AvaloniaUiThread(), harness.Shell.ShowUnexpectedError);
         var exception = new InvalidOperationException("Bob");
         Assert.True(handler.Handle(exception, FailureSource.UiThread));
-        harness.Shell.DismissErrorNoticeCommand.Execute(null);
+        harness.Services.Toasts.Clear();
 
         Assert.True(handler.Handle(new AggregateException(exception), FailureSource.BackgroundTask));
         UiHarness.Flush();
 
         Assert.Single(log.Entries);
-        Assert.Null(harness.Shell.ErrorNotice);
+        Assert.Empty(harness.Services.Toasts.Items);
         harness.Messenger.Identity.Dispose();
     }
 
@@ -127,9 +130,9 @@ public sealed class GlobalErrorHandlerTests
             });
 
             command.Execute(null);
-            await UiHarness.WaitUntilAsync(() => harness.Shell.HasErrorNotice);
-            Assert.True(UiHarness.Find<Border>(view, "ErrorNoticePanel").IsVisible);
-            harness.Shell.DismissErrorNoticeCommand.Execute(null);
+            await UiHarness.WaitUntilAsync(() => harness.Services.Toasts.Items.Count > 0);
+            Assert.Contains(UiText.AppUnexpectedError, UiHarness.Texts(view));
+            harness.Services.Toasts.Clear();
 
             GC.Collect();
             GC.WaitForPendingFinalizers();
@@ -145,7 +148,7 @@ public sealed class GlobalErrorHandlerTests
         Assert.Contains("System.InvalidOperationException", entry.Message, StringComparison.Ordinal);
         Assert.Contains(nameof(FailureSource.UiThread), entry.Message, StringComparison.Ordinal);
         Assert.DoesNotContain("SECRET", entry.Message, StringComparison.Ordinal);
-        Assert.Null(harness.Shell.ErrorNotice);
+        Assert.Empty(harness.Services.Toasts.Items);
         Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage);
         harness.Messenger.Identity.Dispose();
     }
@@ -165,7 +168,7 @@ public sealed class GlobalErrorHandlerTests
         ((IFailureSink)failures).Report(source, new InvalidOperationException("Bob P2PM1-SECRET"));
         UiHarness.Flush();
 
-        Assert.Null(harness.Shell.ErrorNotice);
+        Assert.Empty(harness.Services.Toasts.Items);
         var entry = Assert.Single(log.Entries);
         Assert.Contains(source.ToString(), entry.Message, StringComparison.Ordinal);
         Assert.DoesNotContain("SECRET", entry.Message, StringComparison.Ordinal);
@@ -179,12 +182,12 @@ public sealed class GlobalErrorHandlerTests
         await using var harness = await UiHarness.StartAsync("Alice");
         var failures = new GlobalFailureHandler(new CapturingLogger());
         var handler = new GlobalErrorHandler(failures, new AvaloniaUiThread(), harness.Shell.ShowUnexpectedError);
-        Assert.Null(harness.Shell.ErrorNotice);
+        Assert.Empty(harness.Services.Toasts.Items);
 
         ((IFailureSink)failures).Report(FailureSource.BackgroundTask, new InvalidOperationException("Bob"));
         UiHarness.Flush();
 
-        Assert.NotNull(harness.Shell.ErrorNotice);
+        Assert.NotEmpty(harness.Services.Toasts.Items);
         Assert.Equal(1, failures.Count);
         Assert.NotNull(handler);
         harness.Messenger.Identity.Dispose();
@@ -206,17 +209,26 @@ public sealed class GlobalErrorHandlerTests
     }
 
     [AvaloniaFact]
-    public async Task ErrorNotice_WhileLocked_StaysHiddenUntilUnlocked()
+    public async Task ErrorToast_WhileLocked_StaysHiddenUntilUnlocked()
     {
         await using var harness = await UiHarness.StartAsync("Alice");
+        var view = new MainView { DataContext = harness.Shell };
+        harness.Show(view);
         harness.Shell.ShowUnexpectedError();
-        Assert.True(harness.Shell.HasErrorNotice);
+        UiHarness.Flush();
+        var host = UiHarness.Find<ItemsControl>(view, "ToastHost");
+        Assert.True(host.IsVisible);
+        Assert.Contains(UiText.AppUnexpectedError, UiHarness.Texts(view));
 
         harness.Shell.LockPage = harness.Shell.Pages.Unlock(false, (_, _) => Task.FromResult(true));
+        UiHarness.Flush();
 
-        Assert.False(harness.Shell.HasErrorNotice);
+        Assert.False(host.IsVisible);
+        Assert.DoesNotContain(UiText.AppUnexpectedError, UiHarness.Texts(view));
         harness.Shell.LockPage = null;
-        Assert.True(harness.Shell.HasErrorNotice);
+        UiHarness.Flush();
+        Assert.True(host.IsVisible);
+        Assert.Contains(UiText.AppUnexpectedError, UiHarness.Texts(view));
         harness.Messenger.Identity.Dispose();
     }
 

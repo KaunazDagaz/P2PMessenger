@@ -39,11 +39,34 @@ public sealed class ChatTests
         await Flows.SendAsync(bob, "Hi Alice, it arrived.");
         await alice.WaitForTextAsync("Hi Alice, it arrived.");
         await bob.WaitForTextAsync(UiText.DeliveryReceived);
+    }
 
-        Button? state = alice.ButtonLabelled(UiText.DeliveryReceived);
-        Assert.NotNull(state);
-        alice.Click(state);
-        await alice.WaitForTextAsync(UiText.DeliveryReceivedExplanation);
+    [AvaloniaFact]
+    [Trait("Story", "US-11")]
+    public async Task WideWindow_ShowsTheContactListBesideTheChatAndTheListStaysWhenTheChatCloses()
+    {
+        LoopbackDiscovery hub = new();
+        await using Device alice = new(hub, "Alice");
+        await using Device bob = new(hub, "Bob");
+        await Flows.SetUpPairAsync(alice, bob);
+
+        alice.Window.Width = 1200;
+        await alice.WaitUntilAsync(
+            () => alice.TryNamed<TextBox>("DraftBox") is not null && alice.ContactButton("Bob") is not null,
+            "Alice sees the chat with Bob and the contact list together");
+        await Flows.SendAsync(alice, "Sent with the list on the left.");
+        await bob.WaitForTextAsync("Sent with the list on the left.");
+        await alice.WaitForTextAsync(UiText.DeliveryReceived);
+
+        alice.ClickButton("BackButton");
+        await alice.WaitUntilAsync(
+            () => alice.TryNamed<TextBox>("DraftBox") is null && alice.ContactButton("Bob") is not null,
+            "the chat closes and the contact list stays");
+        await alice.ClickUntilAsync(
+            () => alice.ContactButton("Bob"),
+            () => alice.TryNamed<TextBox>("DraftBox") is not null && alice.ContactButton("Bob") is not null,
+            "Alice opens the chat with Bob from the list that stays beside it");
+        Assert.True(alice.Shows("Sent with the list on the left."));
     }
 
     [AvaloniaFact]

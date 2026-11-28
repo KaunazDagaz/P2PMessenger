@@ -28,6 +28,8 @@ public sealed partial class CopiedChatItemViewModel : ViewModelBase
 
     public CopyOriginId Origin { get; }
 
+    public bool IsSelected { get; init; }
+
     public string Title { get; }
 
     public string SummaryText { get; }

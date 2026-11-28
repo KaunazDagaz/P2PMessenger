@@ -19,13 +19,19 @@
     <value>Starting…</value>
   </data>
   <data name="AppStartFailed" xml:space="preserve">
-    <value>The app could not start. Close it and open it again.</value>
+    <value>The app could not start.</value>
   </data>
   <data name="AppUnexpectedError" xml:space="preserve">
-    <value>Something went wrong, so the last action may not have finished. Try it again; if it keeps failing, restart the app.</value>
+    <value>Something went wrong. Try again.</value>
   </data>
   <data name="CommonWorking" xml:space="preserve">
     <value>Working…</value>
+  </data>
+  <data name="AppWelcomeTitle" xml:space="preserve">
+    <value>Welcome to P2PMessenger</value>
+  </data>
+  <data name="ContactListSettingsHeading" xml:space="preserve">
+    <value>Settings and data</value>
   </data>
   <data name="CommonBack" xml:space="preserve">
     <value>Back</value>
@@ -36,14 +42,8 @@
   <data name="CreateIdentityUseTor" xml:space="preserve">
     <value>Use Tor for the internet route</value>
   </data>
-  <data name="CreateIdentityUseTorHint" xml:space="preserve">
-    <value>Others on the same network can see that a device uses Tor. You can turn it off or on later on the contact list.</value>
-  </data>
   <data name="CreateIdentityTitle" xml:space="preserve">
     <value>Create your identity</value>
-  </data>
-  <data name="CreateIdentityIntro" xml:space="preserve">
-    <value>Choose the name your contacts will see. The app creates your keys on this device. No phone number, email or account is needed.</value>
   </data>
   <data name="CreateIdentityNameLabel" xml:space="preserve">
     <value>Display name</value>
@@ -58,7 +58,7 @@
     <value>Creating your keys…</value>
   </data>
   <data name="CreateIdentityInvalidName" xml:space="preserve">
-    <value>Enter a name of up to 64 bytes (fewer letters in some alphabets) without control characters.</value>
+    <value>Enter a name of up to 64 bytes without control characters.</value>
   </data>
   <data name="CreateIdentityAlreadyCreated" xml:space="preserve">
     <value>This device already has an identity.</value>
@@ -70,10 +70,10 @@
     <value>Contacts</value>
   </data>
   <data name="ContactListEmpty" xml:space="preserve">
-    <value>No contacts yet. Meet them and add each other in person, or add the code they sent you and send them yours.</value>
+    <value>No contacts yet.</value>
   </data>
   <data name="ContactListNoNetwork" xml:space="preserve">
-    <value>This device has no Wi-Fi and no internet. Nearby contacts can be reached if one person shares a hotspot from a phone and the others join it.</value>
+    <value>No Wi-Fi and no internet.</value>
   </data>
   <data name="ContactListSearchLabel" xml:space="preserve">
     <value>Search contacts</value>
@@ -85,7 +85,7 @@
     <value>No contact matches your search.</value>
   </data>
   <data name="ContactListTorOff" xml:space="preserve">
-    <value>Internet route off: Tor is turned off on this device. Nearby messaging continues.</value>
+    <value>Internet route off.</value>
   </data>
   <data name="ContactListTurnTorOff" xml:space="preserve">
     <value>Turn off Tor</value>
@@ -94,28 +94,28 @@
     <value>Turn on Tor</value>
   </data>
   <data name="ContactListTorStartingFormat" xml:space="preserve">
-    <value>Connecting to Tor ({0} %). Nearby messaging works meanwhile.</value>
+    <value>Connecting to Tor ({0} %).</value>
   </data>
   <data name="ContactListTorConnected" xml:space="preserve">
     <value>Connected to Tor.</value>
   </data>
   <data name="ContactListTorNotInBuild" xml:space="preserve">
-    <value>Internet route unavailable: Tor is not part of this build. Nearby messaging continues.</value>
+    <value>Internet route unavailable: Tor is not part of this build.</value>
   </data>
   <data name="ContactListTorNoNetwork" xml:space="preserve">
-    <value>Internet route unavailable: this device has no network connection. Nearby messaging continues.</value>
+    <value>Internet route unavailable: no network connection.</value>
   </data>
   <data name="ContactListTorClockWrong" xml:space="preserve">
-    <value>Internet route unavailable: the date or time on this device is wrong, so Tor cannot connect. Set the correct date and time; nearby messaging continues.</value>
+    <value>Internet route unavailable: the date or time on this device is wrong.</value>
   </data>
   <data name="ContactListTorCannotReach" xml:space="preserve">
-    <value>Internet route unavailable: the app cannot reach the Tor network. Tor may be blocked here, or the internet does not work. Nearby messaging continues.</value>
+    <value>Internet route unavailable: the Tor network cannot be reached.</value>
   </data>
   <data name="ContactListTorFailed" xml:space="preserve">
-    <value>Internet route unavailable: Tor could not start on this device. The app tries again shortly; nearby messaging continues.</value>
+    <value>Internet route unavailable: Tor could not start.</value>
   </data>
   <data name="ContactListTorStopped" xml:space="preserve">
-    <value>Internet route unavailable: Tor stopped. The app starts it again shortly; nearby messaging continues.</value>
+    <value>Internet route unavailable: Tor stopped.</value>
   </data>
   <data name="ContactListAddContact" xml:space="preserve">
     <value>Add contact</value>
@@ -148,7 +148,7 @@
     <value>{0} new</value>
   </data>
   <data name="ContactAddedNoticeFormat" xml:space="preserve">
-    <value>{0} is added. The app checked their key, not who they are.</value>
+    <value>{0} is added.</value>
   </data>
   <data name="ProfileTitle" xml:space="preserve">
     <value>My code</value>
@@ -161,9 +161,6 @@
   </data>
   <data name="ProfileCodeLabel" xml:space="preserve">
     <value>Your contact code</value>
-  </data>
-  <data name="ProfileCodeHelp" xml:space="preserve">
-    <value>Send this code to your contacts through another messenger, or save it as a file and pass it on. It holds your public keys and your name, never your private key. Anyone who reads it learns your public keys, so send it only to the people you want to add you.</value>
   </data>
   <data name="ProfileCopy" xml:space="preserve">
     <value>Copy code</value>
@@ -192,9 +189,6 @@
   <data name="AddContactTitle" xml:space="preserve">
     <value>Add contact</value>
   </data>
-  <data name="AddContactIntro" xml:space="preserve">
-    <value>Paste the code your contact sent you, or open their code file or QR image. They must add your code too.</value>
-  </data>
   <data name="AddContactCodeLabel" xml:space="preserve">
     <value>Contact code</value>
   </data>
@@ -220,16 +214,16 @@
     <value>This is not a P2PMessenger contact code.</value>
   </data>
   <data name="AddContactUnsupportedVersion" xml:space="preserve">
-    <value>This code comes from another version of the app and cannot be read.</value>
+    <value>This code comes from another version of the app.</value>
   </data>
   <data name="AddContactDamaged" xml:space="preserve">
-    <value>This code is damaged. Ask for it again.</value>
+    <value>This code is damaged.</value>
   </data>
   <data name="AddContactOwnCode" xml:space="preserve">
     <value>This is your own code.</value>
   </data>
   <data name="AddContactKeysInUse" xml:space="preserve">
-    <value>This code holds keys that belong to you or to another contact, so it cannot be added.</value>
+    <value>These keys already belong to you or to another contact.</value>
   </data>
   <data name="AddContactAlreadyContactFormat" xml:space="preserve">
     <value>{0} is already a contact.</value>
@@ -240,14 +234,11 @@
   <data name="AddContactFingerprintLabel" xml:space="preserve">
     <value>Their key fingerprint</value>
   </data>
-  <data name="AddContactNewHint" xml:space="preserve">
-    <value>The app will ask you both to compare fingerprints, because a code sent as text, a file or an image can be swapped on the way.</value>
-  </data>
   <data name="AddContactNewKeysFormat" xml:space="preserve">
-    <value>{0} is already a contact, and this code has new connection keys for them. It is signed with the same identity key, so the fingerprint is the same. Accept the new keys only if {0} expects it.</value>
+    <value>{0} is already a contact, and this code has new connection keys for them.</value>
   </data>
   <data name="AddContactLooksLikeFormat" xml:space="preserve">
-    <value>A saved contact is called {0}, but this code has a different key. If it really comes from {0}, they now have a new identity, for example after reinstalling the app. You can add it as a new contact and compare fingerprints with them.</value>
+    <value>A saved contact is called {0}, but this code has a different key.</value>
   </data>
   <data name="AddContactAdd" xml:space="preserve">
     <value>Add contact</value>
@@ -262,10 +253,10 @@
     <value>Your contacts changed meanwhile. Check the code again.</value>
   </data>
   <data name="ConversationWaitingFormat" xml:space="preserve">
-    <value>Waiting for the first connection with {0}. They become a contact when their app proves that it holds the key in their code. They must add your code too, and both devices must be on the same network or both connected to Tor.</value>
+    <value>Waiting for the first connection with {0}.</value>
   </data>
   <data name="ConversationKeyNotComparedFormat" xml:space="preserve">
-    <value>You have not compared keys with {0}. Their code came as text, a file or an image, which can be swapped on the way.</value>
+    <value>You have not compared keys with {0}.</value>
   </data>
   <data name="ConversationCompare" xml:space="preserve">
     <value>Compare fingerprints</value>
@@ -280,7 +271,7 @@
     <value>Send</value>
   </data>
   <data name="ConversationNotAddedFormat" xml:space="preserve">
-    <value>Not sent: {0} becomes a contact only after the first connection.</value>
+    <value>Not sent: {0} is not a contact yet.</value>
   </data>
   <data name="ConversationTooLong" xml:space="preserve">
     <value>Not sent: the message is too long.</value>
@@ -297,20 +288,11 @@
   <data name="DeliveryWaiting" xml:space="preserve">
     <value>Waiting</value>
   </data>
-  <data name="DeliveryWaitingExplanation" xml:space="preserve">
-    <value>The contact's app has not confirmed this message yet; it is sent again automatically until it does, and it may already have arrived.</value>
-  </data>
   <data name="DeliveryReceived" xml:space="preserve">
     <value>Received by the contact's app</value>
   </data>
-  <data name="DeliveryReceivedExplanation" xml:space="preserve">
-    <value>The contact's app confirmed that it has stored this message; this does not show whether they have read it.</value>
-  </data>
   <data name="VerifyTitle" xml:space="preserve">
     <value>Compare fingerprints</value>
-  </data>
-  <data name="VerifyIntroFormat" xml:space="preserve">
-    <value>Compare these numbers with {0}, in person or on a call. Both apps show the same two numbers in the same order.</value>
   </data>
   <data name="VerifyYoursLabel" xml:space="preserve">
     <value>Yours</value>
@@ -325,22 +307,19 @@
     <value>They do not match</value>
   </data>
   <data name="VerifyCheckedFormat" xml:space="preserve">
-    <value>Key checked by you. The key matches the one {0} showed you; this does not prove who they are.</value>
+    <value>Key of {0} checked by you.</value>
   </data>
   <data name="VerifyNotComparedFormat" xml:space="preserve">
-    <value>Key not compared. Compare the numbers with {0} before you trust this contact.</value>
+    <value>Key of {0} not compared.</value>
   </data>
   <data name="VerifyMismatch" xml:space="preserve">
-    <value>Do not trust this contact. Their code may have been swapped on the way. Exchange codes again, in person if you can.</value>
+    <value>Do not trust this contact. Their code may have been swapped.</value>
   </data>
   <data name="VerifyUncheck" xml:space="preserve">
     <value>Mark as not compared</value>
   </data>
   <data name="NetworkTitle" xml:space="preserve">
     <value>Network (debug)</value>
-  </data>
-  <data name="NetworkIntro" xml:space="preserve">
-    <value>Debug builds only. What this device sees of the local network: its local interfaces, its ports and where each contact was last heard.</value>
   </data>
   <data name="NetworkListeningFormat" xml:space="preserve">
     <value>This device listens on port {0}.</value>
@@ -409,40 +388,31 @@
     <value>Connecting…</value>
   </data>
   <data name="DialUnreachable" xml:space="preserve">
-    <value>Their device was heard nearby, but their app did not answer. Possible reasons:
-• their app has just closed or restarted;
-• their device has left the network or changed its address;
-• a firewall on their device turns the connection away.</value>
+    <value>Their device was heard nearby, but their app did not answer.</value>
   </data>
   <data name="DialTimedOut" xml:space="preserve">
-    <value>Their device was heard nearby, but the attempt timed out. Possible reasons:
-• a firewall on their device blocks the app (Windows asks about it when the app first runs);
-• their device is asleep or out of range;
-• the network is too slow, or their app did not answer in time.</value>
+    <value>Their device was heard nearby, but the attempt timed out.</value>
   </data>
   <data name="DialRefused" xml:space="preserve">
-    <value>Their device was heard nearby, but their app did not accept the connection. Possible reasons:
-• another program or device now answers at the address where it was heard, for example after their app restarted;
-• their app is turning away new connections for a moment because too many arrived at once;
-• another device on the network sent an old announcement of theirs again.</value>
+    <value>Their device was heard nearby, but their app did not accept the connection.</value>
   </data>
   <data name="StorageProblemTitle" xml:space="preserve">
     <value>Stored data</value>
   </data>
   <data name="StorageKeyStoreUnavailable" xml:space="preserve">
-    <value>Your stored data is protected by this device's key store, which the app cannot reach now. On Linux the key store is a Secret Service such as GNOME Keyring or KWallet. Start it, then try again.</value>
+    <value>The device key store is not available. Start it and try again.</value>
   </data>
   <data name="StorageKeyStoreRefused" xml:space="preserve">
-    <value>The key store did not give the app the key that protects your stored data. Unlock the key store when it asks (on Linux, often the login keyring), then try again.</value>
+    <value>The key store refused access to the stored data. Unlock it and try again.</value>
   </data>
   <data name="StorageKeyNotFound" xml:space="preserve">
-    <value>The key that protects this data is not in this device's key store, so the data cannot be read here. It may have been copied from another device or user account, or its key was removed from the key store.</value>
+    <value>The key for this data is not in this device's key store.</value>
   </data>
   <data name="StorageNewerVersion" xml:space="preserve">
-    <value>This data was saved by a newer version of the app. Use that version or a newer one.</value>
+    <value>This data was saved by a newer version of the app.</value>
   </data>
   <data name="StorageDamaged" xml:space="preserve">
-    <value>The stored data was changed or damaged, so the app cannot read it.</value>
+    <value>The stored data is damaged.</value>
   </data>
   <data name="StorageTryAgain" xml:space="preserve">
     <value>Try again</value>
@@ -451,7 +421,7 @@
     <value>Opening the stored data…</value>
   </data>
   <data name="StorageMemoryOnly" xml:space="preserve">
-    <value>Nothing is saved on this device, because no passphrase was set and the app has no key store here to protect stored data. Your identity, contacts and messages stay in memory and are lost when the app closes.</value>
+    <value>Nothing is saved on this device.</value>
   </data>
   <data name="CreateIdentityPassphraseLabel" xml:space="preserve">
     <value>Passphrase (optional)</value>
@@ -460,10 +430,10 @@
     <value>Without a passphrase, anyone who can unlock this device can open the app and read your chats.</value>
   </data>
   <data name="CreateIdentityNoPassphraseNoKeyStore" xml:space="preserve">
-    <value>Without a passphrase, nothing is saved on this device: your identity, contacts and messages are lost when the app closes.</value>
+    <value>Without a passphrase, nothing is saved on this device.</value>
   </data>
   <data name="CreateIdentityPassphraseRequired" xml:space="preserve">
-    <value>No key store answered on this device, so the app can save your data only under a passphrase. Enter one above, or start the key store (on Linux, a Secret Service such as GNOME Keyring) and try again.</value>
+    <value>No key store is available, so a passphrase is required.</value>
   </data>
   <data name="ContactListPassphrase" xml:space="preserve">
     <value>Passphrase</value>
@@ -473,12 +443,6 @@
   </data>
   <data name="UnlockTitle" xml:space="preserve">
     <value>Enter your passphrase</value>
-  </data>
-  <data name="UnlockStartIntro" xml:space="preserve">
-    <value>Your stored data is protected by a passphrase. Until you enter it, the app neither sends nor receives messages.</value>
-  </data>
-  <data name="UnlockLockedIntro" xml:space="preserve">
-    <value>The app is locked. Messages still arrive and are saved while it is locked.</value>
   </data>
   <data name="UnlockPassphraseLabel" xml:space="preserve">
     <value>Passphrase</value>
@@ -498,11 +462,11 @@
   <data name="PassphraseTitle" xml:space="preserve">
     <value>Passphrase</value>
   </data>
-  <data name="PassphraseStateSetFormat" xml:space="preserve">
-    <value>Your stored data is protected by a passphrase. The app asks for it at start and after {0} minutes in the background.</value>
+  <data name="PassphraseStateSet" xml:space="preserve">
+    <value>A passphrase is set.</value>
   </data>
   <data name="PassphraseStateNotSet" xml:space="preserve">
-    <value>Your stored data is protected by this device's key store, not by a passphrase. Anyone who can unlock this device can open the app.</value>
+    <value>No passphrase is set.</value>
   </data>
   <data name="PassphraseCurrentLabel" xml:space="preserve">
     <value>Current passphrase</value>
@@ -514,7 +478,10 @@
     <value>Repeat the passphrase</value>
   </data>
   <data name="PassphraseHintFormat" xml:space="preserve">
-    <value>At least {0} characters. A few words are easier to remember than a short password.</value>
+    <value>At least {0} characters.</value>
+  </data>
+  <data name="PassphraseForgotten" xml:space="preserve">
+    <value>A forgotten passphrase cannot be recovered or reset, and neither can the data it protects.</value>
   </data>
   <data name="PassphraseTooShortFormat" xml:space="preserve">
     <value>The passphrase needs at least {0} characters.</value>
@@ -534,12 +501,6 @@
   <data name="PassphraseRemove" xml:space="preserve">
     <value>Remove passphrase</value>
   </data>
-  <data name="PassphraseRemoveWarning" xml:space="preserve">
-    <value>After the passphrase is removed, this device's key store protects the data, and anyone who can unlock this device can open the app.</value>
-  </data>
-  <data name="PassphraseChangeNote" xml:space="preserve">
-    <value>Changing the passphrase does not change the key that encrypts your data: anyone who could open an earlier copy of the app's files with the old passphrase can open later copies too.</value>
-  </data>
   <data name="PassphraseSaving" xml:space="preserve">
     <value>Saving the passphrase…</value>
   </data>
@@ -556,19 +517,19 @@
     <value>The current passphrase is wrong.</value>
   </data>
   <data name="PassphraseKeyStoreFailed" xml:space="preserve">
-    <value>This device's key store did not answer or refused, so nothing was changed. Start or unlock the key store when it asks, then try again.</value>
+    <value>The key store did not answer, so nothing was changed.</value>
   </data>
   <data name="PassphraseFailed" xml:space="preserve">
     <value>The passphrase could not be changed. Try again.</value>
-  </data>
-  <data name="PassphraseForgotten" xml:space="preserve">
-    <value>A forgotten passphrase cannot be recovered or reset, and neither can the data it protects.</value>
   </data>
   <data name="CommonCancel" xml:space="preserve">
     <value>Cancel</value>
   </data>
   <data name="CommonDelete" xml:space="preserve">
     <value>Delete</value>
+  </data>
+  <data name="CommonClose" xml:space="preserve">
+    <value>Close</value>
   </data>
   <data name="ContactListDeleteAllData" xml:space="preserve">
     <value>Delete all data</value>
@@ -579,14 +540,8 @@
   <data name="DeleteAllDataOpen" xml:space="preserve">
     <value>Delete all data</value>
   </data>
-  <data name="DeleteAllDataIntroUnlock" xml:space="preserve">
-    <value>If the passphrase is forgotten, the only way to use the app again is to delete all its data on this device and create a new identity.</value>
-  </data>
-  <data name="DeleteAllDataIntroProblem" xml:space="preserve">
-    <value>If the stored data cannot be opened, you can delete it from this device and create a new identity.</value>
-  </data>
   <data name="DeleteAllDataWarning" xml:space="preserve">
-    <value>This deletes your identity, your contacts and all chats from this device, and it cannot be undone. Messages that are still waiting will not be sent. Your contacts' apps keep their copies of your chats.</value>
+    <value>This deletes your identity, contacts and all chats from this device and cannot be undone.</value>
   </data>
   <data name="DeleteAllDataConfirm" xml:space="preserve">
     <value>Delete everything</value>
@@ -598,19 +553,19 @@
     <value>The data could not be deleted. Try again.</value>
   </data>
   <data name="DeleteAllDataDone" xml:space="preserve">
-    <value>All data was deleted from this device. Your contacts' apps keep their copies of your chats.</value>
+    <value>All data was deleted from this device.</value>
   </data>
   <data name="DeleteAllDataIncomplete" xml:space="preserve">
-    <value>Not every file could be deleted. Close any other copy of the app and delete all data again.</value>
+    <value>Not every file could be deleted. Close any other copy of the app and try again.</value>
   </data>
   <data name="ConversationDeleteChat" xml:space="preserve">
     <value>Delete chat</value>
   </data>
   <data name="ConversationDeleteChatQuestionFormat" xml:space="preserve">
-    <value>Delete the chat with {0}? Its messages are removed from this device, and messages that are still waiting will not be sent. {0}'s app keeps its copy.</value>
+    <value>Delete the chat with {0}? It is removed from this device only.</value>
   </data>
   <data name="ConversationChatDeletedFormat" xml:space="preserve">
-    <value>The chat was deleted on this device only. {0}'s app still has its copy.</value>
+    <value>The chat with {0} was deleted on this device only.</value>
   </data>
   <data name="ConversationDeleteChatFailed" xml:space="preserve">
     <value>The chat could not be deleted. Try again.</value>
@@ -619,10 +574,10 @@
     <value>Delete message</value>
   </data>
   <data name="MessageDeleteQuestion" xml:space="preserve">
-    <value>Delete this waiting message? It will not be sent again.</value>
+    <value>Delete this waiting message?</value>
   </data>
   <data name="ConversationMessageDeletedFormat" xml:space="preserve">
-    <value>The waiting message was deleted on this device and will not be sent again. If it reached {0}'s app before its confirmation came back, it stays there.</value>
+    <value>The waiting message to {0} was deleted.</value>
   </data>
   <data name="ConversationMessageNotWaiting" xml:space="preserve">
     <value>The message is no longer waiting, so it was not deleted.</value>
@@ -635,9 +590,6 @@
   </data>
   <data name="ProfileQrLabel" xml:space="preserve">
     <value>Your QR code</value>
-  </data>
-  <data name="ProfileQrHelp" xml:space="preserve">
-    <value>To add each other in person, both of you open "Add in person" and scan the code on the other's screen. To send your code through another messenger, send the text below or save the QR code as an image.</value>
   </data>
   <data name="ProfileSaveImage" xml:space="preserve">
     <value>Save QR image</value>
@@ -652,13 +604,10 @@
     <value>{0} contact code.png</value>
   </data>
   <data name="AddContactNoCodeInImage" xml:space="preserve">
-    <value>No contact code was found in this image. Open a sharper picture of the whole QR code, or ask for the code as text.</value>
+    <value>No contact code was found in this image.</value>
   </data>
   <data name="InPersonTitle" xml:space="preserve">
     <value>Add in person</value>
-  </data>
-  <data name="InPersonIntro" xml:space="preserve">
-    <value>Do this only while you are together. Each of you opens this page and scans the code on the other's screen. A code that someone sent you goes to "Add contact" instead, because it may have been swapped on the way.</value>
   </data>
   <data name="InPersonQrLabel" xml:space="preserve">
     <value>Your QR code</value>
@@ -667,28 +616,28 @@
     <value>Scan their code</value>
   </data>
   <data name="InPersonAddedFormat" xml:space="preserve">
-    <value>{0} is added, with the key checked by you. Now let {0} scan your code. Your apps connect when both of you have scanned and you are on the same network or both connected to Tor.</value>
+    <value>{0} is added, with the key checked by you.</value>
   </data>
   <data name="InPersonKeysAcceptedFormat" xml:space="preserve">
-    <value>The new connection keys of {0} are accepted, with the key checked by you. Now let {0} scan your code. Your apps connect when both of you have scanned and you are on the same network or both connected to Tor.</value>
+    <value>The new connection keys of {0} are accepted.</value>
   </data>
   <data name="InPersonAlreadyCheckedFormat" xml:space="preserve">
-    <value>{0} is already a contact, and the key you scanned matches the one you have. It is now marked as checked by you.</value>
+    <value>{0} is already a contact. The key is now marked as checked by you.</value>
   </data>
   <data name="InPersonConnectedFormat" xml:space="preserve">
-    <value>{0} scanned your code too, and your apps are connected. The app checked their key, not who they are.</value>
+    <value>{0} scanned your code too, and your apps are connected.</value>
   </data>
   <data name="InPersonNotACode" xml:space="preserve">
     <value>This QR code is not a P2PMessenger contact code.</value>
   </data>
   <data name="InPersonNoCamera" xml:space="preserve">
-    <value>No camera was found on this device. Exchange codes as text, a file or a QR image instead.</value>
+    <value>No camera was found on this device.</value>
   </data>
   <data name="InPersonCameraRefused" xml:space="preserve">
-    <value>The app may not use the camera. Allow it in the system settings, or exchange codes as text, a file or a QR image instead.</value>
+    <value>The app may not use the camera.</value>
   </data>
   <data name="InPersonCameraFailed" xml:space="preserve">
-    <value>The camera could not be started. Close other apps that use it and try again, or exchange codes as text, a file or a QR image instead.</value>
+    <value>The camera could not be started.</value>
   </data>
   <data name="InPersonAddByCode" xml:space="preserve">
     <value>Add a code they sent</value>
@@ -709,7 +658,7 @@
     <value>Starting the camera…</value>
   </data>
   <data name="ConversationKeyNotComparedInPersonFormat" xml:space="preserve">
-    <value>The key of {0} is marked as not compared. Compare fingerprints with {0} before you trust this contact.</value>
+    <value>The key of {0} is not compared.</value>
   </data>
   <data name="AddContactFileType" xml:space="preserve">
     <value>Contact code (text or image)</value>
@@ -720,38 +669,29 @@
   <data name="BackgroundTitle" xml:space="preserve">
     <value>Background and notifications</value>
   </data>
-  <data name="BackgroundFirstRun" xml:space="preserve">
-    <value>To keep receiving messages while the phone is idle, allow P2PMessenger to run in the background and to show notifications. You can change this later on the Background page.</value>
-  </data>
-  <data name="BackgroundIntro" xml:space="preserve">
-    <value>P2PMessenger keeps running while the screen is off, with a notification that stays while it runs, so that messages from your contacts reach this phone.</value>
-  </data>
   <data name="BackgroundBatteryExempt" xml:space="preserve">
-    <value>Battery optimisation is off for P2PMessenger, so Android lets it run while the phone is idle.</value>
+    <value>Battery optimisation is off.</value>
   </data>
   <data name="BackgroundBatteryNotExempt" xml:space="preserve">
-    <value>Battery optimisation is on for P2PMessenger: Android may delay messages while the phone is idle. P2PMessenger keeps working.</value>
+    <value>Battery optimisation is on.</value>
   </data>
   <data name="BackgroundBatteryAllow" xml:space="preserve">
     <value>Allow running in the background</value>
   </data>
   <data name="BackgroundBatteryRefused" xml:space="preserve">
-    <value>Not allowed. Android may delay messages while the phone is idle; P2PMessenger keeps working, and you can allow it here later.</value>
+    <value>Not allowed.</value>
   </data>
   <data name="BackgroundNotificationsAllowed" xml:space="preserve">
-    <value>Notifications are on: a new message shows who sent it while P2PMessenger is in the background.</value>
+    <value>Notifications are on.</value>
   </data>
   <data name="BackgroundNotificationsOff" xml:space="preserve">
-    <value>Notifications are off for P2PMessenger: you will not see new messages while it is in the background, and the notification that it is running is hidden.</value>
+    <value>Notifications are off.</value>
   </data>
   <data name="BackgroundNotificationsAllow" xml:space="preserve">
     <value>Allow notifications</value>
   </data>
   <data name="BackgroundPreviews" xml:space="preserve">
     <value>Show message text in notifications</value>
-  </data>
-  <data name="BackgroundPreviewsHint" xml:space="preserve">
-    <value>When this is off, a notification shows only who sent the message. The lock screen never shows the sender or the text.</value>
   </data>
   <data name="BackgroundContinue" xml:space="preserve">
     <value>Continue</value>
@@ -763,7 +703,7 @@
     <value>Quit P2PMessenger?</value>
   </data>
   <data name="BackgroundQuitWarning" xml:space="preserve">
-    <value>It stops running in the background, and messages will not arrive on this phone until you open the app again. Waiting messages stay on this device.</value>
+    <value>Messages will not arrive on this phone until you open the app again.</value>
   </data>
   <data name="BackgroundQuitConfirm" xml:space="preserve">
     <value>Quit</value>
@@ -802,7 +742,7 @@
     <value>New messages on the lock screen</value>
   </data>
   <data name="BackgroundRestricted" xml:space="preserve">
-    <value>Android does not let P2PMessenger run in the background, because its battery use is restricted: the app stops soon after you leave it, and messages arrive only while it is open. To change this, allow background use in the app's battery settings.</value>
+    <value>Background use is restricted by Android. Allow it in the app's battery settings.</value>
   </data>
   <data name="BackgroundOpenSettings" xml:space="preserve">
     <value>Open app settings</value>
@@ -810,17 +750,11 @@
   <data name="ContactListNewGroup" xml:space="preserve">
     <value>New group</value>
   </data>
-  <data name="ContactListGroupsHeading" xml:space="preserve">
-    <value>Groups</value>
-  </data>
-  <data name="ContactListContactsHeading" xml:space="preserve">
-    <value>Contacts</value>
-  </data>
   <data name="GroupItemMembersFormat" xml:space="preserve">
     <value>{0} members</value>
   </data>
   <data name="GroupItemJoining" xml:space="preserve">
-    <value>Not joined yet: open it to see whom to add</value>
+    <value>Not joined yet</value>
   </data>
   <data name="GroupItemWaitingFormat" xml:space="preserve">
     <value>Waiting for {0} of {1} members to join</value>
@@ -830,9 +764,6 @@
   </data>
   <data name="NewGroupTitle" xml:space="preserve">
     <value>New group</value>
-  </data>
-  <data name="NewGroupIntro" xml:space="preserve">
-    <value>Choose contacts who have all added each other. Each invited member joins once they have every other member as a contact. Nobody can write in the group until every member has joined, so that everyone sees the same member list.</value>
   </data>
   <data name="NewGroupNameLabel" xml:space="preserve">
     <value>Group name</value>
@@ -844,13 +775,13 @@
     <value>Members</value>
   </data>
   <data name="NewGroupNoContacts" xml:space="preserve">
-    <value>You have no contacts to invite yet. Only contacts whose first connection is complete can be invited.</value>
+    <value>You have no contacts to invite yet.</value>
   </data>
   <data name="NewGroupCreate" xml:space="preserve">
     <value>Create group</value>
   </data>
   <data name="NewGroupInvalidName" xml:space="preserve">
-    <value>Enter a group name of up to 64 bytes (fewer letters in some alphabets) without control characters.</value>
+    <value>Enter a group name of up to 64 bytes without control characters.</value>
   </data>
   <data name="NewGroupNoMembers" xml:space="preserve">
     <value>Choose at least one contact.</value>
@@ -871,16 +802,16 @@
     <value>{0} (you)</value>
   </data>
   <data name="GroupJoiningIntro" xml:space="preserve">
-    <value>You have not joined this group yet. To join, add these members as contacts, in person or with codes sent through another channel, and compare fingerprints with them. Your app joins by itself once you have added them all.</value>
+    <value>You have not joined this group yet. Add these members as contacts.</value>
   </data>
   <data name="GroupJoiningNone" xml:space="preserve">
-    <value>You have every member as a contact. Your app joins as soon as each first connection is complete.</value>
+    <value>You have every member as a contact.</value>
   </data>
   <data name="GroupWaitingFormat" xml:space="preserve">
-    <value>Waiting for these members to join: {0}. Nobody can write in the group until every member has joined.</value>
+    <value>Waiting for these members to join: {0}.</value>
   </data>
   <data name="GroupListsDifferFormat" xml:space="preserve">
-    <value>The member lists of this group do not match: {0} joined with a different list than yours. Nobody can write in this group; create a new one with the people you trust.</value>
+    <value>The member lists do not match: {0} joined with a different list. Nobody can write in this group.</value>
   </data>
   <data name="GroupCreatedBy" xml:space="preserve">
     <value>Created by you.</value>
@@ -909,12 +840,6 @@
   <data name="GroupDeliveryMemberFormat" xml:space="preserve">
     <value>{0}: {1}</value>
   </data>
-  <data name="GroupDeliveryWaitingExplanation" xml:space="preserve">
-    <value>No other member's app has confirmed this message yet. Each member shows as received once their app's signed confirmation reaches this device, directly or through another member. Until then it is sent again automatically, and it may already have arrived.</value>
-  </data>
-  <data name="GroupDeliveryReceivedExplanation" xml:space="preserve">
-    <value>Each member marked received sent a signed confirmation from their app, directly or through another member, that it stored the message; this does not show whether anyone has read it. Because a member's app has it and can pass it on, it can no longer be deleted on its own.</value>
-  </data>
   <data name="NotificationGroupMessageFromFormat" xml:space="preserve">
     <value>New message from {0}</value>
   </data>
@@ -922,16 +847,16 @@
     <value>{0}: {1}</value>
   </data>
   <data name="GroupDeleteChatQuestionFormat" xml:space="preserve">
-    <value>Delete the chat of {0}? Its messages are removed from this device, and your messages that are still waiting are no longer sent from it. You stay a member and keep receiving new messages. The members' apps keep their copies and can pass them on to other members.</value>
+    <value>Delete the chat of {0}? Its messages are removed from this device only.</value>
   </data>
   <data name="GroupChatDeleted" xml:space="preserve">
-    <value>The chat was deleted on this device only. You are still a member, and the members' apps still have their copies and can pass them on to other members.</value>
+    <value>The chat was deleted on this device only.</value>
   </data>
   <data name="GroupMessageDeleteQuestion" xml:space="preserve">
-    <value>Delete this waiting message? This device will not send it again.</value>
+    <value>Delete this waiting message?</value>
   </data>
   <data name="GroupMessageDeleted" xml:space="preserve">
-    <value>The waiting message was deleted on this device and will not be sent again. If it reached a member's app before that app's confirmation came back, it stays there and that app can pass it on to other members.</value>
+    <value>The waiting message was deleted.</value>
   </data>
   <data name="GroupMessageNotDeletable" xml:space="preserve">
     <value>A member's app has already received the message, so it was not deleted.</value>
@@ -945,17 +870,20 @@
   <data name="GroupRemoveMember" xml:space="preserve">
     <value>Remove</value>
   </data>
+  <data name="GroupRemoveMemberTitle" xml:space="preserve">
+    <value>Remove member</value>
+  </data>
   <data name="GroupRemoveMemberQuestionFormat" xml:space="preserve">
-    <value>Remove {0} from {1}? A new group key will be created so they cannot read new messages. Messages from before removal stay on their device.</value>
+    <value>Remove {0} from {1}?</value>
   </data>
   <data name="GroupRemoveLastMemberQuestionFormat" xml:space="preserve">
-    <value>Remove {0} from {1}? No other members will remain, so this group will end on your device. Messages from before removal stay on their device.</value>
+    <value>Remove {0} from {1}? No other members will remain, so this group will end.</value>
   </data>
   <data name="GroupMemberRemovedFormat" xml:space="preserve">
-    <value>Removed {0}. A new group key is now in use.</value>
+    <value>Removed {0}.</value>
   </data>
   <data name="GroupMemberRemovedEndedFormat" xml:space="preserve">
-    <value>Removed {0}. No other members remain in this group.</value>
+    <value>Removed {0}. No other members remain.</value>
   </data>
   <data name="GroupRemoveMemberFailed" xml:space="preserve">
     <value>Could not remove that member right now.</value>
@@ -967,13 +895,13 @@
     <value>Leave</value>
   </data>
   <data name="GroupLeaveQuestionFormat" xml:space="preserve">
-    <value>Leave {0}? Your app will stop receiving new messages from this group. Existing messages stay on this device until you delete the chat.</value>
+    <value>Leave {0}?</value>
   </data>
   <data name="GroupLeaveAdminQuestionFormat" xml:space="preserve">
-    <value>Choose the new group admin before leaving {0}. Your app will stop receiving new messages from this group, and existing messages stay on this device until you delete the chat.</value>
+    <value>Choose the new group admin before leaving {0}.</value>
   </data>
   <data name="GroupLeaveLastMemberQuestionFormat" xml:space="preserve">
-    <value>Leave {0}? Only one other member will remain, so this group will end. Existing messages stay on this device until you delete the chat.</value>
+    <value>Leave {0}? Only one other member will remain, so this group will end.</value>
   </data>
   <data name="GroupLeaveSuccessorLabel" xml:space="preserve">
     <value>New group admin</value>
@@ -982,10 +910,10 @@
     <value>Choose who becomes the new group admin before leaving.</value>
   </data>
   <data name="GroupLeftBanner" xml:space="preserve">
-    <value>You left this group. Your app no longer receives new messages from it.</value>
+    <value>You left this group.</value>
   </data>
   <data name="GroupRemovedBanner" xml:space="preserve">
-    <value>You were removed from this group. Your app no longer receives new messages from it.</value>
+    <value>You were removed from this group.</value>
   </data>
   <data name="GroupEndedBanner" xml:space="preserve">
     <value>No other members remain in this group.</value>
@@ -1003,19 +931,19 @@
     <value>No other members</value>
   </data>
   <data name="GroupSendLeft" xml:space="preserve">
-    <value>You left this group and can no longer send messages in it.</value>
+    <value>You left this group.</value>
   </data>
   <data name="GroupSendRemoved" xml:space="preserve">
-    <value>You were removed from this group and can no longer send messages in it.</value>
+    <value>You were removed from this group.</value>
   </data>
   <data name="GroupSendEnded" xml:space="preserve">
     <value>No other members remain in this group.</value>
   </data>
   <data name="GroupDeleteInactiveChatQuestionFormat" xml:space="preserve">
-    <value>Delete the chat of {0}? Its messages are removed from this device only. Other members' apps keep their copies.</value>
+    <value>Delete the chat of {0}? Its messages are removed from this device only.</value>
   </data>
   <data name="GroupInactiveChatDeleted" xml:space="preserve">
-    <value>The chat was deleted on this device only. Other members' apps keep their copies.</value>
+    <value>The chat was deleted on this device only.</value>
   </data>
   <data name="ContactListSendCopy" xml:space="preserve">
     <value>Copy chats to PC</value>
@@ -1033,7 +961,7 @@
     <value>Read-only copy · 1 message · copied {0}</value>
   </data>
   <data name="CopiedConversationBannerFormat" xml:space="preserve">
-    <value>Read-only copy from your phone (copied {0}). You cannot reply here; new messages on your phone appear here only when you copy the chat again.</value>
+    <value>Read-only copy from your phone (copied {0}).</value>
   </data>
   <data name="CopiedConversationEmpty" xml:space="preserve">
     <value>This copied chat has no messages.</value>
@@ -1045,16 +973,13 @@
     <value>Delete copy</value>
   </data>
   <data name="CopiedConversationDeleteQuestionFormat" xml:space="preserve">
-    <value>Delete the copy of {0} from this PC? Your phone keeps its chat unchanged.</value>
+    <value>Delete the copy of {0} from this PC?</value>
   </data>
   <data name="CopiedConversationDeleteFailed" xml:space="preserve">
     <value>The copied chat could not be deleted. Try again.</value>
   </data>
   <data name="ReceiveCopyTitle" xml:space="preserve">
     <value>Receive a copy</value>
-  </data>
-  <data name="ReceiveCopyIntro" xml:space="preserve">
-    <value>Keep your phone and this PC on the same Wi-Fi network. On your phone, open "Copy chats to PC" and scan this QR code. Your phone's private keys are never copied; the copied chats are stored read-only on this PC.</value>
   </data>
   <data name="ReceiveCopyQrLabel" xml:space="preserve">
     <value>Pairing QR code</value>
@@ -1066,7 +991,7 @@
     <value>Waiting for your phone on the same Wi-Fi network…</value>
   </data>
   <data name="ReceiveCopyConnected" xml:space="preserve">
-    <value>Connected to your phone. Choose the chats to copy on your phone.</value>
+    <value>Connected to your phone.</value>
   </data>
   <data name="ReceiveCopyReceivingFormat" xml:space="preserve">
     <value>Receiving copied chats ({0} of {1})…</value>
@@ -1078,16 +1003,16 @@
     <value>Saved 1 copied chat as a read-only copy on this PC.</value>
   </data>
   <data name="ReceiveCopyNoNetwork" xml:space="preserve">
-    <value>This PC is not on a Wi-Fi or local network. Connect both this PC and your phone to the same Wi-Fi network, then try again.</value>
+    <value>This PC is not on a Wi-Fi or local network.</value>
   </data>
   <data name="ReceiveCopyListenFailed" xml:space="preserve">
-    <value>Could not start listening on the local network. Check your firewall or network settings and try again.</value>
+    <value>Could not start listening on the local network.</value>
   </data>
   <data name="ReceiveCopyDisconnected" xml:space="preserve">
-    <value>The connection to your phone was interrupted. Any chats that finished before the break were saved; start again to copy the rest.</value>
+    <value>The connection to your phone was interrupted.</value>
   </data>
   <data name="ReceiveCopyFailed" xml:space="preserve">
-    <value>The copy did not finish cleanly. Nothing partial was saved; try again.</value>
+    <value>The copy did not finish. Nothing partial was saved.</value>
   </data>
   <data name="ReceiveCopyTryAgain" xml:space="preserve">
     <value>Try again</value>
@@ -1100,9 +1025,6 @@
   </data>
   <data name="SendCopyTitle" xml:space="preserve">
     <value>Copy chats to PC</value>
-  </data>
-  <data name="SendCopyIntro" xml:space="preserve">
-    <value>Keep your phone and your PC on the same Wi-Fi network. On your PC, open "Receive a copy", then scan the QR code shown there. Only the messages of the chats you choose are copied; your private keys never leave this phone.</value>
   </data>
   <data name="SendCopyScan" xml:space="preserve">
     <value>Scan PC QR code</value>
@@ -1117,7 +1039,7 @@
     <value>Connecting to your PC…</value>
   </data>
   <data name="SendCopyConnected" xml:space="preserve">
-    <value>Connected to your PC. Choose which chats to copy; copying again updates the read-only copy on your PC.</value>
+    <value>Connected to your PC. Choose the chats to copy.</value>
   </data>
   <data name="SendCopyChatsLabel" xml:space="preserve">
     <value>Chats to copy</value>
@@ -1153,46 +1075,46 @@
     <value>Copying chats to your PC ({0} of {1})…</value>
   </data>
   <data name="SendCopyCompletedFormat" xml:space="preserve">
-    <value>Copied {0} chats to your PC as read-only copies. New messages on this phone appear on your PC only when you copy again.</value>
+    <value>Copied {0} chats to your PC.</value>
   </data>
   <data name="SendCopyCompletedOne" xml:space="preserve">
-    <value>Copied 1 chat to your PC as a read-only copy. New messages on this phone appear on your PC only when you copy again.</value>
+    <value>Copied 1 chat to your PC.</value>
   </data>
   <data name="SendCopyNothingSelected" xml:space="preserve">
     <value>Choose at least one chat to copy.</value>
   </data>
   <data name="SendCopyNotACode" xml:space="preserve">
-    <value>This is not a PC copy pairing code. Open "Receive a copy" on your PC and scan the QR code shown there.</value>
+    <value>This is not a PC copy pairing code.</value>
   </data>
   <data name="SendCopyUnsupportedVersion" xml:space="preserve">
-    <value>This pairing code comes from another version of the app and cannot be read.</value>
+    <value>This pairing code comes from another version of the app.</value>
   </data>
   <data name="SendCopyDamaged" xml:space="preserve">
-    <value>This pairing code is damaged. Open "Receive a copy" on your PC and try again.</value>
+    <value>This pairing code is damaged.</value>
   </data>
   <data name="SendCopyNotReachable" xml:space="preserve">
-    <value>Could not reach your PC. Make sure both this phone and your PC are on the same Wi-Fi network and that "Receive a copy" is open on your PC, then try again.</value>
+    <value>Could not reach your PC.</value>
   </data>
   <data name="SendCopyTimedOut" xml:space="preserve">
-    <value>Your PC did not answer in time. Make sure both devices are on the same Wi-Fi network and that your PC's firewall allows local connections, then try again.</value>
+    <value>Your PC did not answer in time.</value>
   </data>
   <data name="SendCopyRefused" xml:space="preserve">
-    <value>The connection to your PC was refused or the pairing code has expired. Start "Receive a copy" on your PC again for a new code.</value>
+    <value>The connection to your PC was refused or the pairing code has expired.</value>
   </data>
   <data name="SendCopyDisconnected" xml:space="preserve">
-    <value>The connection to your PC was interrupted before the copy finished. Open "Receive a copy" on your PC and start again.</value>
+    <value>The connection to your PC was interrupted.</value>
   </data>
   <data name="SendCopyFailed" xml:space="preserve">
-    <value>The copy could not be completed. Open "Receive a copy" on your PC and try again.</value>
+    <value>The copy could not be completed.</value>
   </data>
   <data name="SendCopyNoCamera" xml:space="preserve">
-    <value>No camera was found on this device. Copying chats to a PC requires a camera to scan the PC's QR code.</value>
+    <value>No camera was found on this device.</value>
   </data>
   <data name="SendCopyCameraRefused" xml:space="preserve">
-    <value>The app may not use the camera. Allow camera access in the system settings, then try again.</value>
+    <value>The app may not use the camera.</value>
   </data>
   <data name="SendCopyCameraFailed" xml:space="preserve">
-    <value>The camera could not be started. Close other apps that use it and try again.</value>
+    <value>The camera could not be started.</value>
   </data>
   <data name="SendCopyDone" xml:space="preserve">
     <value>Back to chats</value>

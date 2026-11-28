@@ -12,12 +12,8 @@ public sealed partial class MessageItemViewModel : ViewModelBase
     private readonly Func<MessageItemViewModel, CancellationToken, Task>? delete;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(StateText), nameof(StateExplanation), nameof(CanDelete), nameof(IsDeleteVisible))]
+    [NotifyPropertyChangedFor(nameof(StateText), nameof(CanDelete), nameof(IsDeleteVisible))]
     private DeliveryState delivery;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsDeleteVisible))]
-    private bool isExplanationShown;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsDeleteVisible))]
@@ -66,16 +62,9 @@ public sealed partial class MessageItemViewModel : ViewModelBase
         _ => null,
     };
 
-    public string? StateExplanation => Delivery switch
-    {
-        DeliveryState.Waiting => UiText.DeliveryWaitingExplanation,
-        DeliveryState.Received => UiText.DeliveryReceivedExplanation,
-        _ => null,
-    };
-
     public bool CanDelete => delete is not null && IsOwn && Delivery == DeliveryState.Waiting;
 
-    public bool IsDeleteVisible => CanDelete && IsExplanationShown && !IsConfirmingDelete;
+    public bool IsDeleteVisible => CanDelete && !IsConfirmingDelete;
 
     private bool IsIdle => !IsDeleting;
 
@@ -89,9 +78,6 @@ public sealed partial class MessageItemViewModel : ViewModelBase
             IsConfirmingDelete = false;
         }
     }
-
-    [RelayCommand]
-    private void ToggleExplanation() => IsExplanationShown = !IsExplanationShown;
 
     [RelayCommand]
     private void AskDelete()

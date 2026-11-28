@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using P2PMessenger.Application.LocalData;
 using P2PMessenger.UI.Resources;
+using P2PMessenger.UI.Services;
 using P2PMessenger.UI.ViewModels;
 using P2PMessenger.UI.Views;
 
@@ -24,7 +25,7 @@ public sealed class PassphraseViewTests
 
         Assert.True(UiHarness.Find<StackPanel>(view, "PassphrasePanel").IsVisible);
         Assert.Equal('•', UiHarness.Find<TextBox>(view, "PassphraseBox").PasswordChar);
-        Assert.Equal("At least 12 characters. A few words are easier to remember than a short password.", UiHarness.Find<TextBlock>(view, "HintText").Text);
+        Assert.Equal("At least 12 characters.", UiHarness.Find<TextBlock>(view, "HintText").Text);
         var warning = UiHarness.Find<TextBlock>(view, "SkipWarningText");
         Assert.True(warning.IsVisible);
         Assert.Equal(UiText.CreateIdentityNoPassphraseWarning, warning.Text);
@@ -77,8 +78,10 @@ public sealed class PassphraseViewTests
         Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage);
         Assert.Equal(LocalDataProtection.Passphrase, harness.Services.Protection);
         Assert.True(UiHarness.Find<Button>(view, "LockButton").IsVisible);
+        Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage).OpenMenuCommand.Execute(null);
+        UiHarness.Flush();
         Assert.True(UiHarness.Descendant<Button>(view, "PassphraseButton").IsVisible);
-        Assert.False(UiHarness.Find<Border>(view, "NoticePanel").IsVisible);
+        Assert.DoesNotContain(UiText.StorageMemoryOnly, harness.ToastTexts);
     }
 
     [AvaloniaFact]
@@ -99,6 +102,8 @@ public sealed class PassphraseViewTests
         Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage);
         Assert.Equal(LocalDataProtection.KeyStore, harness.Services.Protection);
         Assert.False(UiHarness.Find<Button>(view, "LockButton").IsVisible);
+        Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage).OpenMenuCommand.Execute(null);
+        UiHarness.Flush();
         Assert.True(UiHarness.Descendant<Button>(view, "PassphraseButton").IsVisible);
     }
 
@@ -139,14 +144,16 @@ public sealed class PassphraseViewTests
         var page = Assert.IsType<CreateIdentityViewModel>(harness.Shell.CurrentPage);
         UiHarness.Flush();
         Assert.Equal(UiText.CreateIdentityNoPassphraseNoKeyStore, page.SkipWarning);
-        Assert.False(UiHarness.Find<Border>(view, "NoticePanel").IsVisible);
+        Assert.DoesNotContain(UiText.StorageMemoryOnly, harness.ToastTexts);
 
         page.Name = "Alice";
         await page.CreateCommand.ExecuteAsync(null);
         UiHarness.Flush();
 
         Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage);
-        Assert.Equal(UiText.StorageMemoryOnly, UiHarness.Find<TextBlock>(view, "NoticeText").Text);
+        Assert.Contains(UiText.StorageMemoryOnly, harness.ToastTexts);
+        Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage).OpenMenuCommand.Execute(null);
+        UiHarness.Flush();
         Assert.False(UiHarness.Descendant<Button>(view, "PassphraseButton").IsVisible);
         Assert.False(Directory.Exists(data.Folder));
     }
@@ -257,10 +264,9 @@ public sealed class PassphraseViewTests
         var page = Assert.IsType<UnlockViewModel>(harness.Shell.CurrentPage);
         Assert.Null(harness.Services.Messenger);
         Assert.Equal(UiText.UnlockTitle, UiHarness.Find<TextBlock>(view, "TitleText").Text);
-        Assert.Equal(UiText.UnlockStartIntro, UiHarness.Descendant<TextBlock>(view, "IntroText").Text);
-        Assert.Equal(UiText.PassphraseForgotten, UiHarness.Descendant<TextBlock>(view, "ForgottenText").Text);
         Assert.False(UiHarness.Find<Button>(view, "LockButton").IsVisible);
         Assert.False(page.UnlockCommand.CanExecute(null));
+        Assert.Equal(UiText.PassphraseForgotten, UiHarness.Descendant<TextBlock>(UiHarness.Find<ContentControl>(view, "PageHost"), "ForgottenText").Text);
 
         page.Passphrase = OtherPassphrase;
         await page.UnlockCommand.ExecuteAsync(null);
@@ -294,7 +300,7 @@ public sealed class PassphraseViewTests
         unlock.Passphrase = SavedData.Passphrase;
         await unlock.UnlockCommand.ExecuteAsync(null);
         Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage).MyCodeCommand.Execute(null);
-        harness.Shell.Notice = "Bob is added.";
+        harness.Services.Toasts.Show(ToastKind.Success, "Bob is added.");
         UiHarness.Flush();
         var profile = Assert.IsType<ProfileViewModel>(harness.Shell.CurrentPage);
 
@@ -307,9 +313,8 @@ public sealed class PassphraseViewTests
         Assert.Equal(UiText.UnlockTitle, UiHarness.Find<TextBlock>(view, "TitleText").Text);
         Assert.False(UiHarness.Find<Button>(view, "BackButton").IsVisible);
         Assert.False(UiHarness.Find<Button>(view, "LockButton").IsVisible);
-        Assert.False(UiHarness.Find<Border>(view, "NoticePanel").IsVisible);
+        Assert.False(UiHarness.Find<ItemsControl>(view, "ToastHost").IsVisible);
         Assert.DoesNotContain(harness.Messenger.Identity.CodeText, UiHarness.Texts(view));
-        Assert.Equal(UiText.UnlockLockedIntro, UiHarness.Descendant<TextBlock>(view, "IntroText").Text);
 
         var page = harness.Shell.LockPage!;
         page.Passphrase = OtherPassphrase;
@@ -326,7 +331,8 @@ public sealed class PassphraseViewTests
         Assert.Same(profile, harness.Shell.CurrentPage);
         Assert.True(UiHarness.Find<ContentControl>(view, "PageHost").IsVisible);
         Assert.True(UiHarness.Find<Button>(view, "BackButton").IsVisible);
-        Assert.True(UiHarness.Find<Border>(view, "NoticePanel").IsVisible);
+        Assert.True(UiHarness.Find<ItemsControl>(view, "ToastHost").IsVisible);
+        Assert.Contains("Bob is added.", UiHarness.Texts(view));
         Assert.Equal(UiText.ProfileTitle, UiHarness.Find<TextBlock>(view, "TitleText").Text);
     }
 
@@ -371,6 +377,7 @@ public sealed class PassphraseViewTests
         Assert.True(UiHarness.Find<Button>(view, "SetButton").IsVisible);
         Assert.False(UiHarness.Find<Button>(view, "ChangeButton").IsVisible);
         Assert.False(UiHarness.Find<Button>(view, "RemoveButton").IsEffectivelyVisible);
+        Assert.False(UiHarness.Find<TextBlock>(view, "ForgottenText").IsVisible);
 
         page.NewPassphrase = "short";
         page.RepeatedPassphrase = "short";
@@ -382,11 +389,13 @@ public sealed class PassphraseViewTests
         await page.SetCommand.ExecuteAsync(null);
         UiHarness.Flush();
 
-        Assert.Equal(UiText.PassphraseSetDone, page.StatusMessage);
+        Assert.Contains(UiText.PassphraseSetDone, harness.ToastTexts);
         Assert.Equal(LocalDataProtection.Passphrase, harness.Services.Protection);
-        Assert.Equal("Your stored data is protected by a passphrase. The app asks for it at start and after 5 minutes in the background.", UiHarness.Find<TextBlock>(view, "StateText").Text);
+        Assert.Equal(UiText.PassphraseStateSet, UiHarness.Find<TextBlock>(view, "StateText").Text);
         Assert.True(UiHarness.Find<Button>(view, "ChangeButton").IsVisible);
         Assert.True(UiHarness.Find<Button>(view, "RemoveButton").IsEffectivelyVisible);
+        Assert.Equal(UiText.PassphraseForgotten, UiHarness.Find<TextBlock>(view, "ForgottenText").Text);
+        Assert.True(UiHarness.Find<TextBlock>(view, "ForgottenText").IsVisible);
         Assert.True(UiHarness.Find<Button>(main, "LockButton").IsVisible);
         Assert.Equal(string.Empty, page.NewPassphrase);
 
@@ -399,14 +408,14 @@ public sealed class PassphraseViewTests
 
         page.CurrentPassphrase = SavedData.Passphrase;
         await page.ChangeCommand.ExecuteAsync(null);
-        Assert.Equal(UiText.PassphraseChanged, page.StatusMessage);
+        Assert.Contains(UiText.PassphraseChanged, harness.ToastTexts);
         Assert.Null(page.ErrorMessage);
 
         page.CurrentPassphrase = OtherPassphrase;
         await page.RemoveCommand.ExecuteAsync(null);
         UiHarness.Flush();
 
-        Assert.Equal(UiText.PassphraseRemoved, page.StatusMessage);
+        Assert.Contains(UiText.PassphraseRemoved, harness.ToastTexts);
         Assert.Equal(LocalDataProtection.KeyStore, harness.Services.Protection);
         Assert.True(UiHarness.Find<Button>(view, "SetButton").IsVisible);
         Assert.False(UiHarness.Find<Button>(main, "LockButton").IsVisible);
@@ -468,6 +477,8 @@ public sealed class PassphraseViewTests
         await using var harness = await UiHarness.StartAsync("Alice");
         var view = new ContactListView { DataContext = harness.Shell.CurrentPage };
         harness.Show(view);
+        Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage).OpenMenuCommand.Execute(null);
+        UiHarness.Flush();
 
         Assert.False(UiHarness.Descendant<Button>(view, "PassphraseButton").IsVisible);
         Assert.False(harness.Shell.CanLock);

@@ -15,12 +15,12 @@ public sealed partial class GroupMessageItemViewModel : ViewModelBase
     private readonly Func<GroupMessageItemViewModel, CancellationToken, Task>? delete;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(StateText), nameof(StateExplanation), nameof(CanDelete), nameof(IsDeleteVisible))]
+    [NotifyPropertyChangedFor(nameof(StateText), nameof(CanDelete), nameof(IsDeleteVisible))]
     private int receivedCount;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsDeleteVisible))]
-    private bool isExplanationShown;
+    private bool isDetailsShown;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsDeleteVisible))]
@@ -77,13 +77,9 @@ public sealed partial class GroupMessageItemViewModel : ViewModelBase
         : ReceivedCount == 0 ? UiText.DeliveryWaiting
         : Formats.WithAll(Formats.GroupDeliveryReceived, ReceivedCount, RecipientCount);
 
-    public string? StateExplanation => !IsOwn ? null
-        : ReceivedCount == 0 ? UiText.GroupDeliveryWaitingExplanation
-        : UiText.GroupDeliveryReceivedExplanation;
-
     public bool CanDelete => delete is not null && IsOwn && RecipientCount > 0 && ReceivedCount == 0;
 
-    public bool IsDeleteVisible => CanDelete && IsExplanationShown && !IsConfirmingDelete;
+    public bool IsDeleteVisible => CanDelete && IsDetailsShown && !IsConfirmingDelete;
 
     private bool IsIdle => !IsDeleting;
 
@@ -163,7 +159,7 @@ public sealed partial class GroupMessageItemViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void ToggleExplanation() => IsExplanationShown = !IsExplanationShown;
+    private void ToggleDetails() => IsDetailsShown = !IsDetailsShown;
 
     [RelayCommand]
     private void AskDelete()

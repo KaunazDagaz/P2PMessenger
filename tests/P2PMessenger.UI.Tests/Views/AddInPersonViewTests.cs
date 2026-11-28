@@ -31,7 +31,6 @@ public sealed class AddInPersonViewTests
         Assert.Equal(harness.Messenger.Identity.CodeText, Decode(page.QrCode));
         Assert.Equal("Alice", UiHarness.Find<TextBlock>(view, "NameText").Text);
         Assert.Equal(harness.Messenger.Identity.Fingerprint.ToGroupedString(), UiHarness.Find<TextBlock>(view, "FingerprintText").Text);
-        Assert.Equal(UiText.InPersonIntro, UiHarness.Find<TextBlock>(view, "IntroText").Text);
         harness.Messenger.Identity.Dispose();
     }
 
@@ -53,7 +52,7 @@ public sealed class AddInPersonViewTests
         Assert.Equal(CodeExchange.InPerson, contact.Exchange);
         Assert.Equal(KeyComparison.CheckedByYou, contact.KeyComparison);
         Assert.Equal(ContactState.WaitingForFirstConnection, contact.State);
-        Assert.StartsWith("Bob is added, with the key checked by you. Now let Bob scan your code.", UiHarness.Find<TextBlock>(view, "StatusText").Text, StringComparison.Ordinal);
+        Assert.Equal("Bob is added, with the key checked by you.", UiHarness.Find<TextBlock>(view, "StatusText").Text);
         Assert.Equal(code.Fingerprint.ToGroupedString(), UiHarness.Find<TextBlock>(view, "ScannedFingerprintText").Text);
         Assert.False(UiHarness.Find<Button>(view, "OpenChatButton").IsVisible);
         Assert.False(UiHarness.Find<TextBlock>(view, "ErrorText").IsVisible);
@@ -85,7 +84,7 @@ public sealed class AddInPersonViewTests
             Assert.True((await bob.Contacts.AddAsync(scanned, CodeExchange.InPerson, CancellationToken.None)).IsSaved);
             await UiHarness.WaitUntilAsync(() => page.IsConnected);
 
-            Assert.Equal("Bob scanned your code too, and your apps are connected. The app checked their key, not who they are.", UiHarness.Find<TextBlock>(view, "StatusText").Text);
+            Assert.Equal("Bob scanned your code too, and your apps are connected.", UiHarness.Find<TextBlock>(view, "StatusText").Text);
             Assert.True(UiHarness.Find<Button>(view, "OpenChatButton").IsVisible);
             Assert.True(harness.Messenger.Contacts.TryGet(bob.Identity.Keys.IdentityKey, out var contact));
             Assert.True(contact.IsAdded);
@@ -119,8 +118,7 @@ public sealed class AddInPersonViewTests
         await page.ScanCommand.ExecuteAsync(null);
         UiHarness.Flush();
 
-        Assert.StartsWith(expected, UiHarness.Find<TextBlock>(view, "ErrorText").Text, StringComparison.Ordinal);
-        Assert.EndsWith("exchange codes as text, a file or a QR image instead.", UiHarness.Find<TextBlock>(view, "ErrorText").Text, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(expected, UiHarness.Find<TextBlock>(view, "ErrorText").Text);
         Assert.True(UiHarness.Find<Button>(view, "AddByCodeButton").IsVisible);
         Assert.Empty(harness.Messenger.Contacts.All);
 
@@ -151,8 +149,8 @@ public sealed class AddInPersonViewTests
     [AvaloniaTheory]
     [Trait("Story", "US-02")]
     [InlineData("https://example.org/", "This QR code is not a P2PMessenger contact code.")]
-    [InlineData("P2PM2-AAAA", "This code comes from another version of the app and cannot be read.")]
-    [InlineData("P2PM1-AEAAAAAA", "This code is damaged. Ask for it again.")]
+    [InlineData("P2PM2-AAAA", "This code comes from another version of the app.")]
+    [InlineData("P2PM1-AEAAAAAA", "This code is damaged.")]
     public async Task AddInPerson_ScannedSomethingElse_SaysWhyAndAddsNothing(string text, string expected)
     {
         await using var harness = await UiHarness.StartAsync("Alice");
@@ -201,7 +199,7 @@ public sealed class AddInPersonViewTests
         Assert.True(harness.Messenger.Contacts.TryGet(bob.IdentityKey, out var contact));
         Assert.Equal(KeyComparison.CheckedByYou, contact.KeyComparison);
         Assert.Equal(CodeExchange.OtherChannel, contact.Exchange);
-        Assert.Equal("Bob is already a contact, and the key you scanned matches the one you have. It is now marked as checked by you.", UiHarness.Find<TextBlock>(view, "StatusText").Text);
+        Assert.Equal("Bob is already a contact. The key is now marked as checked by you.", UiHarness.Find<TextBlock>(view, "StatusText").Text);
         Assert.Single(harness.Messenger.Contacts.All);
         harness.Messenger.Identity.Dispose();
     }

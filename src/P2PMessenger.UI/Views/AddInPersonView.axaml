@@ -5,66 +5,91 @@
              xmlns:c="using:P2PMessenger.UI.Controls"
              x:Class="P2PMessenger.UI.Views.AddInPersonView"
              x:DataType="vm:AddInPersonViewModel">
-    <ScrollViewer>
-        <StackPanel Margin="16" Spacing="8" MaxWidth="640">
-            <TextBlock x:Name="IntroText" Text="{x:Static res:UiText.InPersonIntro}" TextWrapping="Wrap" />
-            <c:QrCodeView x:Name="QrCode"
-                          Matrix="{Binding QrCode}"
-                          Width="280"
-                          Height="280"
-                          HorizontalAlignment="Center"
-                          AutomationProperties.Name="{x:Static res:UiText.InPersonQrLabel}" />
-            <TextBlock x:Name="NameText" Text="{Binding Name}" HorizontalAlignment="Center" FontSize="16" FontWeight="SemiBold" />
-            <TextBlock x:Name="FingerprintText" Text="{Binding Fingerprint}" HorizontalAlignment="Center" FontFamily="monospace" FontSize="12" />
-            <Button x:Name="ScanButton"
-                    HorizontalAlignment="Center"
-                    Margin="0,8,0,0"
-                    Content="{x:Static res:UiText.InPersonScan}"
-                    Command="{Binding ScanCommand}" />
-            <ProgressBar x:Name="BusyBar"
-                         IsIndeterminate="True"
-                         IsVisible="{Binding IsBusy}"
-                         AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
-            <TextBlock x:Name="ErrorText"
-                       Text="{Binding ErrorMessage}"
-                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
-                       TextWrapping="Wrap" />
-            <Button x:Name="AddByCodeButton"
-                    Content="{x:Static res:UiText.InPersonAddByCode}"
-                    Command="{Binding AddByCodeCommand}"
-                    IsVisible="{Binding OffersTextCodes}" />
-            <Border x:Name="StatusPanel"
-                    Padding="12"
-                    BorderThickness="1"
-                    CornerRadius="4"
-                    BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                    IsVisible="{Binding HasStatus}">
-                <StackPanel Spacing="6">
+    <c:PageContainer>
+        <StackPanel Spacing="16">
+            <Border Classes="card">
+                <StackPanel Spacing="12">
+                    <Border Classes="qr">
+                        <c:QrCodeView x:Name="QrCode"
+                                      Matrix="{Binding QrCode}"
+                                      HorizontalAlignment="Center"
+                                      AutomationProperties.Name="{x:Static res:UiText.InPersonQrLabel}" />
+                    </Border>
+                    <TextBlock x:Name="NameText" Classes="title centered" Text="{Binding Name}" />
+                    <TextBlock x:Name="FingerprintText" Classes="caption mono centered" Text="{Binding Fingerprint}" />
+                    <Button x:Name="ScanButton"
+                            Classes="primary iconic"
+                            c:Icons.Glyph="{StaticResource IconQr}"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Margin="0,6,0,0"
+                            Content="{x:Static res:UiText.InPersonScan}"
+                            Command="{Binding ScanCommand}" />
+                    <ProgressBar x:Name="BusyBar"
+                                 IsIndeterminate="True"
+                                 IsVisible="{Binding IsBusy}"
+                                 AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
+                    <Border Classes="notice danger" IsVisible="{Binding #ErrorText.IsVisible}">
+                        <TextBlock x:Name="ErrorText"
+                                   Text="{Binding ErrorMessage}"
+                                   IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                   TextWrapping="Wrap" />
+                    </Border>
+                    <Button x:Name="AddByCodeButton"
+                            Classes="quiet"
+                            HorizontalAlignment="Center"
+                            Content="{x:Static res:UiText.InPersonAddByCode}"
+                            Command="{Binding AddByCodeCommand}"
+                            IsVisible="{Binding OffersTextCodes}" />
+                </StackPanel>
+            </Border>
+            <Border x:Name="StatusPanel" Classes="notice success" IsVisible="{Binding HasStatus}">
+                <StackPanel Spacing="8">
                     <TextBlock x:Name="StatusText" Text="{Binding StatusMessage}" TextWrapping="Wrap" />
-                    <TextBlock Text="{x:Static res:UiText.AddContactFingerprintLabel}" FontWeight="SemiBold" IsVisible="{Binding HasScannedContact}" />
-                    <SelectableTextBlock x:Name="ScannedFingerprintText" Text="{Binding ScannedFingerprint}" FontFamily="monospace" IsVisible="{Binding HasScannedContact}" />
+                    <TextBlock Classes="caption" Text="{x:Static res:UiText.AddContactFingerprintLabel}" IsVisible="{Binding HasScannedContact}" />
+                    <SelectableTextBlock x:Name="ScannedFingerprintText"
+                                         Classes="mono"
+                                         TextWrapping="Wrap"
+                                         Text="{Binding ScannedFingerprint}"
+                                         IsVisible="{Binding HasScannedContact}" />
                     <Button x:Name="OpenChatButton"
+                            Classes="primary iconic"
+                            c:Icons.Glyph="{StaticResource IconMessage}"
+                            HorizontalAlignment="Left"
                             Content="{x:Static res:UiText.InPersonOpenChat}"
                             Command="{Binding OpenChatCommand}"
                             IsVisible="{Binding IsConnected}" />
                 </StackPanel>
             </Border>
-            <Border x:Name="PreviewPanel"
-                    Padding="12"
-                    BorderThickness="1"
-                    CornerRadius="4"
-                    BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                    IsVisible="{Binding HasPreview}">
-                <StackPanel Spacing="6">
-                    <TextBlock Text="{x:Static res:UiText.AddContactNameLabel}" FontWeight="SemiBold" />
-                    <TextBlock x:Name="PreviewName" Text="{Binding PreviewName}" FontSize="16" />
-                    <TextBlock Text="{x:Static res:UiText.AddContactFingerprintLabel}" FontWeight="SemiBold" />
-                    <SelectableTextBlock x:Name="PreviewFingerprint" Text="{Binding PreviewFingerprint}" FontFamily="monospace" />
-                    <TextBlock x:Name="PreviewHint" Text="{Binding PreviewHint}" TextWrapping="Wrap" />
-                    <Button x:Name="AddButton" Content="{Binding AddText}" Command="{Binding AddCommand}" />
+            <Border x:Name="PreviewPanel" Classes="card" IsVisible="{Binding HasPreview}">
+                <StackPanel Spacing="12">
+                    <DockPanel>
+                        <c:Avatar DockPanel.Dock="Left"
+                                  Size="52"
+                                  Margin="0,0,14,0"
+                                  VerticalAlignment="Center"
+                                  DisplayName="{Binding PreviewName}" />
+                        <StackPanel Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Classes="caption" Text="{x:Static res:UiText.AddContactNameLabel}" />
+                            <TextBlock x:Name="PreviewName" Classes="title" Text="{Binding PreviewName}" />
+                        </StackPanel>
+                    </DockPanel>
+                    <TextBlock Classes="caption" Text="{x:Static res:UiText.AddContactFingerprintLabel}" />
+                    <Border Classes="fingerprint">
+                        <SelectableTextBlock x:Name="PreviewFingerprint"
+                                             Classes="mono"
+                                             TextWrapping="Wrap"
+                                             Text="{Binding PreviewFingerprint}" />
+                    </Border>
+                    <TextBlock x:Name="PreviewHint" Classes="muted" Text="{Binding PreviewHint}" />
+                    <Button x:Name="AddButton"
+                            Classes="primary"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Content="{Binding AddText}"
+                            Command="{Binding AddCommand}" />
                 </StackPanel>
             </Border>
         </StackPanel>
-    </ScrollViewer>
+    </c:PageContainer>
 </UserControl>
