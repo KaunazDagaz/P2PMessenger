@@ -121,7 +121,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to This code is damaged. Ask for it again..
+        ///   Looks up a localized string similar to This code is damaged..
         /// </summary>
         public static string AddContactDamaged {
             get {
@@ -175,16 +175,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Paste the code your contact sent you, or open their code file or QR image. They must add your code too..
-        /// </summary>
-        public static string AddContactIntro {
-            get {
-                return ResourceManager.GetString("AddContactIntro", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to This code holds keys that belong to you or to another contact, so it cannot be added..
+        ///   Looks up a localized string similar to These keys already belong to you or to another contact..
         /// </summary>
         public static string AddContactKeysInUse {
             get {
@@ -193,7 +184,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to A saved contact is called {0}, but this code has a different key. If it really comes from {0}, they now have a new identity, for example after reinstalling the app. You can add it as a new contact and compare fingerprints with them..
+        ///   Looks up a localized string similar to A saved contact is called {0}, but this code has a different key..
         /// </summary>
         public static string AddContactLooksLikeFormat {
             get {
@@ -211,16 +202,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The app will ask you both to compare fingerprints, because a code sent as text, a file or an image can be swapped on the way..
-        /// </summary>
-        public static string AddContactNewHint {
-            get {
-                return ResourceManager.GetString("AddContactNewHint", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to {0} is already a contact, and this code has new connection keys for them. It is signed with the same identity key, so the fingerprint is the same. Accept the new keys only if {0} expects it..
+        ///   Looks up a localized string similar to {0} is already a contact, and this code has new connection keys for them..
         /// </summary>
         public static string AddContactNewKeysFormat {
             get {
@@ -229,7 +211,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to No contact code was found in this image. Open a sharper picture of the whole QR code, or ask for the code as text..
+        ///   Looks up a localized string similar to No contact code was found in this image..
         /// </summary>
         public static string AddContactNoCodeInImage {
             get {
@@ -283,7 +265,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to This code comes from another version of the app and cannot be read..
+        ///   Looks up a localized string similar to This code comes from another version of the app..
         /// </summary>
         public static string AddContactUnsupportedVersion {
             get {
@@ -292,7 +274,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The app could not start. Close it and open it again..
+        ///   Looks up a localized string similar to The app could not start..
         /// </summary>
         public static string AppStartFailed {
             get {
@@ -319,11 +301,20 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Something went wrong, so the last action may not have finished. Try it again; if it keeps failing, restart the app..
+        ///   Looks up a localized string similar to Something went wrong. Try again..
         /// </summary>
         public static string AppUnexpectedError {
             get {
                 return ResourceManager.GetString("AppUnexpectedError", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Welcome to P2PMessenger.
+        /// </summary>
+        public static string AppWelcomeTitle {
+            get {
+                return ResourceManager.GetString("AppWelcomeTitle", resourceCulture);
             }
         }
 
@@ -337,7 +328,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Battery optimisation is off for P2PMessenger, so Android lets it run while the phone is idle..
+        ///   Looks up a localized string similar to Battery optimisation is off..
         /// </summary>
         public static string BackgroundBatteryExempt {
             get {
@@ -346,7 +337,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Battery optimisation is on for P2PMessenger: Android may delay messages while the phone is idle. P2PMessenger keeps working..
+        ///   Looks up a localized string similar to Battery optimisation is on..
         /// </summary>
         public static string BackgroundBatteryNotExempt {
             get {
@@ -355,7 +346,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Not allowed. Android may delay messages while the phone is idle; P2PMessenger keeps working, and you can allow it here later..
+        ///   Looks up a localized string similar to Not allowed..
         /// </summary>
         public static string BackgroundBatteryRefused {
             get {
@@ -373,24 +364,6 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to To keep receiving messages while the phone is idle, allow P2PMessenger to run in the background and to show notifications. You can change this later on the Background page..
-        /// </summary>
-        public static string BackgroundFirstRun {
-            get {
-                return ResourceManager.GetString("BackgroundFirstRun", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to P2PMessenger keeps running while the screen is off, with a notification that stays while it runs, so that messages from your contacts reach this phone..
-        /// </summary>
-        public static string BackgroundIntro {
-            get {
-                return ResourceManager.GetString("BackgroundIntro", resourceCulture);
-            }
-        }
-
-        /// <summary>
         ///   Looks up a localized string similar to Allow notifications.
         /// </summary>
         public static string BackgroundNotificationsAllow {
@@ -400,7 +373,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Notifications are on: a new message shows who sent it while P2PMessenger is in the background..
+        ///   Looks up a localized string similar to Notifications are on..
         /// </summary>
         public static string BackgroundNotificationsAllowed {
             get {
@@ -409,7 +382,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Notifications are off for P2PMessenger: you will not see new messages while it is in the background, and the notification that it is running is hidden..
+        ///   Looks up a localized string similar to Notifications are off..
         /// </summary>
         public static string BackgroundNotificationsOff {
             get {
@@ -432,15 +405,6 @@ namespace P2PMessenger.UI.Resources {
         public static string BackgroundPreviews {
             get {
                 return ResourceManager.GetString("BackgroundPreviews", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to When this is off, a notification shows only who sent the message. The lock screen never shows the sender or the text..
-        /// </summary>
-        public static string BackgroundPreviewsHint {
-            get {
-                return ResourceManager.GetString("BackgroundPreviewsHint", resourceCulture);
             }
         }
 
@@ -490,7 +454,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to It stops running in the background, and messages will not arrive on this phone until you open the app again. Waiting messages stay on this device..
+        ///   Looks up a localized string similar to Messages will not arrive on this phone until you open the app again..
         /// </summary>
         public static string BackgroundQuitWarning {
             get {
@@ -499,7 +463,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Android does not let P2PMessenger run in the background, because its battery use is restricted: the app stops soon after you leave it, and messages arrive only while it is open. To change this, allow background use in the app&apos;s battery settings..
+        ///   Looks up a localized string similar to Background use is restricted by Android. Allow it in the app&apos;s battery settings..
         /// </summary>
         public static string BackgroundRestricted {
             get {
@@ -535,6 +499,15 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Close.
+        /// </summary>
+        public static string CommonClose {
+            get {
+                return ResourceManager.GetString("CommonClose", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Delete.
         /// </summary>
         public static string CommonDelete {
@@ -562,7 +535,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to {0} is added. The app checked their key, not who they are..
+        ///   Looks up a localized string similar to {0} is added..
         /// </summary>
         public static string ContactAddedNoticeFormat {
             get {
@@ -616,15 +589,6 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Contacts.
-        /// </summary>
-        public static string ContactListContactsHeading {
-            get {
-                return ResourceManager.GetString("ContactListContactsHeading", resourceCulture);
-            }
-        }
-
-        /// <summary>
         ///   Looks up a localized string similar to Copied chats (read-only).
         /// </summary>
         public static string ContactListCopiedChatsHeading {
@@ -643,20 +607,11 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to No contacts yet. Meet them and add each other in person, or add the code they sent you and send them yours..
+        ///   Looks up a localized string similar to No contacts yet..
         /// </summary>
         public static string ContactListEmpty {
             get {
                 return ResourceManager.GetString("ContactListEmpty", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to Groups.
-        /// </summary>
-        public static string ContactListGroupsHeading {
-            get {
-                return ResourceManager.GetString("ContactListGroupsHeading", resourceCulture);
             }
         }
 
@@ -697,7 +652,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to This device has no Wi-Fi and no internet. Nearby contacts can be reached if one person shares a hotspot from a phone and the others join it..
+        ///   Looks up a localized string similar to No Wi-Fi and no internet..
         /// </summary>
         public static string ContactListNoNetwork {
             get {
@@ -751,6 +706,15 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Settings and data.
+        /// </summary>
+        public static string ContactListSettingsHeading {
+            get {
+                return ResourceManager.GetString("ContactListSettingsHeading", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Contacts.
         /// </summary>
         public static string ContactListTitle {
@@ -760,7 +724,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Internet route unavailable: the app cannot reach the Tor network. Tor may be blocked here, or the internet does not work. Nearby messaging continues..
+        ///   Looks up a localized string similar to Internet route unavailable: the Tor network cannot be reached..
         /// </summary>
         public static string ContactListTorCannotReach {
             get {
@@ -769,7 +733,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Internet route unavailable: the date or time on this device is wrong, so Tor cannot connect. Set the correct date and time; nearby messaging continues..
+        ///   Looks up a localized string similar to Internet route unavailable: the date or time on this device is wrong..
         /// </summary>
         public static string ContactListTorClockWrong {
             get {
@@ -787,7 +751,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Internet route unavailable: Tor could not start on this device. The app tries again shortly; nearby messaging continues..
+        ///   Looks up a localized string similar to Internet route unavailable: Tor could not start..
         /// </summary>
         public static string ContactListTorFailed {
             get {
@@ -796,7 +760,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Internet route unavailable: this device has no network connection. Nearby messaging continues..
+        ///   Looks up a localized string similar to Internet route unavailable: no network connection..
         /// </summary>
         public static string ContactListTorNoNetwork {
             get {
@@ -805,7 +769,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Internet route unavailable: Tor is not part of this build. Nearby messaging continues..
+        ///   Looks up a localized string similar to Internet route unavailable: Tor is not part of this build..
         /// </summary>
         public static string ContactListTorNotInBuild {
             get {
@@ -814,7 +778,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Internet route off: Tor is turned off on this device. Nearby messaging continues..
+        ///   Looks up a localized string similar to Internet route off..
         /// </summary>
         public static string ContactListTorOff {
             get {
@@ -823,7 +787,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Connecting to Tor ({0} %). Nearby messaging works meanwhile..
+        ///   Looks up a localized string similar to Connecting to Tor ({0} %)..
         /// </summary>
         public static string ContactListTorStartingFormat {
             get {
@@ -832,7 +796,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Internet route unavailable: Tor stopped. The app starts it again shortly; nearby messaging continues..
+        ///   Looks up a localized string similar to Internet route unavailable: Tor stopped..
         /// </summary>
         public static string ContactListTorStopped {
             get {
@@ -904,7 +868,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The chat was deleted on this device only. {0}&apos;s app still has its copy..
+        ///   Looks up a localized string similar to The chat with {0} was deleted on this device only..
         /// </summary>
         public static string ConversationChatDeletedFormat {
             get {
@@ -940,7 +904,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Delete the chat with {0}? Its messages are removed from this device, and messages that are still waiting will not be sent. {0}&apos;s app keeps its copy..
+        ///   Looks up a localized string similar to Delete the chat with {0}? It is removed from this device only..
         /// </summary>
         public static string ConversationDeleteChatQuestionFormat {
             get {
@@ -967,7 +931,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to You have not compared keys with {0}. Their code came as text, a file or an image, which can be swapped on the way..
+        ///   Looks up a localized string similar to You have not compared keys with {0}..
         /// </summary>
         public static string ConversationKeyNotComparedFormat {
             get {
@@ -976,7 +940,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The key of {0} is marked as not compared. Compare fingerprints with {0} before you trust this contact..
+        ///   Looks up a localized string similar to The key of {0} is not compared..
         /// </summary>
         public static string ConversationKeyNotComparedInPersonFormat {
             get {
@@ -985,7 +949,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The waiting message was deleted on this device and will not be sent again. If it reached {0}&apos;s app before its confirmation came back, it stays there..
+        ///   Looks up a localized string similar to The waiting message to {0} was deleted..
         /// </summary>
         public static string ConversationMessageDeletedFormat {
             get {
@@ -1030,7 +994,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Not sent: {0} becomes a contact only after the first connection..
+        ///   Looks up a localized string similar to Not sent: {0} is not a contact yet..
         /// </summary>
         public static string ConversationNotAddedFormat {
             get {
@@ -1066,7 +1030,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Waiting for the first connection with {0}. They become a contact when their app proves that it holds the key in their code. They must add your code too, and both devices must be on the same network or both connected to Tor..
+        ///   Looks up a localized string similar to Waiting for the first connection with {0}..
         /// </summary>
         public static string ConversationWaitingFormat {
             get {
@@ -1093,7 +1057,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Read-only copy from your phone (copied {0}). You cannot reply here; new messages on your phone appear here only when you copy the chat again..
+        ///   Looks up a localized string similar to Read-only copy from your phone (copied {0})..
         /// </summary>
         public static string CopiedConversationBannerFormat {
             get {
@@ -1120,7 +1084,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Delete the copy of {0} from this PC? Your phone keeps its chat unchanged..
+        ///   Looks up a localized string similar to Delete the copy of {0} from this PC?.
         /// </summary>
         public static string CopiedConversationDeleteQuestionFormat {
             get {
@@ -1183,16 +1147,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Choose the name your contacts will see. The app creates your keys on this device. No phone number, email or account is needed..
-        /// </summary>
-        public static string CreateIdentityIntro {
-            get {
-                return ResourceManager.GetString("CreateIdentityIntro", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to Enter a name of up to 64 bytes (fewer letters in some alphabets) without control characters..
+        ///   Looks up a localized string similar to Enter a name of up to 64 bytes without control characters..
         /// </summary>
         public static string CreateIdentityInvalidName {
             get {
@@ -1219,7 +1174,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Without a passphrase, nothing is saved on this device: your identity, contacts and messages are lost when the app closes..
+        ///   Looks up a localized string similar to Without a passphrase, nothing is saved on this device..
         /// </summary>
         public static string CreateIdentityNoPassphraseNoKeyStore {
             get {
@@ -1246,7 +1201,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to No key store answered on this device, so the app can save your data only under a passphrase. Enter one above, or start the key store (on Linux, a Secret Service such as GNOME Keyring) and try again..
+        ///   Looks up a localized string similar to No key store is available, so a passphrase is required..
         /// </summary>
         public static string CreateIdentityPassphraseRequired {
             get {
@@ -1273,15 +1228,6 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Others on the same network can see that a device uses Tor. You can turn it off or on later on the contact list..
-        /// </summary>
-        public static string CreateIdentityUseTorHint {
-            get {
-                return ResourceManager.GetString("CreateIdentityUseTorHint", resourceCulture);
-            }
-        }
-
-        /// <summary>
         ///   Looks up a localized string similar to Delete everything.
         /// </summary>
         public static string DeleteAllDataConfirm {
@@ -1300,7 +1246,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to All data was deleted from this device. Your contacts&apos; apps keep their copies of your chats..
+        ///   Looks up a localized string similar to All data was deleted from this device..
         /// </summary>
         public static string DeleteAllDataDone {
             get {
@@ -1318,29 +1264,11 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Not every file could be deleted. Close any other copy of the app and delete all data again..
+        ///   Looks up a localized string similar to Not every file could be deleted. Close any other copy of the app and try again..
         /// </summary>
         public static string DeleteAllDataIncomplete {
             get {
                 return ResourceManager.GetString("DeleteAllDataIncomplete", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to If the stored data cannot be opened, you can delete it from this device and create a new identity..
-        /// </summary>
-        public static string DeleteAllDataIntroProblem {
-            get {
-                return ResourceManager.GetString("DeleteAllDataIntroProblem", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to If the passphrase is forgotten, the only way to use the app again is to delete all its data on this device and create a new identity..
-        /// </summary>
-        public static string DeleteAllDataIntroUnlock {
-            get {
-                return ResourceManager.GetString("DeleteAllDataIntroUnlock", resourceCulture);
             }
         }
 
@@ -1363,7 +1291,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to This deletes your identity, your contacts and all chats from this device, and it cannot be undone. Messages that are still waiting will not be sent. Your contacts&apos; apps keep their copies of your chats..
+        ///   Looks up a localized string similar to This deletes your identity, contacts and all chats from this device and cannot be undone..
         /// </summary>
         public static string DeleteAllDataWarning {
             get {
@@ -1381,29 +1309,11 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The contact&apos;s app confirmed that it has stored this message; this does not show whether they have read it..
-        /// </summary>
-        public static string DeliveryReceivedExplanation {
-            get {
-                return ResourceManager.GetString("DeliveryReceivedExplanation", resourceCulture);
-            }
-        }
-
-        /// <summary>
         ///   Looks up a localized string similar to Waiting.
         /// </summary>
         public static string DeliveryWaiting {
             get {
                 return ResourceManager.GetString("DeliveryWaiting", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to The contact&apos;s app has not confirmed this message yet; it is sent again automatically until it does, and it may already have arrived..
-        /// </summary>
-        public static string DeliveryWaitingExplanation {
-            get {
-                return ResourceManager.GetString("DeliveryWaitingExplanation", resourceCulture);
             }
         }
 
@@ -1417,10 +1327,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Their device was heard nearby, but their app did not accept the connection. Possible reasons:
-        ///• another program or device now answers at the address where it was heard, for example after their app restarted;
-        ///• their app is turning away new connections for a moment because too many arrived at once;
-        ///• another device on the network sent an old announcement of theirs again..
+        ///   Looks up a localized string similar to Their device was heard nearby, but their app did not accept the connection..
         /// </summary>
         public static string DialRefused {
             get {
@@ -1429,10 +1336,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Their device was heard nearby, but the attempt timed out. Possible reasons:
-        ///• a firewall on their device blocks the app (Windows asks about it when the app first runs);
-        ///• their device is asleep or out of range;
-        ///• the network is too slow, or their app did not answer in time..
+        ///   Looks up a localized string similar to Their device was heard nearby, but the attempt timed out..
         /// </summary>
         public static string DialTimedOut {
             get {
@@ -1441,10 +1345,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Their device was heard nearby, but their app did not answer. Possible reasons:
-        ///• their app has just closed or restarted;
-        ///• their device has left the network or changed its address;
-        ///• a firewall on their device turns the connection away..
+        ///   Looks up a localized string similar to Their device was heard nearby, but their app did not answer..
         /// </summary>
         public static string DialUnreachable {
             get {
@@ -1453,7 +1354,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The chat was deleted on this device only. You are still a member, and the members&apos; apps still have their copies and can pass them on to other members..
+        ///   Looks up a localized string similar to The chat was deleted on this device only..
         /// </summary>
         public static string GroupChatDeleted {
             get {
@@ -1480,7 +1381,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Delete the chat of {0}? Its messages are removed from this device, and your messages that are still waiting are no longer sent from it. You stay a member and keep receiving new messages. The members&apos; apps keep their copies and can pass them on to other members..
+        ///   Looks up a localized string similar to Delete the chat of {0}? Its messages are removed from this device only..
         /// </summary>
         public static string GroupDeleteChatQuestionFormat {
             get {
@@ -1489,7 +1390,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Delete the chat of {0}? Its messages are removed from this device only. Other members&apos; apps keep their copies..
+        ///   Looks up a localized string similar to Delete the chat of {0}? Its messages are removed from this device only..
         /// </summary>
         public static string GroupDeleteInactiveChatQuestionFormat {
             get {
@@ -1525,29 +1426,11 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Each member marked received sent a signed confirmation from their app, directly or through another member, that it stored the message; this does not show whether anyone has read it. Because a member&apos;s app has it and can pass it on, it can no longer be deleted on its own..
-        /// </summary>
-        public static string GroupDeliveryReceivedExplanation {
-            get {
-                return ResourceManager.GetString("GroupDeliveryReceivedExplanation", resourceCulture);
-            }
-        }
-
-        /// <summary>
         ///   Looks up a localized string similar to Received by {0} of {1} members&apos; apps.
         /// </summary>
         public static string GroupDeliveryReceivedFormat {
             get {
                 return ResourceManager.GetString("GroupDeliveryReceivedFormat", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to No other member&apos;s app has confirmed this message yet. Each member shows as received once their app&apos;s signed confirmation reaches this device, directly or through another member. Until then it is sent again automatically, and it may already have arrived..
-        /// </summary>
-        public static string GroupDeliveryWaitingExplanation {
-            get {
-                return ResourceManager.GetString("GroupDeliveryWaitingExplanation", resourceCulture);
             }
         }
 
@@ -1561,7 +1444,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The chat was deleted on this device only. Other members&apos; apps keep their copies..
+        ///   Looks up a localized string similar to The chat was deleted on this device only..
         /// </summary>
         public static string GroupInactiveChatDeleted {
             get {
@@ -1579,7 +1462,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Not joined yet: open it to see whom to add.
+        ///   Looks up a localized string similar to Not joined yet.
         /// </summary>
         public static string GroupItemJoining {
             get {
@@ -1633,7 +1516,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to You have not joined this group yet. To join, add these members as contacts, in person or with codes sent through another channel, and compare fingerprints with them. Your app joins by itself once you have added them all..
+        ///   Looks up a localized string similar to You have not joined this group yet. Add these members as contacts..
         /// </summary>
         public static string GroupJoiningIntro {
             get {
@@ -1642,7 +1525,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to You have every member as a contact. Your app joins as soon as each first connection is complete..
+        ///   Looks up a localized string similar to You have every member as a contact..
         /// </summary>
         public static string GroupJoiningNone {
             get {
@@ -1660,7 +1543,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Choose the new group admin before leaving {0}. Your app will stop receiving new messages from this group, and existing messages stay on this device until you delete the chat..
+        ///   Looks up a localized string similar to Choose the new group admin before leaving {0}..
         /// </summary>
         public static string GroupLeaveAdminQuestionFormat {
             get {
@@ -1687,7 +1570,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Leave {0}? Only one other member will remain, so this group will end. Existing messages stay on this device until you delete the chat..
+        ///   Looks up a localized string similar to Leave {0}? Only one other member will remain, so this group will end..
         /// </summary>
         public static string GroupLeaveLastMemberQuestionFormat {
             get {
@@ -1696,7 +1579,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Leave {0}? Your app will stop receiving new messages from this group. Existing messages stay on this device until you delete the chat..
+        ///   Looks up a localized string similar to Leave {0}?.
         /// </summary>
         public static string GroupLeaveQuestionFormat {
             get {
@@ -1723,7 +1606,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to You left this group. Your app no longer receives new messages from it..
+        ///   Looks up a localized string similar to You left this group..
         /// </summary>
         public static string GroupLeftBanner {
             get {
@@ -1732,7 +1615,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The member lists of this group do not match: {0} joined with a different list than yours. Nobody can write in this group; create a new one with the people you trust..
+        ///   Looks up a localized string similar to The member lists do not match: {0} joined with a different list. Nobody can write in this group..
         /// </summary>
         public static string GroupListsDifferFormat {
             get {
@@ -1750,7 +1633,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Removed {0}. No other members remain in this group..
+        ///   Looks up a localized string similar to Removed {0}. No other members remain..
         /// </summary>
         public static string GroupMemberRemovedEndedFormat {
             get {
@@ -1759,7 +1642,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Removed {0}. A new group key is now in use..
+        ///   Looks up a localized string similar to Removed {0}..
         /// </summary>
         public static string GroupMemberRemovedFormat {
             get {
@@ -1786,7 +1669,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The waiting message was deleted on this device and will not be sent again. If it reached a member&apos;s app before that app&apos;s confirmation came back, it stays there and that app can pass it on to other members..
+        ///   Looks up a localized string similar to The waiting message was deleted..
         /// </summary>
         public static string GroupMessageDeleted {
             get {
@@ -1795,7 +1678,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Delete this waiting message? This device will not send it again..
+        ///   Looks up a localized string similar to Delete this waiting message?.
         /// </summary>
         public static string GroupMessageDeleteQuestion {
             get {
@@ -1831,7 +1714,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to You were removed from this group. Your app no longer receives new messages from it..
+        ///   Looks up a localized string similar to You were removed from this group..
         /// </summary>
         public static string GroupRemovedBanner {
             get {
@@ -1840,7 +1723,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Remove {0} from {1}? No other members will remain, so this group will end on your device. Messages from before removal stay on their device..
+        ///   Looks up a localized string similar to Remove {0} from {1}? No other members will remain, so this group will end..
         /// </summary>
         public static string GroupRemoveLastMemberQuestionFormat {
             get {
@@ -1867,11 +1750,20 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Remove {0} from {1}? A new group key will be created so they cannot read new messages. Messages from before removal stay on their device..
+        ///   Looks up a localized string similar to Remove {0} from {1}?.
         /// </summary>
         public static string GroupRemoveMemberQuestionFormat {
             get {
                 return ResourceManager.GetString("GroupRemoveMemberQuestionFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Remove member.
+        /// </summary>
+        public static string GroupRemoveMemberTitle {
+            get {
+                return ResourceManager.GetString("GroupRemoveMemberTitle", resourceCulture);
             }
         }
 
@@ -1885,7 +1777,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to You left this group and can no longer send messages in it..
+        ///   Looks up a localized string similar to You left this group..
         /// </summary>
         public static string GroupSendLeft {
             get {
@@ -1894,7 +1786,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to You were removed from this group and can no longer send messages in it..
+        ///   Looks up a localized string similar to You were removed from this group..
         /// </summary>
         public static string GroupSendRemoved {
             get {
@@ -1912,7 +1804,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Waiting for these members to join: {0}. Nobody can write in the group until every member has joined..
+        ///   Looks up a localized string similar to Waiting for these members to join: {0}..
         /// </summary>
         public static string GroupWaitingFormat {
             get {
@@ -1939,7 +1831,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to {0} is added, with the key checked by you. Now let {0} scan your code. Your apps connect when both of you have scanned and you are on the same network or both connected to Tor..
+        ///   Looks up a localized string similar to {0} is added, with the key checked by you..
         /// </summary>
         public static string InPersonAddedFormat {
             get {
@@ -1948,7 +1840,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to {0} is already a contact, and the key you scanned matches the one you have. It is now marked as checked by you..
+        ///   Looks up a localized string similar to {0} is already a contact. The key is now marked as checked by you..
         /// </summary>
         public static string InPersonAlreadyCheckedFormat {
             get {
@@ -1957,7 +1849,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The camera could not be started. Close other apps that use it and try again, or exchange codes as text, a file or a QR image instead..
+        ///   Looks up a localized string similar to The camera could not be started..
         /// </summary>
         public static string InPersonCameraFailed {
             get {
@@ -1966,7 +1858,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The app may not use the camera. Allow it in the system settings, or exchange codes as text, a file or a QR image instead..
+        ///   Looks up a localized string similar to The app may not use the camera..
         /// </summary>
         public static string InPersonCameraRefused {
             get {
@@ -1975,7 +1867,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to {0} scanned your code too, and your apps are connected. The app checked their key, not who they are..
+        ///   Looks up a localized string similar to {0} scanned your code too, and your apps are connected..
         /// </summary>
         public static string InPersonConnectedFormat {
             get {
@@ -1984,16 +1876,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Do this only while you are together. Each of you opens this page and scans the code on the other&apos;s screen. A code that someone sent you goes to &quot;Add contact&quot; instead, because it may have been swapped on the way..
-        /// </summary>
-        public static string InPersonIntro {
-            get {
-                return ResourceManager.GetString("InPersonIntro", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to The new connection keys of {0} are accepted, with the key checked by you. Now let {0} scan your code. Your apps connect when both of you have scanned and you are on the same network or both connected to Tor..
+        ///   Looks up a localized string similar to The new connection keys of {0} are accepted..
         /// </summary>
         public static string InPersonKeysAcceptedFormat {
             get {
@@ -2002,7 +1885,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to No camera was found on this device. Exchange codes as text, a file or a QR image instead..
+        ///   Looks up a localized string similar to No camera was found on this device..
         /// </summary>
         public static string InPersonNoCamera {
             get {
@@ -2074,7 +1957,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Delete this waiting message? It will not be sent again..
+        ///   Looks up a localized string similar to Delete this waiting message?.
         /// </summary>
         public static string MessageDeleteQuestion {
             get {
@@ -2133,15 +2016,6 @@ namespace P2PMessenger.UI.Resources {
         public static string NetworkHeardFormat {
             get {
                 return ResourceManager.GetString("NetworkHeardFormat", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to Debug builds only. What this device sees of the local network: its local interfaces, its ports and where each contact was last heard..
-        /// </summary>
-        public static string NetworkIntro {
-            get {
-                return ResourceManager.GetString("NetworkIntro", resourceCulture);
             }
         }
 
@@ -2308,16 +2182,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Choose contacts who have all added each other. Each invited member joins once they have every other member as a contact. Nobody can write in the group until every member has joined, so that everyone sees the same member list..
-        /// </summary>
-        public static string NewGroupIntro {
-            get {
-                return ResourceManager.GetString("NewGroupIntro", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to Enter a group name of up to 64 bytes (fewer letters in some alphabets) without control characters..
+        ///   Looks up a localized string similar to Enter a group name of up to 64 bytes without control characters..
         /// </summary>
         public static string NewGroupInvalidName {
             get {
@@ -2353,7 +2218,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to You have no contacts to invite yet. Only contacts whose first connection is complete can be invited..
+        ///   Looks up a localized string similar to You have no contacts to invite yet..
         /// </summary>
         public static string NewGroupNoContacts {
             get {
@@ -2515,15 +2380,6 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Changing the passphrase does not change the key that encrypts your data: anyone who could open an earlier copy of the app&apos;s files with the old passphrase can open later copies too..
-        /// </summary>
-        public static string PassphraseChangeNote {
-            get {
-                return ResourceManager.GetString("PassphraseChangeNote", resourceCulture);
-            }
-        }
-
-        /// <summary>
         ///   Looks up a localized string similar to Current passphrase.
         /// </summary>
         public static string PassphraseCurrentLabel {
@@ -2551,7 +2407,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to At least {0} characters. A few words are easier to remember than a short password..
+        ///   Looks up a localized string similar to At least {0} characters..
         /// </summary>
         public static string PassphraseHintFormat {
             get {
@@ -2560,7 +2416,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to This device&apos;s key store did not answer or refused, so nothing was changed. Start or unlock the key store when it asks, then try again..
+        ///   Looks up a localized string similar to The key store did not answer, so nothing was changed..
         /// </summary>
         public static string PassphraseKeyStoreFailed {
             get {
@@ -2614,15 +2470,6 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to After the passphrase is removed, this device&apos;s key store protects the data, and anyone who can unlock this device can open the app..
-        /// </summary>
-        public static string PassphraseRemoveWarning {
-            get {
-                return ResourceManager.GetString("PassphraseRemoveWarning", resourceCulture);
-            }
-        }
-
-        /// <summary>
         ///   Looks up a localized string similar to Repeat the passphrase.
         /// </summary>
         public static string PassphraseRepeatLabel {
@@ -2659,7 +2506,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Your stored data is protected by this device&apos;s key store, not by a passphrase. Anyone who can unlock this device can open the app..
+        ///   Looks up a localized string similar to No passphrase is set..
         /// </summary>
         public static string PassphraseStateNotSet {
             get {
@@ -2668,11 +2515,11 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Your stored data is protected by a passphrase. The app asks for it at start and after {0} minutes in the background..
+        ///   Looks up a localized string similar to A passphrase is set..
         /// </summary>
-        public static string PassphraseStateSetFormat {
+        public static string PassphraseStateSet {
             get {
-                return ResourceManager.GetString("PassphraseStateSetFormat", resourceCulture);
+                return ResourceManager.GetString("PassphraseStateSet", resourceCulture);
             }
         }
 
@@ -2700,15 +2547,6 @@ namespace P2PMessenger.UI.Resources {
         public static string PassphraseWrongCurrent {
             get {
                 return ResourceManager.GetString("PassphraseWrongCurrent", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to Send this code to your contacts through another messenger, or save it as a file and pass it on. It holds your public keys and your name, never your private key. Anyone who reads it learns your public keys, so send it only to the people you want to add you..
-        /// </summary>
-        public static string ProfileCodeHelp {
-            get {
-                return ResourceManager.GetString("ProfileCodeHelp", resourceCulture);
             }
         }
 
@@ -2812,15 +2650,6 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to To add each other in person, both of you open &quot;Add in person&quot; and scan the code on the other&apos;s screen. To send your code through another messenger, send the text below or save the QR code as an image..
-        /// </summary>
-        public static string ProfileQrHelp {
-            get {
-                return ResourceManager.GetString("ProfileQrHelp", resourceCulture);
-            }
-        }
-
-        /// <summary>
         ///   Looks up a localized string similar to Your QR code.
         /// </summary>
         public static string ProfileQrLabel {
@@ -2902,7 +2731,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Connected to your phone. Choose the chats to copy on your phone..
+        ///   Looks up a localized string similar to Connected to your phone..
         /// </summary>
         public static string ReceiveCopyConnected {
             get {
@@ -2911,7 +2740,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The connection to your phone was interrupted. Any chats that finished before the break were saved; start again to copy the rest..
+        ///   Looks up a localized string similar to The connection to your phone was interrupted..
         /// </summary>
         public static string ReceiveCopyDisconnected {
             get {
@@ -2929,7 +2758,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The copy did not finish cleanly. Nothing partial was saved; try again..
+        ///   Looks up a localized string similar to The copy did not finish. Nothing partial was saved..
         /// </summary>
         public static string ReceiveCopyFailed {
             get {
@@ -2938,16 +2767,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Keep your phone and this PC on the same Wi-Fi network. On your phone, open &quot;Copy chats to PC&quot; and scan this QR code. Your phone&apos;s private keys are never copied; the copied chats are stored read-only on this PC..
-        /// </summary>
-        public static string ReceiveCopyIntro {
-            get {
-                return ResourceManager.GetString("ReceiveCopyIntro", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to Could not start listening on the local network. Check your firewall or network settings and try again..
+        ///   Looks up a localized string similar to Could not start listening on the local network..
         /// </summary>
         public static string ReceiveCopyListenFailed {
             get {
@@ -2956,7 +2776,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to This PC is not on a Wi-Fi or local network. Connect both this PC and your phone to the same Wi-Fi network, then try again..
+        ///   Looks up a localized string similar to This PC is not on a Wi-Fi or local network..
         /// </summary>
         public static string ReceiveCopyNoNetwork {
             get {
@@ -3055,7 +2875,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The camera could not be started. Close other apps that use it and try again..
+        ///   Looks up a localized string similar to The camera could not be started..
         /// </summary>
         public static string SendCopyCameraFailed {
             get {
@@ -3064,7 +2884,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The app may not use the camera. Allow camera access in the system settings, then try again..
+        ///   Looks up a localized string similar to The app may not use the camera..
         /// </summary>
         public static string SendCopyCameraRefused {
             get {
@@ -3136,7 +2956,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Copied {0} chats to your PC as read-only copies. New messages on this phone appear on your PC only when you copy again..
+        ///   Looks up a localized string similar to Copied {0} chats to your PC..
         /// </summary>
         public static string SendCopyCompletedFormat {
             get {
@@ -3145,7 +2965,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Copied 1 chat to your PC as a read-only copy. New messages on this phone appear on your PC only when you copy again..
+        ///   Looks up a localized string similar to Copied 1 chat to your PC..
         /// </summary>
         public static string SendCopyCompletedOne {
             get {
@@ -3154,7 +2974,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Connected to your PC. Choose which chats to copy; copying again updates the read-only copy on your PC..
+        ///   Looks up a localized string similar to Connected to your PC. Choose the chats to copy..
         /// </summary>
         public static string SendCopyConnected {
             get {
@@ -3172,7 +2992,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to This pairing code is damaged. Open &quot;Receive a copy&quot; on your PC and try again..
+        ///   Looks up a localized string similar to This pairing code is damaged..
         /// </summary>
         public static string SendCopyDamaged {
             get {
@@ -3190,7 +3010,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The connection to your PC was interrupted before the copy finished. Open &quot;Receive a copy&quot; on your PC and start again..
+        ///   Looks up a localized string similar to The connection to your PC was interrupted..
         /// </summary>
         public static string SendCopyDisconnected {
             get {
@@ -3208,7 +3028,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The copy could not be completed. Open &quot;Receive a copy&quot; on your PC and try again..
+        ///   Looks up a localized string similar to The copy could not be completed..
         /// </summary>
         public static string SendCopyFailed {
             get {
@@ -3217,16 +3037,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Keep your phone and your PC on the same Wi-Fi network. On your PC, open &quot;Receive a copy&quot;, then scan the QR code shown there. Only the messages of the chats you choose are copied; your private keys never leave this phone..
-        /// </summary>
-        public static string SendCopyIntro {
-            get {
-                return ResourceManager.GetString("SendCopyIntro", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to No camera was found on this device. Copying chats to a PC requires a camera to scan the PC&apos;s QR code..
+        ///   Looks up a localized string similar to No camera was found on this device..
         /// </summary>
         public static string SendCopyNoCamera {
             get {
@@ -3244,7 +3055,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to This is not a PC copy pairing code. Open &quot;Receive a copy&quot; on your PC and scan the QR code shown there..
+        ///   Looks up a localized string similar to This is not a PC copy pairing code..
         /// </summary>
         public static string SendCopyNotACode {
             get {
@@ -3262,7 +3073,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Could not reach your PC. Make sure both this phone and your PC are on the same Wi-Fi network and that &quot;Receive a copy&quot; is open on your PC, then try again..
+        ///   Looks up a localized string similar to Could not reach your PC..
         /// </summary>
         public static string SendCopyNotReachable {
             get {
@@ -3271,7 +3082,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The connection to your PC was refused or the pairing code has expired. Start &quot;Receive a copy&quot; on your PC again for a new code..
+        ///   Looks up a localized string similar to The connection to your PC was refused or the pairing code has expired..
         /// </summary>
         public static string SendCopyRefused {
             get {
@@ -3325,7 +3136,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Your PC did not answer in time. Make sure both devices are on the same Wi-Fi network and that your PC&apos;s firewall allows local connections, then try again..
+        ///   Looks up a localized string similar to Your PC did not answer in time..
         /// </summary>
         public static string SendCopyTimedOut {
             get {
@@ -3343,7 +3154,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to This pairing code comes from another version of the app and cannot be read..
+        ///   Looks up a localized string similar to This pairing code comes from another version of the app..
         /// </summary>
         public static string SendCopyUnsupportedVersion {
             get {
@@ -3352,7 +3163,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The stored data was changed or damaged, so the app cannot read it..
+        ///   Looks up a localized string similar to The stored data is damaged..
         /// </summary>
         public static string StorageDamaged {
             get {
@@ -3361,7 +3172,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The key that protects this data is not in this device&apos;s key store, so the data cannot be read here. It may have been copied from another device or user account, or its key was removed from the key store..
+        ///   Looks up a localized string similar to The key for this data is not in this device&apos;s key store..
         /// </summary>
         public static string StorageKeyNotFound {
             get {
@@ -3370,7 +3181,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The key store did not give the app the key that protects your stored data. Unlock the key store when it asks (on Linux, often the login keyring), then try again..
+        ///   Looks up a localized string similar to The key store refused access to the stored data. Unlock it and try again..
         /// </summary>
         public static string StorageKeyStoreRefused {
             get {
@@ -3379,7 +3190,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Your stored data is protected by this device&apos;s key store, which the app cannot reach now. On Linux the key store is a Secret Service such as GNOME Keyring or KWallet. Start it, then try again..
+        ///   Looks up a localized string similar to The device key store is not available. Start it and try again..
         /// </summary>
         public static string StorageKeyStoreUnavailable {
             get {
@@ -3388,7 +3199,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Nothing is saved on this device, because no passphrase was set and the app has no key store here to protect stored data. Your identity, contacts and messages stay in memory and are lost when the app closes..
+        ///   Looks up a localized string similar to Nothing is saved on this device..
         /// </summary>
         public static string StorageMemoryOnly {
             get {
@@ -3397,7 +3208,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to This data was saved by a newer version of the app. Use that version or a newer one..
+        ///   Looks up a localized string similar to This data was saved by a newer version of the app..
         /// </summary>
         public static string StorageNewerVersion {
             get {
@@ -3451,29 +3262,11 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The app is locked. Messages still arrive and are saved while it is locked..
-        /// </summary>
-        public static string UnlockLockedIntro {
-            get {
-                return ResourceManager.GetString("UnlockLockedIntro", resourceCulture);
-            }
-        }
-
-        /// <summary>
         ///   Looks up a localized string similar to Passphrase.
         /// </summary>
         public static string UnlockPassphraseLabel {
             get {
                 return ResourceManager.GetString("UnlockPassphraseLabel", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to Your stored data is protected by a passphrase. Until you enter it, the app neither sends nor receives messages..
-        /// </summary>
-        public static string UnlockStartIntro {
-            get {
-                return ResourceManager.GetString("UnlockStartIntro", resourceCulture);
             }
         }
 
@@ -3505,20 +3298,11 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Key checked by you. The key matches the one {0} showed you; this does not prove who they are..
+        ///   Looks up a localized string similar to Key of {0} checked by you..
         /// </summary>
         public static string VerifyCheckedFormat {
             get {
                 return ResourceManager.GetString("VerifyCheckedFormat", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to Compare these numbers with {0}, in person or on a call. Both apps show the same two numbers in the same order..
-        /// </summary>
-        public static string VerifyIntroFormat {
-            get {
-                return ResourceManager.GetString("VerifyIntroFormat", resourceCulture);
             }
         }
 
@@ -3532,7 +3316,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Do not trust this contact. Their code may have been swapped on the way. Exchange codes again, in person if you can..
+        ///   Looks up a localized string similar to Do not trust this contact. Their code may have been swapped..
         /// </summary>
         public static string VerifyMismatch {
             get {
@@ -3550,7 +3334,7 @@ namespace P2PMessenger.UI.Resources {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Key not compared. Compare the numbers with {0} before you trust this contact..
+        ///   Looks up a localized string similar to Key of {0} not compared..
         /// </summary>
         public static string VerifyNotComparedFormat {
             get {

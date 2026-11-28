@@ -48,14 +48,14 @@ public sealed class VerifyContactViewTests
         var page = harness.Shell.Pages.VerifyContact(contact);
         var view = new VerifyContactView { DataContext = page };
         harness.Show(view);
-        Assert.StartsWith("Key not compared.", Text(view, "StatusText"), StringComparison.Ordinal);
+        Assert.StartsWith("Key of Bob not compared.", Text(view, "StatusText"), StringComparison.Ordinal);
 
         await page.MatchCommand.ExecuteAsync(null);
         UiHarness.Flush();
 
         Assert.True(harness.Messenger.Contacts.TryGet(bob.IdentityKey, out var saved));
         Assert.Equal(KeyComparison.CheckedByYou, saved.KeyComparison);
-        Assert.StartsWith("Key checked by you.", Text(view, "StatusText"), StringComparison.Ordinal);
+        Assert.StartsWith("Key of Bob checked by you.", Text(view, "StatusText"), StringComparison.Ordinal);
         Assert.False(UiHarness.Find<Button>(view, "MatchButton").IsEffectivelyVisible);
         Assert.True(UiHarness.Find<Button>(view, "UncheckButton").IsVisible);
         Assert.DoesNotContain(UiHarness.Texts(view), static text => text.Contains("verified", StringComparison.OrdinalIgnoreCase));

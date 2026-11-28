@@ -166,7 +166,7 @@ public sealed partial class AddContactViewModel : PageViewModel
         {
             CodeCheckOutcome.NewConnectionKeys => (Formats.With(Formats.NewKeys, result.Existing?.Name.Value), UiText.AddContactAcceptNewKeys),
             CodeCheckOutcome.LooksLikeContact => (Formats.With(Formats.LooksLike, result.Existing?.Name.Value), UiText.AddContactAddAsNew),
-            _ => (UiText.AddContactNewHint, UiText.AddContactAdd),
+            _ => (null, UiText.AddContactAdd),
         };
     }
 

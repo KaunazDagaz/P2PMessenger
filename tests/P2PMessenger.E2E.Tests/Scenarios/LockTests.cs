@@ -21,7 +21,7 @@ public sealed class LockTests
 
         alice.ClickButton("LockButton");
         await alice.WaitForTitleAsync(UiText.UnlockTitle);
-        Assert.True(alice.Shows(UiText.UnlockLockedIntro));
+        Assert.NotNull(alice.TryNamed<Avalonia.Controls.TextBox>("PassphraseBox"));
         Assert.False(alice.Shows("Written before the lock."));
 
         await Flows.SendAsync(bob, "Arrives while Alice is locked.");
@@ -60,8 +60,8 @@ public sealed class LockTests
         await alice.LaunchAsync();
 
         await alice.WaitForTitleAsync(UiText.UnlockTitle);
-        Assert.True(alice.Shows(UiText.UnlockStartIntro));
-        Assert.Null(alice.TryNamed<Avalonia.Controls.ItemsControl>("ContactItems"));
+        Assert.NotNull(alice.TryNamed<Avalonia.Controls.TextBox>("PassphraseBox"));
+        Assert.Null(alice.TryNamed<Avalonia.Controls.ItemsControl>("ChatItems"));
         await Task.Delay(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
         Assert.True(bob.Shows(UiText.DeliveryWaiting));
         Assert.False(bob.Shows(UiText.ContactReachableNearby));

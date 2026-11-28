@@ -5,7 +5,7 @@ using P2PMessenger.UI.Resources;
 
 namespace P2PMessenger.UI.ViewModels;
 
-public sealed class GroupItemViewModel : ViewModelBase
+public sealed class GroupItemViewModel : ViewModelBase, IChatItem
 {
     public GroupItemViewModel(Group group, Messenger messenger, Action<Group> open)
     {
@@ -28,10 +28,15 @@ public sealed class GroupItemViewModel : ViewModelBase
         };
         int unread = messenger.GroupChats.UnreadCount(group.Id);
         UnreadText = unread > 0 ? Formats.With(Formats.Unread, unread) : null;
+        LastActivity = messenger.GroupChats.MessagesIn(group.Id).Max(static message => (DateTimeOffset?)message.RecordedAt);
         OpenCommand = new RelayCommand(() => open(group));
     }
 
     public Group Group { get; }
+
+    public DateTimeOffset? LastActivity { get; }
+
+    public bool IsSelected { get; init; }
 
     public string Name { get; }
 

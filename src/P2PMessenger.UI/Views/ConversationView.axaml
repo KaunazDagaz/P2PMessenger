@@ -2,203 +2,205 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:P2PMessenger.UI.ViewModels"
              xmlns:res="using:P2PMessenger.UI.Resources"
+             xmlns:c="using:P2PMessenger.UI.Controls"
              x:Class="P2PMessenger.UI.Views.ConversationView"
              x:DataType="vm:ConversationViewModel">
-    <DockPanel Margin="16">
-        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
-                <Button x:Name="DeleteChatButton"
-                        Content="{x:Static res:UiText.ConversationDeleteChat}"
-                        Command="{Binding AskDeleteChatCommand}"
-                        IsVisible="{Binding IsDeleteChatVisible}" />
-                <Button x:Name="DetailsButton" Content="{x:Static res:UiText.ConversationDetails}" Command="{Binding CompareCommand}" />
-            </StackPanel>
-            <StackPanel>
-                <TextBlock x:Name="StatusText" Text="{Binding StatusText}" />
-                <TextBlock x:Name="FingerprintText" Text="{Binding Fingerprint}" FontFamily="monospace" FontSize="12" />
-            </StackPanel>
-        </DockPanel>
-        <Border x:Name="DeleteChatPanel"
-                DockPanel.Dock="Top"
-                Margin="0,0,0,8"
-                Padding="12"
-                BorderThickness="1"
-                CornerRadius="4"
-                BorderBrush="{DynamicResource SystemControlErrorTextForegroundBrush}"
-                IsVisible="{Binding IsConfirmingDeleteChat}">
-            <StackPanel Spacing="8">
-                <TextBlock x:Name="DeleteChatQuestionText" Text="{Binding DeleteChatQuestion}" TextWrapping="Wrap" />
-                <WrapPanel>
-                    <Button x:Name="DeleteChatConfirmButton"
-                            Margin="0,0,8,0"
-                            Content="{x:Static res:UiText.CommonDelete}"
-                            Command="{Binding DeleteChatCommand}" />
-                    <Button x:Name="DeleteChatCancelButton"
-                            Content="{x:Static res:UiText.CommonCancel}"
-                            Command="{Binding CancelDeleteChatCommand}" />
-                </WrapPanel>
-                <ProgressBar x:Name="DeleteChatBusyBar"
-                             IsIndeterminate="True"
-                             IsVisible="{Binding IsDeletingChat}"
-                             AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
-            </StackPanel>
-        </Border>
-        <Border x:Name="DeletedPanel"
-                DockPanel.Dock="Top"
-                Margin="0,0,0,8"
-                Padding="12"
-                BorderThickness="1"
-                CornerRadius="4"
-                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                IsVisible="{Binding HasDeletedText}">
-            <TextBlock x:Name="DeletedText" Text="{Binding DeletedText}" TextWrapping="Wrap" />
-        </Border>
-        <Border x:Name="WaitingPanel"
-                DockPanel.Dock="Top"
-                Margin="0,0,0,8"
-                Padding="12"
-                BorderThickness="1"
-                CornerRadius="4"
-                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                IsVisible="{Binding IsWaiting}">
-            <TextBlock x:Name="WaitingText" Text="{Binding WaitingText}" TextWrapping="Wrap" />
-        </Border>
-        <Border x:Name="AttemptPanel"
-                DockPanel.Dock="Top"
-                Margin="0,0,0,8"
-                Padding="12"
-                BorderThickness="1"
-                CornerRadius="4"
-                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                IsVisible="{Binding HasAttemptText}">
-            <TextBlock x:Name="AttemptText" Text="{Binding AttemptText}" TextWrapping="Wrap" />
-        </Border>
-        <Border x:Name="KeyNotComparedPanel"
-                DockPanel.Dock="Top"
-                Margin="0,0,0,8"
-                Padding="12"
-                BorderThickness="1"
-                CornerRadius="4"
-                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                IsVisible="{Binding IsKeyNotCompared}">
-            <StackPanel Spacing="8">
-                <TextBlock x:Name="KeyNotComparedText" Text="{Binding KeyNotComparedText}" TextWrapping="Wrap" />
-                <Button x:Name="CompareButton" Content="{x:Static res:UiText.ConversationCompare}" Command="{Binding CompareCommand}" />
-            </StackPanel>
-        </Border>
-        <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="0,8,0,0">
-            <ProgressBar x:Name="BusyBar"
-                         IsIndeterminate="True"
-                         IsVisible="{Binding IsBusy}"
-                         AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
-            <TextBlock x:Name="ErrorText"
-                       Text="{Binding ErrorMessage}"
-                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
-                       TextWrapping="Wrap" />
+    <Grid>
+        <Border Classes="chat">
             <DockPanel>
-                <Button x:Name="SendButton"
-                        DockPanel.Dock="Right"
-                        Margin="8,0,0,0"
-                        VerticalAlignment="Bottom"
-                        Content="{x:Static res:UiText.ConversationSend}"
-                        Command="{Binding SendCommand}" />
-                <TextBox x:Name="DraftBox"
-                         Text="{Binding Draft}"
-                         PlaceholderText="{x:Static res:UiText.ConversationMessagePlaceholder}"
-                         AcceptsReturn="True"
-                         TextWrapping="Wrap"
-                         MaxHeight="160"
-                         AutomationProperties.Name="{x:Static res:UiText.ConversationMessagePlaceholder}">
-                    <TextBox.KeyBindings>
-                        <KeyBinding Gesture="Ctrl+Enter" Command="{Binding SendCommand}" />
-                    </TextBox.KeyBindings>
-                </TextBox>
-            </DockPanel>
-        </StackPanel>
-        <Grid>
-            <TextBlock x:Name="EmptyText"
-                       Text="{x:Static res:UiText.ConversationEmpty}"
-                       IsVisible="{Binding IsEmpty}"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center" />
-            <ScrollViewer>
-                <ItemsControl x:Name="MessageItems" ItemsSource="{Binding Messages}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="vm:MessageItemViewModel">
-                            <Border Margin="0,0,0,8"
-                                    Padding="10,6"
-                                    CornerRadius="6"
-                                    MaxWidth="560"
-                                    BorderThickness="1"
-                                    BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                                    Classes.own="{Binding IsOwn}"
-                                    Classes.theirs="{Binding IsTheirs}">
-                                <StackPanel Spacing="2">
-                                    <TextBlock FontSize="12">
-                                        <Run Text="{Binding Sender}" FontWeight="SemiBold" />
-                                        <Run Text=" · " />
-                                        <Run Text="{Binding WrittenAt}" />
-                                    </TextBlock>
-                                    <SelectableTextBlock Text="{Binding Text}" TextWrapping="Wrap" />
-                                    <StackPanel Spacing="2" IsVisible="{Binding IsOwn}">
-                                        <Button HorizontalAlignment="Right"
-                                                Padding="0"
-                                                FontSize="12"
-                                                Background="Transparent"
-                                                BorderThickness="0"
-                                                Content="{Binding StateText}"
-                                                Command="{Binding ToggleExplanationCommand}"
-                                                AutomationProperties.HelpText="{Binding StateExplanation}" />
-                                        <TextBlock Text="{Binding StateExplanation}"
-                                                   IsVisible="{Binding IsExplanationShown}"
-                                                   FontSize="12"
-                                                   MaxWidth="400"
-                                                   HorizontalAlignment="Right"
-                                                   TextWrapping="Wrap" />
-                                        <Button Name="DeleteMessageButton"
-                                                HorizontalAlignment="Right"
-                                                FontSize="12"
-                                                Content="{x:Static res:UiText.MessageDelete}"
-                                                Command="{Binding AskDeleteCommand}"
-                                                IsVisible="{Binding IsDeleteVisible}" />
-                                        <StackPanel Spacing="4" HorizontalAlignment="Right" IsVisible="{Binding IsConfirmingDelete}">
-                                            <TextBlock Name="DeleteMessageQuestionText"
-                                                       Text="{x:Static res:UiText.MessageDeleteQuestion}"
-                                                       FontSize="12"
-                                                       MaxWidth="400"
-                                                       TextWrapping="Wrap" />
-                                            <WrapPanel HorizontalAlignment="Right">
-                                                <Button Name="DeleteMessageConfirmButton"
-                                                        Margin="0,0,8,0"
-                                                        FontSize="12"
+                <Border DockPanel.Dock="Top" Classes="card flat" Padding="14,12,14,4" Margin="0,0,0,10">
+                    <StackPanel Spacing="8">
+                        <DockPanel>
+                            <c:Avatar DockPanel.Dock="Left"
+                                      Size="44"
+                                      Margin="0,0,12,0"
+                                      VerticalAlignment="Center"
+                                      DisplayName="{Binding ContactName}" />
+                            <StackPanel Spacing="2" VerticalAlignment="Center">
+                                <TextBlock x:Name="StatusText" Classes="label" Text="{Binding StatusText}" TextWrapping="Wrap" />
+                                <TextBlock x:Name="FingerprintText" Classes="caption mono" Text="{Binding Fingerprint}" />
+                            </StackPanel>
+                        </DockPanel>
+                        <WrapPanel Classes="actions">
+                            <Button x:Name="DetailsButton"
+                                    Classes="quiet iconic"
+                                    c:Icons.Glyph="{StaticResource IconShieldCheck}"
+                                    Content="{x:Static res:UiText.ConversationDetails}"
+                                    Command="{Binding CompareCommand}" />
+                            <Button x:Name="DeleteChatButton"
+                                    Classes="quiet danger iconic"
+                                    c:Icons.Glyph="{StaticResource IconTrash}"
+                                    Content="{x:Static res:UiText.ConversationDeleteChat}"
+                                    Command="{Binding AskDeleteChatCommand}"
+                                    IsVisible="{Binding IsDeleteChatVisible}" />
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+                <Border x:Name="WaitingPanel"
+                        DockPanel.Dock="Top"
+                        Classes="notice warning"
+                        Margin="0,0,0,10"
+                        IsVisible="{Binding IsWaiting}">
+                    <TextBlock x:Name="WaitingText" Text="{Binding WaitingText}" TextWrapping="Wrap" />
+                </Border>
+                <Border x:Name="AttemptPanel"
+                        DockPanel.Dock="Top"
+                        Classes="notice plain"
+                        Margin="0,0,0,10"
+                        IsVisible="{Binding HasAttemptText}">
+                    <TextBlock x:Name="AttemptText" Text="{Binding AttemptText}" TextWrapping="Wrap" />
+                </Border>
+                <Border x:Name="KeyNotComparedPanel"
+                        DockPanel.Dock="Top"
+                        Classes="notice warning"
+                        Margin="0,0,0,10"
+                        IsVisible="{Binding IsKeyNotCompared}">
+                    <StackPanel Spacing="10">
+                        <TextBlock x:Name="KeyNotComparedText" Text="{Binding KeyNotComparedText}" TextWrapping="Wrap" />
+                        <Button x:Name="CompareButton"
+                                Classes="iconic"
+                                c:Icons.Glyph="{StaticResource IconShieldCheck}"
+                                HorizontalAlignment="Left"
+                                Content="{x:Static res:UiText.ConversationCompare}"
+                                Command="{Binding CompareCommand}" />
+                    </StackPanel>
+                </Border>
+                <StackPanel DockPanel.Dock="Bottom" Spacing="8" Margin="0,10,0,0">
+                    <ProgressBar x:Name="BusyBar"
+                                 IsIndeterminate="True"
+                                 IsVisible="{Binding IsBusy}"
+                                 AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
+                    <Border Classes="notice danger" IsVisible="{Binding #ErrorText.IsVisible}">
+                        <TextBlock x:Name="ErrorText"
+                                   Text="{Binding ErrorMessage}"
+                                   IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                   TextWrapping="Wrap" />
+                    </Border>
+                    <DockPanel>
+                        <Button x:Name="SendButton"
+                                DockPanel.Dock="Right"
+                                Margin="8,0,0,0"
+                                VerticalAlignment="Bottom"
+                                Classes="primary iconic"
+                                c:Icons.Glyph="{StaticResource IconSend}"
+                                Content="{x:Static res:UiText.ConversationSend}"
+                                Command="{Binding SendCommand}" />
+                        <TextBox x:Name="DraftBox"
+                                 Text="{Binding Draft}"
+                                 PlaceholderText="{x:Static res:UiText.ConversationMessagePlaceholder}"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 MaxHeight="160"
+                                 AutomationProperties.Name="{x:Static res:UiText.ConversationMessagePlaceholder}"
+                                 c:SendOnEnter.Command="{Binding SendCommand}" />
+                    </DockPanel>
+                </StackPanel>
+                <Grid>
+                    <StackPanel Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsEmpty}">
+                        <Border Classes="heroIcon">
+                            <c:Icon Classes="accent"
+                                    Size="34"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Data="{StaticResource IconMessage}" />
+                        </Border>
+                        <TextBlock x:Name="EmptyText"
+                                   Classes="muted centered"
+                                   Text="{x:Static res:UiText.ConversationEmpty}"
+                                   IsVisible="{Binding IsEmpty}" />
+                    </StackPanel>
+                    <ScrollViewer c:StickToBottom.IsEnabled="True">
+                        <ItemsControl x:Name="MessageItems" ItemsSource="{Binding Messages}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:MessageItemViewModel">
+                                    <Border Classes="bubble"
+                                            Classes.own="{Binding IsOwn}"
+                                            Classes.theirs="{Binding IsTheirs}">
+                                        <StackPanel Spacing="3">
+                                            <TextBlock Classes="caption">
+                                                <Run Text="{Binding Sender}" FontWeight="SemiBold" />
+                                                <Run Text=" · " />
+                                                <Run Text="{Binding WrittenAt}" />
+                                            </TextBlock>
+                                            <SelectableTextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                                            <StackPanel Orientation="Horizontal"
+                                                        HorizontalAlignment="Right"
+                                                        Spacing="4"
+                                                        IsVisible="{Binding IsOwn}">
+                                                <TextBlock Classes="caption"
+                                                           VerticalAlignment="Center"
+                                                           Text="{Binding StateText}" />
+                                                <Button Name="DeleteMessageButton"
+                                                        Classes="quiet"
                                                         Content="{x:Static res:UiText.CommonDelete}"
-                                                        Command="{Binding ConfirmDeleteCommand}" />
-                                                <Button Name="DeleteMessageCancelButton"
-                                                        FontSize="12"
-                                                        Content="{x:Static res:UiText.CommonCancel}"
-                                                        Command="{Binding CancelDeleteCommand}" />
-                                            </WrapPanel>
-                                            <ProgressBar Name="DeleteMessageBusyBar"
-                                                         IsIndeterminate="True"
-                                                         IsVisible="{Binding IsDeleting}"
-                                                         AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
+                                                        Command="{Binding AskDeleteCommand}"
+                                                        IsVisible="{Binding IsDeleteVisible}" />
+                                            </StackPanel>
                                         </StackPanel>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                    <ItemsControl.Styles>
-                        <Style Selector="Border.own">
-                            <Setter Property="HorizontalAlignment" Value="Right" />
-                        </Style>
-                        <Style Selector="Border.theirs">
-                            <Setter Property="HorizontalAlignment" Value="Left" />
-                        </Style>
-                    </ItemsControl.Styles>
-                </ItemsControl>
-            </ScrollViewer>
-        </Grid>
-    </DockPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </DockPanel>
+        </Border>
+
+        <c:Dialog IsOpen="{Binding IsConfirmingDeleteChat}" CancelCommand="{Binding CancelDeleteChatCommand}">
+            <Border x:Name="DeleteChatPanel" IsVisible="{Binding IsConfirmingDeleteChat}">
+                <StackPanel Spacing="14">
+                    <c:DialogHeader Classes="danger"
+                                    Glyph="{StaticResource IconTrash}"
+                                    Title="{x:Static res:UiText.ConversationDeleteChat}" />
+                    <TextBlock x:Name="DeleteChatQuestionText" Text="{Binding DeleteChatQuestion}" TextWrapping="Wrap" />
+                    <TextBlock Classes="error"
+                               Text="{Binding ErrorMessage}"
+                               IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                               TextWrapping="Wrap" />
+                    <ProgressBar x:Name="DeleteChatBusyBar"
+                                 IsIndeterminate="True"
+                                 IsVisible="{Binding IsDeletingChat}"
+                                 AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
+                    <StackPanel Classes="dialogActions">
+                        <Button x:Name="DeleteChatCancelButton"
+                                Content="{x:Static res:UiText.CommonCancel}"
+                                Command="{Binding CancelDeleteChatCommand}" />
+                        <Button x:Name="DeleteChatConfirmButton"
+                                Classes="danger iconic"
+                                c:Icons.Glyph="{StaticResource IconTrash}"
+                                Content="{x:Static res:UiText.CommonDelete}"
+                                Command="{Binding DeleteChatCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </c:Dialog>
+
+        <c:Dialog IsOpen="{Binding HasDeletingMessage}" CancelCommand="{Binding DeletingMessage.CancelDeleteCommand}">
+            <StackPanel x:Name="DeleteMessagePanel"
+                        DataContext="{Binding DeletingMessage}"
+                        x:DataType="vm:MessageItemViewModel"
+                        Spacing="14">
+                <c:DialogHeader Classes="danger"
+                                Glyph="{StaticResource IconTrash}"
+                                Title="{x:Static res:UiText.MessageDelete}" />
+                <TextBlock x:Name="DeleteMessageQuestionText"
+                           Text="{x:Static res:UiText.MessageDeleteQuestion}"
+                           TextWrapping="Wrap" />
+                <ProgressBar x:Name="DeleteMessageBusyBar"
+                             IsIndeterminate="True"
+                             IsVisible="{Binding IsDeleting}"
+                             AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
+                <StackPanel Classes="dialogActions">
+                    <Button x:Name="DeleteMessageCancelButton"
+                            Content="{x:Static res:UiText.CommonCancel}"
+                            Command="{Binding CancelDeleteCommand}" />
+                    <Button x:Name="DeleteMessageConfirmButton"
+                            Classes="danger iconic"
+                            c:Icons.Glyph="{StaticResource IconTrash}"
+                            Content="{x:Static res:UiText.CommonDelete}"
+                            Command="{Binding ConfirmDeleteCommand}" />
+                </StackPanel>
+            </StackPanel>
+        </c:Dialog>
+    </Grid>
 </UserControl>

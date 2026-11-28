@@ -51,6 +51,7 @@ public sealed class AppServices : IAsyncDisposable
         CodeFiles = codeFiles;
         QrScanner = qrScanner;
         FailureLog = new FailureLog(setup.Loggers.CreateLogger<FailureLog>());
+        Toasts = new ToastCenter(uiThread);
         Lock = new AppLock(localData, setup.TimeProvider);
     }
 
@@ -103,6 +104,8 @@ public sealed class AppServices : IAsyncDisposable
     public Messenger? Messenger { get; private set; }
 
     public FailureLog FailureLog { get; }
+
+    public ToastCenter Toasts { get; }
     public async Task<LocalDataResult> OpenLocalDataAsync(CancellationToken cancellationToken) =>
         Adopt(await localData.OpenAsync(cancellationToken).ConfigureAwait(false));
 
@@ -218,6 +221,7 @@ public sealed class AppServices : IAsyncDisposable
         }
 
         Lock.Dispose();
+        Toasts.Dispose();
         if (Messenger is { } running)
         {
             await running.DisposeAsync().ConfigureAwait(false);

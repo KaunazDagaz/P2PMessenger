@@ -5,45 +5,76 @@
              xmlns:c="using:P2PMessenger.UI.Controls"
              x:Class="P2PMessenger.UI.Views.ProfileView"
              x:DataType="vm:ProfileViewModel">
-    <ScrollViewer>
-        <StackPanel Margin="16" Spacing="8" MaxWidth="640">
-            <TextBlock Text="{x:Static res:UiText.ProfileNameLabel}" FontWeight="SemiBold" />
-            <SelectableTextBlock x:Name="NameText" Text="{Binding Name}" />
-            <TextBlock Text="{x:Static res:UiText.ProfileFingerprintLabel}" FontWeight="SemiBold" Margin="0,8,0,0" />
-            <SelectableTextBlock x:Name="FingerprintText" Text="{Binding Fingerprint}" FontFamily="monospace" FontSize="16" />
-            <TextBlock Text="{x:Static res:UiText.ProfileQrLabel}" FontWeight="SemiBold" Margin="0,8,0,0" />
-            <c:QrCodeView x:Name="QrCode"
-                          Matrix="{Binding QrCode}"
-                          Width="280"
-                          Height="280"
-                          HorizontalAlignment="Left"
-                          AutomationProperties.Name="{x:Static res:UiText.ProfileQrLabel}" />
-            <TextBlock Text="{x:Static res:UiText.ProfileQrHelp}" TextWrapping="Wrap" />
-            <TextBlock Text="{x:Static res:UiText.ProfileCodeLabel}" FontWeight="SemiBold" Margin="0,8,0,0" />
-            <TextBox x:Name="CodeBox"
-                     Text="{Binding CodeText, Mode=OneWay}"
-                     IsReadOnly="True"
-                     TextWrapping="Wrap"
-                     FontFamily="monospace"
-                     AutomationProperties.Name="{x:Static res:UiText.ProfileCodeLabel}" />
-            <TextBlock Text="{x:Static res:UiText.ProfileCodeHelp}" TextWrapping="Wrap" />
-            <WrapPanel>
-                <Button x:Name="CopyButton" Margin="0,0,8,8" Content="{x:Static res:UiText.ProfileCopy}" Command="{Binding CopyCommand}" />
-                <Button x:Name="SaveButton" Margin="0,0,8,8" Content="{x:Static res:UiText.ProfileSave}" Command="{Binding SaveCommand}" />
-                <Button x:Name="SaveImageButton" Margin="0,0,8,8" Content="{x:Static res:UiText.ProfileSaveImage}" Command="{Binding SaveImageCommand}" />
-            </WrapPanel>
-            <ProgressBar x:Name="BusyBar"
-                         IsIndeterminate="True"
-                         IsVisible="{Binding IsBusy}"
-                         AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
-            <TextBlock x:Name="StatusText"
-                       Text="{Binding StatusMessage}"
-                       IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-            <TextBlock x:Name="ErrorText"
-                       Text="{Binding ErrorMessage}"
-                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
-                       TextWrapping="Wrap" />
+    <c:PageContainer>
+        <StackPanel Spacing="16">
+            <Border Classes="card">
+                <StackPanel Spacing="10">
+                    <c:Avatar Size="64" HorizontalAlignment="Center" DisplayName="{Binding Name}" />
+                    <TextBlock Classes="caption centered" Text="{x:Static res:UiText.ProfileNameLabel}" />
+                    <SelectableTextBlock x:Name="NameText"
+                                         Classes="title"
+                                         HorizontalAlignment="Center"
+                                         Text="{Binding Name}" />
+                    <TextBlock Classes="caption centered" Margin="0,6,0,0" Text="{x:Static res:UiText.ProfileFingerprintLabel}" />
+                    <Border Classes="fingerprint" HorizontalAlignment="Center">
+                        <SelectableTextBlock x:Name="FingerprintText"
+                                             Classes="mono"
+                                             FontSize="16"
+                                             TextWrapping="Wrap"
+                                             TextAlignment="Center"
+                                             Text="{Binding Fingerprint}" />
+                    </Border>
+                </StackPanel>
+            </Border>
+            <Border Classes="card">
+                <StackPanel Spacing="12">
+                    <TextBlock Classes="heading" Text="{x:Static res:UiText.ProfileQrLabel}" />
+                    <Border Classes="qr">
+                        <c:QrCodeView x:Name="QrCode"
+                                      Matrix="{Binding QrCode}"
+                                      HorizontalAlignment="Center"
+                                      AutomationProperties.Name="{x:Static res:UiText.ProfileQrLabel}" />
+                    </Border>
+                </StackPanel>
+            </Border>
+            <Border Classes="card">
+                <StackPanel Spacing="12">
+                    <TextBlock Classes="heading" Text="{x:Static res:UiText.ProfileCodeLabel}" />
+                    <TextBox x:Name="CodeBox"
+                             Classes="mono"
+                             Text="{Binding CodeText, Mode=OneWay}"
+                             IsReadOnly="True"
+                             TextWrapping="Wrap"
+                             AutomationProperties.Name="{x:Static res:UiText.ProfileCodeLabel}" />
+                    <WrapPanel Classes="actions">
+                        <Button x:Name="CopyButton"
+                                Classes="primary iconic"
+                                c:Icons.Glyph="{StaticResource IconCopy}"
+                                Content="{x:Static res:UiText.ProfileCopy}"
+                                Command="{Binding CopyCommand}" />
+                        <Button x:Name="SaveButton"
+                                Classes="iconic"
+                                c:Icons.Glyph="{StaticResource IconDownload}"
+                                Content="{x:Static res:UiText.ProfileSave}"
+                                Command="{Binding SaveCommand}" />
+                        <Button x:Name="SaveImageButton"
+                                Classes="iconic"
+                                c:Icons.Glyph="{StaticResource IconQr}"
+                                Content="{x:Static res:UiText.ProfileSaveImage}"
+                                Command="{Binding SaveImageCommand}" />
+                    </WrapPanel>
+                    <ProgressBar x:Name="BusyBar"
+                                 IsIndeterminate="True"
+                                 IsVisible="{Binding IsBusy}"
+                                 AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
+                    <Border Classes="notice danger" IsVisible="{Binding #ErrorText.IsVisible}">
+                        <TextBlock x:Name="ErrorText"
+                                   Text="{Binding ErrorMessage}"
+                                   IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                   TextWrapping="Wrap" />
+                    </Border>
+                </StackPanel>
+            </Border>
         </StackPanel>
-    </ScrollViewer>
+    </c:PageContainer>
 </UserControl>

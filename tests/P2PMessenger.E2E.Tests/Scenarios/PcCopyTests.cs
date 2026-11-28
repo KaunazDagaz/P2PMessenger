@@ -32,14 +32,14 @@ public sealed class PcCopyTests
         await pc.LaunchAsync();
         await Flows.CreateIdentityAsync(pc);
 
-        pc.ClickButton("ReceiveCopyButton");
+        await Flows.ChooseFromMenuAsync(pc, "ReceiveCopyButton");
         await pc.WaitForTitleAsync(UiText.ReceiveCopyTitle);
         await pc.WaitForTextAsync(UiText.ReceiveCopyWaiting);
         Assert.Empty(pc.Window.GetVisualDescendants().OfType<TextBox>());
         var pairingCode = pc.ReadDisplayedQrCode();
         Assert.NotNull(pairingCode);
 
-        phone.ClickButton("SendCopyButton");
+        await Flows.ChooseFromMenuAsync(phone, "SendCopyButton");
         await phone.WaitForTitleAsync(UiText.SendCopyTitle);
         Assert.Empty(phone.Window.GetVisualDescendants().OfType<TextBox>());
         phone.NextQrScan = pairingCode;

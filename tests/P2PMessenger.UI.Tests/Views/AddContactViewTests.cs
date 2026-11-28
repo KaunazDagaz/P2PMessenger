@@ -29,7 +29,7 @@ public sealed class AddContactViewTests
         Assert.True(UiHarness.Find<Border>(view, "PreviewPanel").IsVisible);
         Assert.Equal("Bob", UiHarness.Find<TextBlock>(view, "PreviewName").Text);
         Assert.Equal(code.Fingerprint.ToGroupedString(), UiHarness.Find<TextBlock>(view, "PreviewFingerprint").Text);
-        Assert.Equal(UiText.AddContactNewHint, UiHarness.Find<TextBlock>(view, "PreviewHint").Text);
+        Assert.False(UiHarness.Find<TextBlock>(view, "PreviewHint").IsVisible);
         Assert.Equal(UiText.AddContactAdd, UiHarness.Find<Button>(view, "AddButton").Content);
         Assert.False(UiHarness.Find<TextBlock>(view, "ErrorText").IsVisible);
 
@@ -48,8 +48,8 @@ public sealed class AddContactViewTests
     [AvaloniaTheory]
     [Trait("Story", "US-02")]
     [InlineData("hello", "This is not a P2PMessenger contact code.")]
-    [InlineData("P2PM2-AAAA", "This code comes from another version of the app and cannot be read.")]
-    [InlineData("P2PM1-AEAAAAAA", "This code is damaged. Ask for it again.")]
+    [InlineData("P2PM2-AAAA", "This code comes from another version of the app.")]
+    [InlineData("P2PM1-AEAAAAAA", "This code is damaged.")]
     public async Task AddContact_UnreadableCode_ShowsWhyAndAddsNothing(string text, string expected)
     {
         await using var harness = await UiHarness.StartAsync("Alice");
@@ -181,7 +181,7 @@ public sealed class AddContactViewTests
 
         await page.OpenFileCommand.ExecuteAsync(null);
         UiHarness.Flush();
-        Assert.Equal(UiText.AddContactNewHint, UiHarness.Find<TextBlock>(view, "PreviewHint").Text);
+        Assert.False(UiHarness.Find<TextBlock>(view, "PreviewHint").IsVisible);
         await page.AddCommand.ExecuteAsync(null);
 
         Assert.True(harness.Messenger.Contacts.TryGet(bob.IdentityKey, out var contact));

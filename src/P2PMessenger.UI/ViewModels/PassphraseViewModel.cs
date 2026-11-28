@@ -29,9 +29,6 @@ public sealed partial class PassphraseViewModel : PageViewModel
     private bool isBusy;
 
     [ObservableProperty]
-    private string? statusMessage;
-
-    [ObservableProperty]
     private string? errorMessage;
 
     public PassphraseViewModel(AppServices services)
@@ -50,9 +47,7 @@ public sealed partial class PassphraseViewModel : PageViewModel
 
     public bool CanOfferRemove => HasPassphrase && services.HasKeyStore;
 
-    public string StateText => HasPassphrase
-        ? Formats.With(Formats.PassphraseStateSet, (int)services.Lock.BackgroundLimit.TotalMinutes)
-        : UiText.PassphraseStateNotSet;
+    public string StateText => HasPassphrase ? UiText.PassphraseStateSet : UiText.PassphraseStateNotSet;
 
     public static string Hint => PassphraseTexts.Hint;
 
@@ -72,7 +67,6 @@ public sealed partial class PassphraseViewModel : PageViewModel
 
     private async Task RunAsync(bool needsNew, Func<CancellationToken, Task<PassphraseChangeResult>> change, string done, CancellationToken cancellationToken)
     {
-        StatusMessage = null;
         ErrorMessage = needsNew ? PassphraseTexts.ProblemWith(NewPassphrase, RepeatedPassphrase) : null;
         if (ErrorMessage is not null)
         {
@@ -90,7 +84,7 @@ public sealed partial class PassphraseViewModel : PageViewModel
                     NewPassphrase = string.Empty;
                     RepeatedPassphrase = string.Empty;
                     HasPassphrase = services.Protection == LocalDataProtection.Passphrase;
-                    StatusMessage = done;
+                    Toasts.Show(ToastKind.Success, done);
                     break;
                 case PassphraseChangeOutcome.WrongPassphrase:
                     CurrentPassphrase = string.Empty;

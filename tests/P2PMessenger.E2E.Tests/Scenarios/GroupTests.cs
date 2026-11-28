@@ -238,10 +238,12 @@ public sealed class GroupTests
         alice.ClickButton("MembersButton");
         await alice.WaitUntilAsync(() => alice.TryNamed<Border>("MembersPanel") is { IsEffectivelyVisible: true }, "Members panel opens");
         alice.Click(MemberRemoveButton(alice, "Carol"));
-        await alice.WaitUntilAsync(() => MemberConfirmRemoveButton(alice) is not null, "Remove confirmation shows");
-        alice.Click(MemberConfirmRemoveButton(alice)!);
+        await alice.WaitUntilAsync(() => alice.TryNamed<Button>("RemoveMemberConfirmButton") is not null, "Remove confirmation shows");
+        alice.ClickButton("RemoveMemberConfirmButton");
 
         await alice.WaitForTextAsync(UiText.GroupMemberRemovedFormat.Replace("{0}", "Carol", StringComparison.Ordinal));
+        alice.ClickButton("MembersCloseButton");
+        await alice.WaitUntilAsync(() => alice.TryNamed<Border>("MembersPanel") is null, "Members panel closes");
         await carol.WaitForTextAsync(UiText.GroupRemovedBanner);
         Assert.True(carol.TryNamed<TextBox>("DraftBox") is not { IsEffectivelyVisible: true });
 
@@ -271,12 +273,6 @@ public sealed class GroupTests
             .OfType<Button>()
             .First(button => string.Equals(button.Name, "RemoveMemberButton", StringComparison.Ordinal) && button.IsEffectivelyVisible);
 
-    private static Button? MemberConfirmRemoveButton(Device device) =>
-        device.Named<ItemsControl>("MembersItems")
-            .GetVisualDescendants()
-            .OfType<Button>()
-            .FirstOrDefault(button => string.Equals(button.Name, "RemoveMemberConfirmButton", StringComparison.Ordinal) && button.IsEffectivelyVisible);
-
     private static Button DeliveryButton(Device device) =>
         device.Named<ItemsControl>("MessageItems").GetVisualDescendants().OfType<Button>()
             .First(button => string.Equals(button.Name, "DeliveryStateButton", StringComparison.Ordinal) && button.IsEffectivelyVisible);
@@ -288,7 +284,7 @@ public sealed class GroupTests
     private static async Task OpenGroupAsync(Device device, string groupName)
     {
         await device.ClickUntilAsync(
-            () => device.TryNamed<ItemsControl>("GroupItems")?.GetVisualDescendants().OfType<Button>()
+            () => device.TryNamed<ItemsControl>("ChatItems")?.GetVisualDescendants().OfType<Button>()
                 .FirstOrDefault(button => button.IsEffectivelyVisible && string.Equals(AutomationProperties.GetName(button), groupName, StringComparison.Ordinal)),
             () => string.Equals(device.Title, groupName, StringComparison.Ordinal),
             $"{device.Name} opens the group {groupName}");

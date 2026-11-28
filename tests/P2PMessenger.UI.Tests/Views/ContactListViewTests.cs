@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
+using Avalonia.VisualTree;
 using P2PMessenger.Application.Contacts;
 using P2PMessenger.Core.Identity;
 using P2PMessenger.Core.Messages;
@@ -14,6 +15,43 @@ namespace P2PMessenger.UI.Tests.Views;
 
 public sealed class ContactListViewTests
 {
+    [AvaloniaFact]
+    public async Task ContactList_ContactsAndGroupsTogether_TheChatWithTheLatestMessageIsOnTop()
+    {
+        await using var harness = await UiHarness.StartAsync("Alice");
+        var bob = await harness.ConnectPeerAsync("Bob");
+        var carol = await harness.ConnectPeerAsync("Carol");
+        Assert.True((await bob.Contacts.AddAsync(bob.Contacts.Check(carol.Identity.CodeText), CancellationToken.None)).IsSaved);
+        Assert.True((await carol.Contacts.AddAsync(carol.Contacts.Check(bob.Identity.CodeText), CancellationToken.None)).IsSaved);
+        await UiHarness.WaitUntilAsync(() =>
+            bob.Contacts.TryGet(carol.Identity.Keys.IdentityKey, out var atBob) && atBob.IsAdded
+            && carol.Contacts.TryGet(bob.Identity.Keys.IdentityKey, out var atCarol) && atCarol.IsAdded);
+        var created = await harness.Messenger.CreateGroupAsync("Field team", [bob.Identity.Keys.IdentityKey, carol.Identity.Keys.IdentityKey], CancellationToken.None);
+        var groupId = created.Group!.Id;
+        await UiHarness.WaitUntilAsync(() => harness.Messenger.Groups.TryGet(groupId, out var group) && group.State == P2PMessenger.Application.Groups.GroupState.Created);
+        var page = harness.Shell.Pages.ContactList();
+        var view = new ContactListView { DataContext = page };
+        harness.Shell.Push(page);
+        harness.Show(view);
+
+        Assert.Equal(["Bob", "Carol", "Field team"], Names(page));
+        Assert.Equal(3, UiHarness.Find<ItemsControl>(view, "ChatItems").GetVisualDescendants().OfType<Button>().Count(static button => button.Classes.Contains("row")));
+
+        await harness.Messenger.SendToGroupAsync(groupId, "Meeting point is the north gate.", CancellationToken.None);
+        await UiHarness.WaitUntilAsync(() => Names(page)[0] == "Field team");
+
+        await bob.SendAsync(harness.Messenger.Identity.Keys.IdentityKey, "See you at six", CancellationToken.None);
+        await UiHarness.WaitUntilAsync(() => Names(page)[0] == "Bob");
+        Assert.Equal(["Bob", "Field team", "Carol"], Names(page));
+
+        await harness.Messenger.SendAsync(carol.Identity.Keys.IdentityKey, "Hello Carol", CancellationToken.None);
+        await UiHarness.WaitUntilAsync(() => Names(page)[0] == "Carol");
+        Assert.Equal(["Carol", "Bob", "Field team"], Names(page));
+        await UiHarness.StopPeerAsync(bob);
+        await UiHarness.StopPeerAsync(carol);
+        harness.Messenger.Identity.Dispose();
+    }
+
     [AvaloniaFact]
     public async Task ContactList_NoContacts_ShowsTheEmptyText()
     {
@@ -95,7 +133,7 @@ public sealed class ContactListViewTests
 
     [AvaloniaFact]
     [Trait("Story", "US-07")]
-    public async Task ContactList_NoWiFiAndNoInternet_SaysThatOnePersonCanShareAHotspot()
+    public async Task ContactList_NoWiFiAndNoInternet_ShowsTheNoNetworkLine()
     {
         await using var harness = await UiHarness.StartAsync("Alice", NetworkSnapshot.None);
         var page = Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage);
@@ -105,7 +143,6 @@ public sealed class ContactListViewTests
         Assert.True(page.HasNoNetwork);
         Assert.True(UiHarness.Find<Border>(view, "NoNetworkPanel").IsVisible);
         Assert.Equal(UiText.ContactListNoNetwork, UiHarness.Find<TextBlock>(view, "NoNetworkText").Text);
-        Assert.Contains("one person shares a hotspot", UiText.ContactListNoNetwork, StringComparison.Ordinal);
 
         harness.Node.Network = NetworkSnapshot.Create([LoopbackDiscovery.Interface], hasOtherNetwork: false);
         await UiHarness.WaitUntilAsync(() => !page.HasNoNetwork);
@@ -270,6 +307,39 @@ public sealed class ContactListViewTests
         Assert.Equal(["Bob", "Bobby"], page.Contacts.Select(static contact => contact.Name));
         harness.Messenger.Identity.Dispose();
     }
+
+    [AvaloniaFact]
+    public async Task ContactList_ContactNotYetConnected_IsMarkedPendingAndNotOnline()
+    {
+        await using var harness = await UiHarness.StartAsync("Alice");
+        var page = Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage);
+        using var bob = KeySet.Create();
+
+        await harness.AddContactAsync(bob, "Bob");
+
+        var item = Assert.Single(page.Contacts);
+        Assert.True(item.IsPending);
+        Assert.False(item.IsOnline);
+        harness.Messenger.Identity.Dispose();
+    }
+
+    [AvaloniaFact]
+    public async Task ContactList_ContactConnectedNearby_IsMarkedOnlineAndNotPending()
+    {
+        await using var harness = await UiHarness.StartAsync("Alice");
+        var page = Assert.IsType<ContactListViewModel>(harness.Shell.CurrentPage);
+        harness.Show(new ContactListView { DataContext = page });
+
+        var bob = await harness.ConnectPeerAsync("Bob");
+        await UiHarness.WaitUntilAsync(() => page.Contacts.Any(static item => item.IsOnline));
+
+        var item = Assert.Single(page.Contacts);
+        Assert.False(item.IsPending);
+        await UiHarness.StopPeerAsync(bob);
+        harness.Messenger.Identity.Dispose();
+    }
+
+    private static string[] Names(ContactListViewModel page) => [.. page.Chats.Select(static chat => chat.Name)];
 
     private static TextMessage Text(long sequence, string text)
     {

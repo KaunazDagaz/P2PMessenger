@@ -21,7 +21,6 @@ internal static class Formats
     public static readonly CompositeFormat InPersonAlreadyChecked = CompositeFormat.Parse(UiText.InPersonAlreadyCheckedFormat);
     public static readonly CompositeFormat InPersonConnected = CompositeFormat.Parse(UiText.InPersonConnectedFormat);
     public static readonly CompositeFormat NotAdded = CompositeFormat.Parse(UiText.ConversationNotAddedFormat);
-    public static readonly CompositeFormat VerifyIntro = CompositeFormat.Parse(UiText.VerifyIntroFormat);
     public static readonly CompositeFormat Theirs = CompositeFormat.Parse(UiText.VerifyTheirsFormat);
     public static readonly CompositeFormat Checked = CompositeFormat.Parse(UiText.VerifyCheckedFormat);
     public static readonly CompositeFormat NotCompared = CompositeFormat.Parse(UiText.VerifyNotComparedFormat);
@@ -33,7 +32,6 @@ internal static class Formats
     public static readonly CompositeFormat Heard = CompositeFormat.Parse(UiText.NetworkHeardFormat);
     public static readonly CompositeFormat PassphraseHint = CompositeFormat.Parse(UiText.PassphraseHintFormat);
     public static readonly CompositeFormat PassphraseTooShort = CompositeFormat.Parse(UiText.PassphraseTooShortFormat);
-    public static readonly CompositeFormat PassphraseStateSet = CompositeFormat.Parse(UiText.PassphraseStateSetFormat);
     public static readonly CompositeFormat DeleteChatQuestion = CompositeFormat.Parse(UiText.ConversationDeleteChatQuestionFormat);
     public static readonly CompositeFormat ChatDeleted = CompositeFormat.Parse(UiText.ConversationChatDeletedFormat);
     public static readonly CompositeFormat MessageDeleted = CompositeFormat.Parse(UiText.ConversationMessageDeletedFormat);

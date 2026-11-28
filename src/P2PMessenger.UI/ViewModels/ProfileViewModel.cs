@@ -15,9 +15,6 @@ public sealed partial class ProfileViewModel : PageViewModel
     private readonly ICodeFileService codeFiles;
 
     [ObservableProperty]
-    private string? statusMessage;
-
-    [ObservableProperty]
     private string? errorMessage;
 
     [ObservableProperty]
@@ -52,13 +49,12 @@ public sealed partial class ProfileViewModel : PageViewModel
     private async Task CopyAsync()
     {
         IsBusy = true;
-        StatusMessage = null;
         ErrorMessage = null;
         try
         {
             if (await clipboard.SetTextAsync(CodeText))
             {
-                StatusMessage = UiText.ProfileCopied;
+                Toasts.Show(ToastKind.Success, UiText.ProfileCopied);
             }
             else
             {
@@ -87,7 +83,6 @@ public sealed partial class ProfileViewModel : PageViewModel
     private async Task SavingAsync(Func<Task<CodeFileResult>> save, string saved)
     {
         IsBusy = true;
-        StatusMessage = null;
         ErrorMessage = null;
         try
         {
@@ -95,7 +90,7 @@ public sealed partial class ProfileViewModel : PageViewModel
             switch (result.Status)
             {
                 case CodeFileStatus.Done:
-                    StatusMessage = saved;
+                    Toasts.Show(ToastKind.Success, saved);
                     break;
                 case CodeFileStatus.Cancelled:
                     break;

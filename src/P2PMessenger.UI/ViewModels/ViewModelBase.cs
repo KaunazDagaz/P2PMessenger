@@ -8,6 +8,8 @@ public abstract class ViewModelBase : ObservableObject
 {
     internal FailureLog FailureLog { get; set; } = FailureLog.None;
 
+    internal IToastService Toasts { get; set; } = NoToasts.Instance;
+
     protected void ReportFailure(Exception exception, [CallerMemberName] string operation = "") =>
         FailureLog.Report(GetType(), operation, exception);
 }

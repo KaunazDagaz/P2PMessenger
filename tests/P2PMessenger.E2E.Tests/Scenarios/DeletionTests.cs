@@ -57,8 +57,8 @@ public sealed class DeletionTests
         Assert.True(File.Exists(alice.DatabasePath));
 
         await Flows.GoBackToContactsAsync(alice);
-        alice.ClickButton("DeleteAllDataButton");
-        await alice.WaitForTitleAsync(UiText.DeleteAllDataTitle);
+        await Flows.ChooseFromMenuAsync(alice, "DeleteAllDataButton");
+        await alice.WaitUntilAsync(() => alice.TryNamed<Button>("DeleteAllConfirmButton") is not null, "Alice is asked before everything is deleted");
         alice.ClickButton("DeleteAllConfirmButton");
 
         await alice.WaitForTitleAsync(UiText.CreateIdentityTitle);

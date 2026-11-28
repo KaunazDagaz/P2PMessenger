@@ -60,13 +60,14 @@ public sealed class ProfileViewTests
         var saved = Assert.NotNull(harness.Platform.SavedImage);
         Assert.Equal("Alice contact code.png", saved.Name);
         Assert.Equal(QrPng.Render(page.QrCode), saved.Png);
-        Assert.Equal(UiText.ProfileImageSaved, UiHarness.Find<TextBlock>(view, "StatusText").Text);
+        Assert.Contains(UiText.ProfileImageSaved, harness.ToastTexts);
 
+        harness.Services.Toasts.Clear();
         harness.Platform.SaveResult = new CodeFileResult(CodeFileStatus.Failed, null);
         await page.SaveImageCommand.ExecuteAsync(null);
         UiHarness.Flush();
         Assert.Equal(UiText.ProfileSaveFailed, UiHarness.Find<TextBlock>(view, "ErrorText").Text);
-        Assert.False(UiHarness.Find<TextBlock>(view, "StatusText").IsVisible);
+        Assert.Empty(harness.Services.Toasts.Items);
         harness.Messenger.Identity.Dispose();
     }
 
@@ -82,12 +83,12 @@ public sealed class ProfileViewTests
         await page.CopyCommand.ExecuteAsync(null);
         UiHarness.Flush();
         Assert.Equal(harness.Messenger.Identity.CodeText, harness.Platform.Clipboard);
-        Assert.Equal(UiText.ProfileCopied, UiHarness.Find<TextBlock>(view, "StatusText").Text);
+        Assert.Contains(UiText.ProfileCopied, harness.ToastTexts);
 
         await page.SaveCommand.ExecuteAsync(null);
         UiHarness.Flush();
         Assert.Equal(("Alice contact code.txt", harness.Messenger.Identity.CodeText), harness.Platform.Saved);
-        Assert.Equal(UiText.ProfileSaved, UiHarness.Find<TextBlock>(view, "StatusText").Text);
+        Assert.Contains(UiText.ProfileSaved, harness.ToastTexts);
         harness.Messenger.Identity.Dispose();
     }
 
@@ -108,7 +109,7 @@ public sealed class ProfileViewTests
         await page.SaveCommand.ExecuteAsync(null);
         UiHarness.Flush();
         Assert.Equal(UiText.ProfileSaveFailed, UiHarness.Find<TextBlock>(view, "ErrorText").Text);
-        Assert.False(UiHarness.Find<TextBlock>(view, "StatusText").IsVisible);
+        Assert.Empty(harness.Services.Toasts.Items);
         harness.Messenger.Identity.Dispose();
     }
 }

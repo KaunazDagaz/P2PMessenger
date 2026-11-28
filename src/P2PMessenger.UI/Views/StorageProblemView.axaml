@@ -3,23 +3,41 @@
              xmlns:vm="using:P2PMessenger.UI.ViewModels"
              xmlns:res="using:P2PMessenger.UI.Resources"
              xmlns:v="using:P2PMessenger.UI.Views"
+             xmlns:c="using:P2PMessenger.UI.Controls"
              x:Class="P2PMessenger.UI.Views.StorageProblemView"
              x:DataType="vm:StorageProblemViewModel">
-    <ScrollViewer>
-        <StackPanel Margin="16" Spacing="12" MaxWidth="560" HorizontalAlignment="Stretch">
-            <TextBlock x:Name="MessageText" Text="{Binding Message}" TextWrapping="Wrap" />
+    <c:PageContainer ContentMaxWidth="608">
+        <c:PageContainer.Overlay>
+            <v:DeleteAllDataDialog x:Name="DeleteAllDialog" DataContext="{Binding DeleteAll}" />
+        </c:PageContainer.Overlay>
+        <StackPanel Spacing="20">
+            <Border Classes="heroIcon warning" Margin="0,8,0,0">
+                <c:Icon Classes="warning"
+                        Size="34"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Data="{StaticResource IconAlert}" />
+            </Border>
+            <Border Classes="notice warning">
+                <TextBlock x:Name="MessageText" Text="{Binding Message}" TextWrapping="Wrap" />
+            </Border>
             <Button x:Name="TryAgainButton"
+                    Classes="primary"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"
                     Content="{x:Static res:UiText.StorageTryAgain}"
                     Command="{Binding TryAgainCommand}"
                     IsDefault="True" />
-            <TextBlock x:Name="BusyText" Text="{x:Static res:UiText.StorageOpening}" IsVisible="{Binding IsBusy}" />
-            <ProgressBar x:Name="BusyBar"
-                         IsIndeterminate="True"
-                         IsVisible="{Binding IsBusy}"
-                         AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
+            <StackPanel Spacing="6" IsVisible="{Binding IsBusy}">
+                <TextBlock x:Name="BusyText" Classes="caption centered" Text="{x:Static res:UiText.StorageOpening}" IsVisible="{Binding IsBusy}" />
+                <ProgressBar x:Name="BusyBar"
+                             IsIndeterminate="True"
+                             IsVisible="{Binding IsBusy}"
+                             AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
+            </StackPanel>
             <Panel IsVisible="{Binding OffersDeleteAll}">
                 <v:DeleteAllDataPanel x:Name="DeleteAllPanel" DataContext="{Binding DeleteAll}" />
             </Panel>
         </StackPanel>
-    </ScrollViewer>
+    </c:PageContainer>
 </UserControl>

@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -57,10 +59,6 @@ public sealed partial class GroupConversationViewModel : PageViewModel
     private string? endedOrLeftText;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasMembershipNoticeText))]
-    private string? membershipNoticeText;
-
-    [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SendCommand))]
     private bool canWrite;
 
@@ -89,10 +87,6 @@ public sealed partial class GroupConversationViewModel : PageViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DeleteChatQuestion))]
     private bool isInactiveGroup;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasDeletedText))]
-    private string? deletedText;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsLeaveVisible))]
@@ -131,6 +125,8 @@ public sealed partial class GroupConversationViewModel : PageViewModel
         this.groupId = groupId;
         this.uiThread = uiThread;
         this.timeZone = timeZone;
+        Members.CollectionChanged += OnMembersChanged;
+        Messages.CollectionChanged += OnMessagesChanged;
         RefreshGroup();
         RefreshMessages();
     }
@@ -141,21 +137,29 @@ public sealed partial class GroupConversationViewModel : PageViewModel
 
     public ObservableCollection<GroupMemberItemViewModel> Members { get; } = [];
 
+    public GroupMemberItemViewModel? RemovingMember => Members.FirstOrDefault(static member => member.IsConfirmingRemove);
+
+    public bool HasRemovingMember => RemovingMember is not null;
+
     public ObservableCollection<GroupSuccessorOptionViewModel> SuccessorCandidates { get; } = [];
 
     public ObservableCollection<GroupMemberToAddViewModel> MembersToAdd { get; } = [];
 
     public ObservableCollection<GroupMessageItemViewModel> Messages { get; } = [];
 
+    public GroupMessageItemViewModel? DetailsMessage => Messages.FirstOrDefault(static message => message.IsDetailsShown);
+
+    public bool HasDetailsMessage => DetailsMessage is not null;
+
+    public GroupMessageItemViewModel? DeletingMessage => Messages.FirstOrDefault(static message => message.IsConfirmingDelete);
+
+    public bool HasDeletingMessage => DeletingMessage is not null;
+
     public bool HasWaitingText => WaitingText is not null;
 
     public bool HasListsDifferText => ListsDifferText is not null;
 
     public bool HasEndedOrLeftText => EndedOrLeftText is not null;
-
-    public bool HasMembershipNoticeText => MembershipNoticeText is not null;
-
-    public bool HasDeletedText => DeletedText is not null;
 
     public bool IsDeleteChatVisible => !IsConfirmingDeleteChat;
 
@@ -307,7 +311,7 @@ public sealed partial class GroupConversationViewModel : PageViewModel
         try
         {
             await messenger.DeleteGroupChatAsync(groupId, cancellationToken);
-            DeletedText = IsInactiveGroup ? UiText.GroupInactiveChatDeleted : UiText.GroupChatDeleted;
+            Toasts.Show(ToastKind.Success, IsInactiveGroup ? UiText.GroupInactiveChatDeleted : UiText.GroupChatDeleted);
             IsConfirmingDeleteChat = false;
             RefreshMessages();
         }
@@ -325,18 +329,17 @@ public sealed partial class GroupConversationViewModel : PageViewModel
     private async Task RemoveMemberAsync(GroupMemberItemViewModel item, CancellationToken cancellationToken)
     {
         ErrorMessage = null;
-        MembershipNoticeText = null;
         try
         {
             RemoveMemberResult result = await messenger.RemoveGroupMemberAsync(groupId, item.IdentityKey, cancellationToken);
             if (result.Outcome == RemoveMemberOutcome.Removed)
             {
-                MembershipNoticeText = Formats.With(Formats.GroupMemberRemoved, item.Name);
+                Toasts.Show(ToastKind.Success, Formats.With(Formats.GroupMemberRemoved, item.Name));
                 RefreshGroup();
             }
             else if (result.Outcome == RemoveMemberOutcome.EndedGroup)
             {
-                MembershipNoticeText = Formats.With(Formats.GroupMemberRemovedEnded, item.Name);
+                Toasts.Show(ToastKind.Success, Formats.With(Formats.GroupMemberRemovedEnded, item.Name));
                 IsMembersShown = false;
                 RefreshGroup();
             }
@@ -359,7 +362,7 @@ public sealed partial class GroupConversationViewModel : PageViewModel
         {
             if (await messenger.DeleteWaitingGroupMessageAsync(groupId, item.Id, cancellationToken))
             {
-                DeletedText = UiText.GroupMessageDeleted;
+                Toasts.Show(ToastKind.Success, UiText.GroupMessageDeleted);
             }
             else
             {
@@ -539,5 +542,77 @@ public sealed partial class GroupConversationViewModel : PageViewModel
         }
 
         IsEmpty = Messages.Count == 0;
+    }
+
+    private void OnMembersChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.OldItems is not null)
+        {
+            foreach (GroupMemberItemViewModel item in e.OldItems)
+            {
+                item.PropertyChanged -= OnMemberChanged;
+            }
+        }
+
+        if (e.NewItems is not null)
+        {
+            foreach (GroupMemberItemViewModel item in e.NewItems)
+            {
+                item.PropertyChanged += OnMemberChanged;
+            }
+        }
+
+        NotifyRemoving();
+    }
+
+    private void OnMemberChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(GroupMemberItemViewModel.IsConfirmingRemove))
+        {
+            NotifyRemoving();
+        }
+    }
+
+    private void NotifyRemoving()
+    {
+        OnPropertyChanged(nameof(RemovingMember));
+        OnPropertyChanged(nameof(HasRemovingMember));
+    }
+
+    private void OnMessagesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.OldItems is not null)
+        {
+            foreach (GroupMessageItemViewModel item in e.OldItems)
+            {
+                item.PropertyChanged -= OnMessageChanged;
+            }
+        }
+
+        if (e.NewItems is not null)
+        {
+            foreach (GroupMessageItemViewModel item in e.NewItems)
+            {
+                item.PropertyChanged += OnMessageChanged;
+            }
+        }
+
+        NotifyMessageDialogs();
+    }
+
+    private void OnMessageChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(GroupMessageItemViewModel.IsDetailsShown) or nameof(GroupMessageItemViewModel.IsConfirmingDelete))
+        {
+            NotifyMessageDialogs();
+        }
+    }
+
+    private void NotifyMessageDialogs()
+    {
+        OnPropertyChanged(nameof(DetailsMessage));
+        OnPropertyChanged(nameof(HasDetailsMessage));
+        OnPropertyChanged(nameof(DeletingMessage));
+        OnPropertyChanged(nameof(HasDeletingMessage));
     }
 }

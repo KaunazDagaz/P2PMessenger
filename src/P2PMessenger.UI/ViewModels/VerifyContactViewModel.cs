@@ -16,9 +16,6 @@ public sealed partial class VerifyContactViewModel : PageViewModel
     private readonly IUiThread uiThread;
 
     [ObservableProperty]
-    private string introText = string.Empty;
-
-    [ObservableProperty]
     private string firstLabel = string.Empty;
 
     [ObservableProperty]
@@ -119,7 +116,6 @@ public sealed partial class VerifyContactViewModel : PageViewModel
         FingerprintPair pair = FingerprintPair.Create(messenger.Identity.Keys.IdentityKey, contact.IdentityKey);
         string yours = UiText.VerifyYoursLabel;
         string theirs = Formats.With(Formats.Theirs, name);
-        IntroText = Formats.With(Formats.VerifyIntro, name);
         FirstLabel = pair.OwnFirst ? yours : theirs;
         FirstFingerprint = pair.First.ToGroupedString();
         SecondLabel = pair.OwnFirst ? theirs : yours;

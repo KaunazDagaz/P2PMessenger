@@ -3,8 +3,11 @@
              xmlns:vm="using:P2PMessenger.UI.ViewModels"
              xmlns:res="using:P2PMessenger.UI.Resources"
              xmlns:v="using:P2PMessenger.UI.Views"
+             xmlns:c="using:P2PMessenger.UI.Controls"
              x:Class="P2PMessenger.UI.Views.MainView"
-             x:DataType="vm:MainViewModel">
+             x:DataType="vm:MainViewModel"
+             Background="{DynamicResource AppBackgroundBrush}"
+             Foreground="{DynamicResource TextPrimaryBrush}">
     <UserControl.DataTemplates>
         <DataTemplate DataType="vm:StorageProblemViewModel">
             <v:StorageProblemView />
@@ -54,98 +57,163 @@
         <DataTemplate DataType="vm:PassphraseViewModel">
             <v:PassphraseView />
         </DataTemplate>
-        <DataTemplate DataType="vm:DeleteAllDataPageViewModel">
-            <v:DeleteAllDataPageView />
-        </DataTemplate>
         <DataTemplate DataType="vm:BackgroundViewModel">
             <v:BackgroundView />
         </DataTemplate>
     </UserControl.DataTemplates>
 
-    <DockPanel>
-        <Border DockPanel.Dock="Top"
-                Padding="12,8"
-                BorderThickness="0,0,0,1"
-                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
-            <DockPanel>
-                <Button x:Name="BackButton"
-                        DockPanel.Dock="Left"
-                        Margin="0,0,12,0"
-                        Content="{x:Static res:UiText.CommonBack}"
-                        Command="{Binding GoBackCommand}"
-                        IsVisible="{Binding IsBackVisible}" />
-                <Button x:Name="LockButton"
-                        DockPanel.Dock="Right"
-                        Margin="12,0,0,0"
-                        Content="{x:Static res:UiText.LockNow}"
-                        Command="{Binding LockCommand}"
-                        IsVisible="{Binding CanLock}" />
-                <TextBlock x:Name="TitleText"
-                           Text="{Binding Title}"
-                           FontSize="20"
-                           FontWeight="SemiBold"
-                           VerticalAlignment="Center"
-                           TextTrimming="CharacterEllipsis" />
+    <Grid x:Name="Root">
+        <Grid x:Name="Body" ColumnDefinitions="Auto,*">
+            <Border x:Name="MasterPane"
+                    Classes="master"
+                    Grid.Column="0"
+                    Width="380"
+                    IsVisible="{Binding IsSplit}">
+                <DockPanel>
+                    <Grid DockPanel.Dock="Top">
+                        <Border Classes="appbar">
+                            <DockPanel>
+                                <Button x:Name="MasterLockButton"
+                                        DockPanel.Dock="Right"
+                                        Margin="8,0,0,0"
+                                        Classes="quiet iconic"
+                                        c:Icons.Glyph="{StaticResource IconLock}"
+                                        Content="{x:Static res:UiText.LockNow}"
+                                        Command="{Binding LockCommand}"
+                                        IsVisible="{Binding CanLockInMaster}" />
+                                <TextBlock x:Name="MasterTitleText"
+                                           Classes="apptitle"
+                                           Text="{Binding MasterTitle}" />
+                            </DockPanel>
+                        </Border>
+                        <Border x:Name="MasterScrim" Classes="scrim" />
+                    </Grid>
+                    <Grid>
+                        <ContentControl x:Name="MasterHost" Content="{Binding MasterPage}" />
+                        <Border x:Name="MasterShade" Background="{DynamicResource ScrimBrush}" IsVisible="False" />
+                    </Grid>
+                </DockPanel>
+            </Border>
+            <DockPanel Grid.Column="1">
+                <Grid DockPanel.Dock="Top" IsVisible="{Binding IsDetailBarVisible}">
+                    <Border Classes="appbar">
+                        <DockPanel>
+                            <Button x:Name="BackButton"
+                                    DockPanel.Dock="Left"
+                                    Margin="0,0,8,0"
+                                    Classes="quiet iconic"
+                                    c:Icons.Glyph="{StaticResource IconChevronLeft}"
+                                    Content="{x:Static res:UiText.CommonBack}"
+                                    Command="{Binding GoBackCommand}"
+                                    IsVisible="{Binding IsBackVisible}" />
+                            <Button x:Name="LockButton"
+                                    DockPanel.Dock="Right"
+                                    Margin="8,0,0,0"
+                                    Classes="quiet iconic"
+                                    c:Icons.Glyph="{StaticResource IconLock}"
+                                    Content="{x:Static res:UiText.LockNow}"
+                                    Command="{Binding LockCommand}"
+                                    IsVisible="{Binding CanLockInBar}" />
+                            <TextBlock x:Name="TitleText"
+                                       Classes="apptitle"
+                                       Text="{Binding Title}" />
+                        </DockPanel>
+                    </Border>
+                    <Border x:Name="HeaderScrim" Classes="scrim" />
+                </Grid>
+                <Grid>
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MinWidth="200" Spacing="14" IsVisible="{Binding IsStarting}">
+                        <Border Classes="heroIcon">
+                            <c:Icon Classes="accent"
+                                    Size="34"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Data="{StaticResource IconMessage}" />
+                        </Border>
+                        <TextBlock x:Name="StartingText"
+                                   Classes="heading"
+                                   Text="{x:Static res:UiText.AppStarting}"
+                                   IsVisible="{Binding IsStarting}"
+                                   HorizontalAlignment="Center" />
+                        <ProgressBar x:Name="StartingBar"
+                                     IsIndeterminate="True"
+                                     IsVisible="{Binding IsStarting}"
+                                     AutomationProperties.Name="{x:Static res:UiText.AppStarting}" />
+                    </StackPanel>
+                    <Border Classes="notice danger"
+                            Margin="16"
+                            MaxWidth="560"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            IsVisible="{Binding #ErrorText.IsVisible}">
+                        <TextBlock x:Name="ErrorText"
+                                   Text="{Binding ErrorMessage}"
+                                   IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                   TextWrapping="Wrap" />
+                    </Border>
+                    <Border x:Name="DetailPlaceholder"
+                            Classes="heroIcon"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            IsVisible="{Binding IsDetailEmpty}">
+                        <c:Icon Classes="accent"
+                                Size="34"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Data="{StaticResource IconMessage}" />
+                    </Border>
+                    <ContentControl x:Name="PageHost" Content="{Binding DetailPage}" IsVisible="{Binding IsPageVisible}" />
+                    <ContentControl x:Name="LockHost" Content="{Binding LockPage}" IsVisible="{Binding IsLocked}" />
+                    <Border x:Name="DetailShade" Background="{DynamicResource ScrimBrush}" IsVisible="False" />
+                </Grid>
             </DockPanel>
-        </Border>
-        <Border x:Name="NoticePanel"
-                DockPanel.Dock="Top"
-                Margin="12,12,12,0"
-                Padding="12"
-                BorderThickness="1"
-                CornerRadius="4"
-                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                IsVisible="{Binding HasNotice}">
-            <DockPanel>
-                <Button DockPanel.Dock="Right"
-                        Margin="8,0,0,0"
-                        Content="{x:Static res:UiText.CommonDismiss}"
-                        Command="{Binding DismissNoticeCommand}" />
-                <TextBlock x:Name="NoticeText" Text="{Binding Notice}" TextWrapping="Wrap" VerticalAlignment="Center" />
-            </DockPanel>
-        </Border>
-        <Border x:Name="ErrorNoticePanel"
-                DockPanel.Dock="Top"
-                Margin="12,12,12,0"
-                Padding="12"
-                BorderThickness="1"
-                CornerRadius="4"
-                BorderBrush="{DynamicResource SystemControlErrorTextForegroundBrush}"
-                IsVisible="{Binding HasErrorNotice}">
-            <DockPanel>
-                <Button x:Name="DismissErrorButton"
-                        DockPanel.Dock="Right"
-                        Margin="8,0,0,0"
-                        Content="{x:Static res:UiText.CommonDismiss}"
-                        Command="{Binding DismissErrorNoticeCommand}" />
-                <TextBlock x:Name="ErrorNoticeText"
-                           Text="{Binding ErrorNotice}"
-                           Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
-                           TextWrapping="Wrap"
-                           VerticalAlignment="Center" />
-            </DockPanel>
-        </Border>
-        <Grid>
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MinWidth="160" Spacing="8">
-                <TextBlock x:Name="StartingText"
-                           Text="{x:Static res:UiText.AppStarting}"
-                           IsVisible="{Binding IsStarting}"
-                           HorizontalAlignment="Center" />
-                <ProgressBar x:Name="StartingBar"
-                             IsIndeterminate="True"
-                             IsVisible="{Binding IsStarting}"
-                             AutomationProperties.Name="{x:Static res:UiText.AppStarting}" />
-            </StackPanel>
-            <TextBlock x:Name="ErrorText"
-                       Text="{Binding ErrorMessage}"
-                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
-                       TextWrapping="Wrap"
-                       Margin="16"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center" />
-            <ContentControl x:Name="PageHost" Content="{Binding CurrentPage}" IsVisible="{Binding IsPageVisible}" />
-            <ContentControl x:Name="LockHost" Content="{Binding LockPage}" IsVisible="{Binding IsLocked}" />
+            <ItemsControl x:Name="ToastHost"
+                          Grid.Column="1"
+                          Classes="toasts"
+                          ItemsSource="{Binding ToastItems}"
+                          IsVisible="{Binding !IsLocked}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:ToastViewModel">
+                        <Border Classes="notice toast"
+                                Classes.success="{Binding IsSuccess}"
+                                Classes.warning="{Binding IsWarning}"
+                                Classes.danger="{Binding IsError}">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right"
+                                        Margin="8,0,0,0"
+                                        Classes="quiet icononly"
+                                        Width="28"
+                                        Height="28"
+                                        MinHeight="28"
+                                        VerticalAlignment="Top"
+                                        Command="{Binding DismissCommand}"
+                                        AutomationProperties.Name="{x:Static res:UiText.CommonDismiss}">
+                                    <c:Icon Data="{StaticResource IconClose}" Size="14" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Button>
+                                <c:Icon DockPanel.Dock="Left"
+                                        Classes="success"
+                                        Margin="0,2,10,0"
+                                        VerticalAlignment="Top"
+                                        IsVisible="{Binding IsSuccess}"
+                                        Data="{StaticResource IconCheck}" />
+                                <c:Icon DockPanel.Dock="Left"
+                                        Classes="warning"
+                                        Margin="0,2,10,0"
+                                        VerticalAlignment="Top"
+                                        IsVisible="{Binding IsWarning}"
+                                        Data="{StaticResource IconAlert}" />
+                                <c:Icon DockPanel.Dock="Left"
+                                        Classes="danger"
+                                        Margin="0,2,10,0"
+                                        VerticalAlignment="Top"
+                                        IsVisible="{Binding IsError}"
+                                        Data="{StaticResource IconAlert}" />
+                                <TextBlock Text="{Binding Text}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                            </DockPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
         </Grid>
-    </DockPanel>
+    </Grid>
 </UserControl>

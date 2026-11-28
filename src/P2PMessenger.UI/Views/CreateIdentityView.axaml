@@ -2,50 +2,84 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:P2PMessenger.UI.ViewModels"
              xmlns:res="using:P2PMessenger.UI.Resources"
+             xmlns:c="using:P2PMessenger.UI.Controls"
              x:Class="P2PMessenger.UI.Views.CreateIdentityView"
              x:DataType="vm:CreateIdentityViewModel">
-    <ScrollViewer>
-        <StackPanel Margin="16" Spacing="12" MaxWidth="560" HorizontalAlignment="Stretch">
-            <TextBlock Text="{x:Static res:UiText.CreateIdentityIntro}" TextWrapping="Wrap" />
-            <TextBlock Text="{x:Static res:UiText.CreateIdentityNameLabel}" FontWeight="SemiBold" />
-            <TextBox x:Name="NameBox"
-                     Text="{Binding Name}"
-                     PlaceholderText="{x:Static res:UiText.CreateIdentityNamePlaceholder}"
-                     AutomationProperties.Name="{x:Static res:UiText.CreateIdentityNameLabel}" />
-            <StackPanel x:Name="PassphrasePanel" Spacing="8" IsVisible="{Binding OffersPassphrase}">
-                <TextBlock Text="{x:Static res:UiText.CreateIdentityPassphraseLabel}" FontWeight="SemiBold" />
-                <TextBox x:Name="PassphraseBox"
-                         Text="{Binding Passphrase}"
-                         PasswordChar="•"
-                         AutomationProperties.Name="{x:Static res:UiText.CreateIdentityPassphraseLabel}" />
-                <TextBlock Text="{x:Static res:UiText.PassphraseRepeatLabel}" FontWeight="SemiBold" />
-                <TextBox x:Name="RepeatBox"
-                         Text="{Binding RepeatedPassphrase}"
-                         PasswordChar="•"
-                         AutomationProperties.Name="{x:Static res:UiText.PassphraseRepeatLabel}" />
-                <TextBlock x:Name="HintText" Text="{x:Static vm:CreateIdentityViewModel.Hint}" TextWrapping="Wrap" />
-                <TextBlock x:Name="SkipWarningText" Text="{Binding SkipWarning}" TextWrapping="Wrap" IsVisible="{Binding IsSkippingPassphrase}" />
+    <c:PageContainer ContentMaxWidth="608">
+        <StackPanel Spacing="20">
+            <StackPanel Spacing="10" Margin="0,8,0,0">
+                <Border Classes="heroIcon">
+                    <c:Icon Classes="accent"
+                            Size="34"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Data="{StaticResource IconShieldCheck}" />
+                </Border>
+                <TextBlock Classes="hero centered" Text="{x:Static res:UiText.AppWelcomeTitle}" />
             </StackPanel>
-            <StackPanel x:Name="TorPanel" Spacing="4" IsVisible="{Binding OffersTor}">
-                <CheckBox x:Name="UseTorCheckBox"
-                          IsChecked="{Binding UseTor}"
-                          Content="{x:Static res:UiText.CreateIdentityUseTor}" />
-                <TextBlock x:Name="UseTorHintText" Text="{x:Static res:UiText.CreateIdentityUseTorHint}" TextWrapping="Wrap" />
-            </StackPanel>
+            <Border Classes="card">
+                <StackPanel Spacing="16">
+                    <c:FormField Label="{x:Static res:UiText.CreateIdentityNameLabel}">
+                        <TextBox x:Name="NameBox"
+                                 Text="{Binding Name}"
+                                 PlaceholderText="{x:Static res:UiText.CreateIdentityNamePlaceholder}"
+                                 AutomationProperties.Name="{x:Static res:UiText.CreateIdentityNameLabel}" />
+                    </c:FormField>
+                    <StackPanel x:Name="PassphrasePanel" Spacing="16" IsVisible="{Binding OffersPassphrase}">
+                        <c:FormField Label="{x:Static res:UiText.CreateIdentityPassphraseLabel}">
+                            <TextBox x:Name="PassphraseBox"
+                                     Text="{Binding Passphrase}"
+                                     PasswordChar="•"
+                                     AutomationProperties.Name="{x:Static res:UiText.CreateIdentityPassphraseLabel}" />
+                        </c:FormField>
+                        <c:FormField Label="{x:Static res:UiText.PassphraseRepeatLabel}">
+                            <TextBox x:Name="RepeatBox"
+                                     Text="{Binding RepeatedPassphrase}"
+                                     PasswordChar="•"
+                                     AutomationProperties.Name="{x:Static res:UiText.PassphraseRepeatLabel}" />
+                        </c:FormField>
+                        <TextBlock x:Name="HintText" Classes="caption" Text="{x:Static vm:CreateIdentityViewModel.Hint}" />
+                        <Border Classes="notice warning" IsVisible="{Binding #SkipWarningText.IsVisible}">
+                            <DockPanel>
+                                <c:Icon DockPanel.Dock="Left"
+                                        Classes="warning"
+                                        Margin="0,0,10,0"
+                                        VerticalAlignment="Top"
+                                        Data="{StaticResource IconAlert}" />
+                                <TextBlock x:Name="SkipWarningText"
+                                           Text="{Binding SkipWarning}"
+                                           TextWrapping="Wrap"
+                                           IsVisible="{Binding IsSkippingPassphrase}" />
+                            </DockPanel>
+                        </Border>
+                    </StackPanel>
+                    <StackPanel x:Name="TorPanel" Spacing="4" IsVisible="{Binding OffersTor}">
+                        <CheckBox x:Name="UseTorCheckBox"
+                                  IsChecked="{Binding UseTor}"
+                                  Content="{x:Static res:UiText.CreateIdentityUseTor}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
             <Button x:Name="CreateButton"
+                    Classes="primary"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"
                     Content="{x:Static res:UiText.CreateIdentityCreate}"
                     Command="{Binding CreateCommand}"
                     IsDefault="True" />
-            <TextBlock x:Name="BusyText" Text="{x:Static res:UiText.CreateIdentityCreating}" IsVisible="{Binding IsBusy}" />
-            <ProgressBar x:Name="BusyBar"
-                         IsIndeterminate="True"
-                         IsVisible="{Binding IsBusy}"
-                         AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
-            <TextBlock x:Name="ErrorText"
-                       Text="{Binding ErrorMessage}"
-                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
-                       TextWrapping="Wrap" />
+            <StackPanel Spacing="6" IsVisible="{Binding IsBusy}">
+                <TextBlock x:Name="BusyText" Classes="caption centered" Text="{x:Static res:UiText.CreateIdentityCreating}" IsVisible="{Binding IsBusy}" />
+                <ProgressBar x:Name="BusyBar"
+                             IsIndeterminate="True"
+                             IsVisible="{Binding IsBusy}"
+                             AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
+            </StackPanel>
+            <Border Classes="notice danger" IsVisible="{Binding #ErrorText.IsVisible}">
+                <TextBlock x:Name="ErrorText"
+                           Text="{Binding ErrorMessage}"
+                           IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           TextWrapping="Wrap" />
+            </Border>
         </StackPanel>
-    </ScrollViewer>
+    </c:PageContainer>
 </UserControl>

@@ -3,34 +3,56 @@
              xmlns:vm="using:P2PMessenger.UI.ViewModels"
              xmlns:res="using:P2PMessenger.UI.Resources"
              xmlns:v="using:P2PMessenger.UI.Views"
+             xmlns:c="using:P2PMessenger.UI.Controls"
              x:Class="P2PMessenger.UI.Views.UnlockView"
              x:DataType="vm:UnlockViewModel">
-    <ScrollViewer>
-        <StackPanel Margin="16" Spacing="12" MaxWidth="560" HorizontalAlignment="Stretch">
-            <TextBlock x:Name="IntroText" Text="{Binding Intro}" TextWrapping="Wrap" />
-            <TextBlock Text="{x:Static res:UiText.UnlockPassphraseLabel}" FontWeight="SemiBold" />
-            <TextBox x:Name="PassphraseBox"
-                     Text="{Binding Passphrase}"
-                     PasswordChar="•"
-                     AutomationProperties.Name="{x:Static res:UiText.UnlockPassphraseLabel}" />
+    <c:PageContainer ContentMaxWidth="608">
+        <c:PageContainer.Overlay>
+            <v:DeleteAllDataDialog x:Name="DeleteAllDialog" DataContext="{Binding DeleteAll}" />
+        </c:PageContainer.Overlay>
+        <StackPanel Spacing="20">
+            <StackPanel Spacing="10" Margin="0,8,0,0">
+                <Border Classes="heroIcon">
+                    <c:Icon Classes="accent"
+                            Size="34"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Data="{StaticResource IconLock}" />
+                </Border>
+            </StackPanel>
+            <Border Classes="card">
+                <c:FormField Label="{x:Static res:UiText.UnlockPassphraseLabel}">
+                    <TextBox x:Name="PassphraseBox"
+                             Text="{Binding Passphrase}"
+                             PasswordChar="•"
+                             AutomationProperties.Name="{x:Static res:UiText.UnlockPassphraseLabel}" />
+                </c:FormField>
+            </Border>
+            <TextBlock x:Name="ForgottenText" Classes="caption" Text="{x:Static res:UiText.PassphraseForgotten}" TextWrapping="Wrap" />
             <Button x:Name="UnlockButton"
+                    Classes="primary iconic"
+                    c:Icons.Glyph="{StaticResource IconLock}"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"
                     Content="{x:Static res:UiText.UnlockUnlock}"
                     Command="{Binding UnlockCommand}"
                     IsDefault="True" />
-            <TextBlock x:Name="BusyText" Text="{x:Static res:UiText.UnlockChecking}" IsVisible="{Binding IsBusy}" />
-            <ProgressBar x:Name="BusyBar"
-                         IsIndeterminate="True"
-                         IsVisible="{Binding IsBusy}"
-                         AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
-            <TextBlock x:Name="ErrorText"
-                       Text="{Binding ErrorMessage}"
-                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
-                       TextWrapping="Wrap" />
-            <TextBlock x:Name="ForgottenText" Text="{x:Static res:UiText.PassphraseForgotten}" TextWrapping="Wrap" />
+            <StackPanel Spacing="6" IsVisible="{Binding IsBusy}">
+                <TextBlock x:Name="BusyText" Classes="caption centered" Text="{x:Static res:UiText.UnlockChecking}" IsVisible="{Binding IsBusy}" />
+                <ProgressBar x:Name="BusyBar"
+                             IsIndeterminate="True"
+                             IsVisible="{Binding IsBusy}"
+                             AutomationProperties.Name="{x:Static res:UiText.CommonWorking}" />
+            </StackPanel>
+            <Border Classes="notice danger" IsVisible="{Binding #ErrorText.IsVisible}">
+                <TextBlock x:Name="ErrorText"
+                           Text="{Binding ErrorMessage}"
+                           IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           TextWrapping="Wrap" />
+            </Border>
             <Panel IsVisible="{Binding OffersDeleteAll}">
                 <v:DeleteAllDataPanel x:Name="DeleteAllPanel" DataContext="{Binding DeleteAll}" />
             </Panel>
         </StackPanel>
-    </ScrollViewer>
+    </c:PageContainer>
 </UserControl>

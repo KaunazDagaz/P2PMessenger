@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using P2PMessenger.Application.Contacts;
@@ -13,6 +14,7 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
 {
     private readonly AppServices services;
     private readonly Stack<PageViewModel> pages = new();
+    private readonly List<PageViewModel> shown = [];
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Title))]
@@ -30,15 +32,13 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
     private string? errorMessage;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasNotice))]
-    private string? notice;
+    private bool isWide;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasErrorNotice))]
-    private string? errorNotice;
+    private double keyboardInset;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsLocked), nameof(Title), nameof(HasNotice), nameof(HasErrorNotice), nameof(IsBackVisible), nameof(CanLock), nameof(IsPageVisible))]
+    [NotifyPropertyChangedFor(nameof(IsLocked), nameof(IsBackVisible), nameof(CanLock), nameof(IsPageVisible))]
     [NotifyCanExecuteChangedFor(nameof(LockCommand))]
     private UnlockViewModel? lockPage;
 
@@ -52,6 +52,7 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
         ArgumentNullException.ThrowIfNull(services);
         this.services = services;
         FailureLog = services.FailureLog;
+        Toasts = services.Toasts;
         Pages = new Pages(services, this, StartAsync, DeleteAllDataAsync);
         services.MessengerStarted += OnMessengerStarted;
         services.StoresOpened += OnStoresOpened;
@@ -61,19 +62,46 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
 
     public Pages Pages { get; }
 
-    public string Title => IsLocked ? UiText.UnlockTitle : CurrentPage?.Title ?? UiText.AppTitle;
+    public ObservableCollection<ToastViewModel> ToastItems => services.Toasts.Items;
+
+    public string Title => IsLocked ? UiText.UnlockTitle : IsSplit ? DetailPage?.Title ?? string.Empty : CurrentPage?.Title ?? UiText.AppTitle;
 
     public bool IsLocked => LockPage is not null;
 
     public bool IsPageVisible => !IsLocked;
 
-    public bool HasNotice => Notice is not null && !IsLocked;
-
-    public bool HasErrorNotice => ErrorNotice is not null && !IsLocked;
-
     public bool IsBackVisible => CanGoBack && !IsLocked;
 
     public bool CanLock => IsMessengerRunning && !IsLocked && services.Lock.IsEnabled;
+
+    public PageViewModel? RootPage => pages.Count > 0 ? pages.Last() : null;
+
+    public bool IsSplit => IsWide && !IsLocked && RootPage is ContactListViewModel;
+
+    public PageViewModel? MasterPage => IsSplit ? RootPage : null;
+
+    public PageViewModel? DetailPage => IsSplit && ReferenceEquals(CurrentPage, RootPage) ? null : CurrentPage;
+
+    public bool IsDetailEmpty => IsSplit && DetailPage is null;
+
+    public bool IsDetailBarVisible => !IsSplit || DetailPage is not null;
+
+    public string MasterTitle => RootPage?.Title ?? string.Empty;
+
+    public bool CanLockInBar => CanLock && !IsSplit;
+
+    public bool CanLockInMaster => CanLock && IsSplit;
+
+    public bool TryGoBack()
+    {
+        if (IsLocked || !CanGoBack)
+        {
+            return false;
+        }
+
+        GoBack();
+        return true;
+    }
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -99,7 +127,7 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
         bool deleted = await services.DeleteAllDataAsync(cancellationToken);
         LockPage = null;
         IsMessengerRunning = false;
-        Notice = deleted ? UiText.DeleteAllDataDone : UiText.DeleteAllDataIncomplete;
+        Toasts.Show(deleted ? ToastKind.Success : ToastKind.Warning, deleted ? UiText.DeleteAllDataDone : UiText.DeleteAllDataIncomplete);
         if (deleted)
         {
             ResetTo(Pages.CreateIdentity());
@@ -116,26 +144,40 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
 
     public void EnterForeground() => services.Lock.EnterForeground();
 
-    public void ShowUnexpectedError() => ErrorNotice = UiText.AppUnexpectedError;
+    public void ShowUnexpectedError() => Toasts.Show(ToastKind.Error, UiText.AppUnexpectedError);
 
     public void Push(PageViewModel page)
     {
         ArgumentNullException.ThrowIfNull(page);
 
-        CurrentPage?.OnHidden();
         pages.Push(page);
         Show(page);
+    }
+
+    public void Open(PageViewModel page)
+    {
+        ArgumentNullException.ThrowIfNull(page);
+
+        if (IsWide && RootPage is ContactListViewModel)
+        {
+            while (pages.Count > 1)
+            {
+                _ = pages.Pop();
+            }
+
+            pages.Push(page);
+            Show(page);
+            return;
+        }
+
+        Push(page);
     }
 
     public void Replace(PageViewModel page)
     {
         ArgumentNullException.ThrowIfNull(page);
 
-        if (pages.TryPop(out PageViewModel? current))
-        {
-            current.OnHidden();
-        }
-
+        _ = pages.TryPop(out _);
         pages.Push(page);
         Show(page);
     }
@@ -144,7 +186,6 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
     {
         ArgumentNullException.ThrowIfNull(page);
 
-        CurrentPage?.OnHidden();
         pages.Clear();
         pages.Push(page);
         Show(page);
@@ -158,15 +199,9 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
             return;
         }
 
-        pages.Pop().OnHidden();
+        _ = pages.Pop();
         Show(pages.Peek());
     }
-
-    [RelayCommand]
-    private void DismissNotice() => Notice = null;
-
-    [RelayCommand]
-    private void DismissErrorNotice() => ErrorNotice = null;
 
     [RelayCommand(CanExecute = nameof(CanLock))]
     private void Lock() => services.Lock.LockNow();
@@ -232,18 +267,14 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
             return;
         }
 
-        services.UiThread.Post(() =>
-        {
-            if (Notice?.Contains(UiText.StorageMemoryOnly, StringComparison.Ordinal) != true)
-            {
-                Notice = Notice is null ? UiText.StorageMemoryOnly : UiText.StorageMemoryOnly + Environment.NewLine + Notice;
-            }
-        });
+        services.UiThread.Post(() => Toasts.Show(ToastKind.Warning, UiText.StorageMemoryOnly, sticky: true));
     }
 
     private void OnProtectionChanged(object? sender, EventArgs e) => services.UiThread.Post(() =>
     {
         OnPropertyChanged(nameof(CanLock));
+        OnPropertyChanged(nameof(CanLockInBar));
+        OnPropertyChanged(nameof(CanLockInMaster));
         LockCommand.NotifyCanExecuteChanged();
     });
 
@@ -255,16 +286,7 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
             return;
         }
 
-        if (locked)
-        {
-            CurrentPage?.OnHidden();
-            LockPage = Pages.Unlock(false, services.Lock.UnlockAsync);
-        }
-        else
-        {
-            LockPage = null;
-            CurrentPage?.OnShown();
-        }
+        LockPage = locked ? Pages.Unlock(false, services.Lock.UnlockAsync) : null;
     });
 
     private void OnContactChanged(object? sender, ContactChangedEventArgs e)
@@ -275,15 +297,74 @@ public sealed partial class MainViewModel : ViewModelBase, INavigationService
         }
 
         string added = Formats.With(Formats.ContactAdded, e.Contact.Name.Value);
-        services.UiThread.Post(() => Notice = Notice is null ? added : Notice + Environment.NewLine + added);
+        services.UiThread.Post(() => Toasts.Show(ToastKind.Success, added));
     }
+
+    partial void OnLockPageChanged(UnlockViewModel? value)
+    {
+        RefreshLayout();
+        SyncShown();
+    }
+
+    partial void OnIsWideChanged(bool value)
+    {
+        RefreshLayout();
+        SyncShown();
+    }
+
+    partial void OnIsMessengerRunningChanged(bool value) => RefreshLayout();
 
     private void Show(PageViewModel page)
     {
         CurrentPage = page;
         CanGoBack = pages.Count > 1;
+        RefreshLayout();
+        SyncShown();
+    }
+
+    private void RefreshLayout()
+    {
+        if (RootPage is ContactListViewModel list)
+        {
+            list.SetSelection(IsSplit && !ReferenceEquals(CurrentPage, list) ? CurrentPage : null);
+        }
+        OnPropertyChanged(nameof(Title));
+        OnPropertyChanged(nameof(RootPage));
+        OnPropertyChanged(nameof(IsSplit));
+        OnPropertyChanged(nameof(MasterPage));
+        OnPropertyChanged(nameof(DetailPage));
+        OnPropertyChanged(nameof(IsDetailEmpty));
+        OnPropertyChanged(nameof(IsDetailBarVisible));
+        OnPropertyChanged(nameof(MasterTitle));
+        OnPropertyChanged(nameof(CanLockInBar));
+        OnPropertyChanged(nameof(CanLockInMaster));
+    }
+
+    private void SyncShown()
+    {
+        List<PageViewModel> wanted = [];
         if (!IsLocked)
         {
+            if (IsSplit && RootPage is { } root)
+            {
+                wanted.Add(root);
+            }
+
+            if (CurrentPage is { } current && !wanted.Contains(current))
+            {
+                wanted.Add(current);
+            }
+        }
+
+        foreach (PageViewModel page in shown.Where(page => !wanted.Contains(page)).ToArray())
+        {
+            _ = shown.Remove(page);
+            page.OnHidden();
+        }
+
+        foreach (PageViewModel page in wanted.Where(page => !shown.Contains(page)).ToArray())
+        {
+            shown.Add(page);
             page.OnShown();
         }
     }

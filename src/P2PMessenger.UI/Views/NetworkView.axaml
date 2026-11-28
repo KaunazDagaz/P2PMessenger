@@ -2,31 +2,41 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:P2PMessenger.UI.ViewModels"
              xmlns:res="using:P2PMessenger.UI.Resources"
+             xmlns:c="using:P2PMessenger.UI.Controls"
              x:Class="P2PMessenger.UI.Views.NetworkView"
              x:DataType="vm:NetworkViewModel">
-    <ScrollViewer>
-        <StackPanel Margin="16" Spacing="8" MaxWidth="640">
-            <TextBlock Text="{x:Static res:UiText.NetworkIntro}" TextWrapping="Wrap" />
-            <TextBlock x:Name="ListeningText" Text="{Binding ListeningText}" FontWeight="SemiBold" Margin="0,8,0,0" TextWrapping="Wrap" />
-            <TextBlock x:Name="DiscoveryText" Text="{Binding DiscoveryText}" FontWeight="SemiBold" TextWrapping="Wrap" />
-            <TextBlock x:Name="TorText" Text="{Binding TorText}" FontWeight="SemiBold" TextWrapping="Wrap" />
-            <TextBlock Text="{x:Static res:UiText.NetworkAddressesLabel}" FontWeight="SemiBold" Margin="0,8,0,0" />
-            <SelectableTextBlock x:Name="AddressesText" Text="{Binding AddressesText}" FontFamily="monospace" />
-            <TextBlock Text="{x:Static res:UiText.NetworkContactsLabel}" FontWeight="SemiBold" Margin="0,8,0,0" />
-            <TextBlock Text="{x:Static res:UiText.NetworkNoContacts}" IsVisible="{Binding HasNoContacts}" />
+    <c:PageContainer>
+        <StackPanel Spacing="16">
+            <Border Classes="card">
+                <StackPanel Spacing="8">
+                    <TextBlock x:Name="ListeningText" Classes="label" Text="{Binding ListeningText}" TextWrapping="Wrap" />
+                    <TextBlock x:Name="DiscoveryText" Classes="label" Text="{Binding DiscoveryText}" TextWrapping="Wrap" />
+                    <TextBlock x:Name="TorText" Classes="label" Text="{Binding TorText}" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+            <Border Classes="card">
+                <StackPanel Spacing="8">
+                    <TextBlock Classes="heading" Text="{x:Static res:UiText.NetworkAddressesLabel}" />
+                    <SelectableTextBlock x:Name="AddressesText" Classes="mono" Text="{Binding AddressesText}" />
+                </StackPanel>
+            </Border>
+            <TextBlock Classes="section" Text="{x:Static res:UiText.NetworkContactsLabel}" />
+            <TextBlock Classes="muted" Text="{x:Static res:UiText.NetworkNoContacts}" IsVisible="{Binding HasNoContacts}" />
             <ItemsControl x:Name="ContactItems" ItemsSource="{Binding Contacts}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="vm:NetworkContactViewModel">
-                        <StackPanel Spacing="4" Margin="0,0,0,12">
-                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                            <TextBlock Text="{Binding Fingerprint}" FontFamily="monospace" FontSize="12" />
-                            <TextBlock Text="{Binding HeardText}" FontFamily="monospace" />
-                            <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
-                            <TextBlock Text="{Binding TorText}" TextWrapping="Wrap" />
-                        </StackPanel>
+                        <Border Classes="card flat" Margin="0,0,0,10">
+                            <StackPanel Spacing="4">
+                                <TextBlock Classes="heading" Text="{Binding Name}" />
+                                <TextBlock Classes="caption mono" Text="{Binding Fingerprint}" />
+                                <TextBlock Classes="mono" Text="{Binding HeardText}" />
+                                <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
+                                <TextBlock Classes="muted" Text="{Binding TorText}" />
+                            </StackPanel>
+                        </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </StackPanel>
-    </ScrollViewer>
+    </c:PageContainer>
 </UserControl>

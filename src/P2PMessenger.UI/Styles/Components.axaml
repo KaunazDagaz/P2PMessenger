@@ -1,0 +1,129 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:P2PMessenger.UI.Controls">
+    <Style Selector="c|PageContainer">
+        <Setter Property="Padding" Value="24,20" />
+        <Setter Property="ContentMaxWidth" Value="688" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel>
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                        <Border Padding="{TemplateBinding Padding}" MaxWidth="{TemplateBinding ContentMaxWidth}">
+                            <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" />
+                        </Border>
+                    </ScrollViewer>
+                    <ContentPresenter Content="{TemplateBinding Overlay}" />
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector=":is(UserControl).compact c|PageContainer">
+        <Setter Property="Padding" Value="14,14" />
+    </Style>
+    <Style Selector="Border.master c|PageContainer">
+        <Setter Property="Padding" Value="14,14" />
+    </Style>
+
+    <Style Selector="c|Dialog">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel IsVisible="{TemplateBinding IsOpen}">
+                    <Border Name="PART_Scrim" Background="{DynamicResource ScrimBrush}" />
+                    <Grid MaxWidth="{TemplateBinding AnchorWidth}">
+                        <Border Name="PART_Card"
+                                Classes="dialog"
+                                MaxWidth="{TemplateBinding CardMaxWidth}"
+                                Focusable="True">
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                                <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" />
+                            </ScrollViewer>
+                        </Border>
+                    </Grid>
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="c|Dialog /template/ Border#PART_Card">
+        <Setter Property="Margin" Value="16" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="c|Dialog[IsMenu=True] /template/ Border#PART_Scrim">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="c|Dialog[IsMenu=True] /template/ Border#PART_Card">
+        <Setter Property="Margin" Value="0,64,24,0" />
+        <Setter Property="Padding" Value="6" />
+        <Setter Property="MinWidth" Value="232" />
+        <Setter Property="VerticalAlignment" Value="Top" />
+        <Setter Property="HorizontalAlignment" Value="Right" />
+    </Style>
+    <Style Selector=":is(UserControl).compact c|Dialog[IsMenu=True] /template/ Border#PART_Card">
+        <Setter Property="Margin" Value="0,58,14,0" />
+    </Style>
+    <Style Selector="Border.master c|Dialog[IsMenu=True] /template/ Border#PART_Card">
+        <Setter Property="Margin" Value="0,58,14,0" />
+    </Style>
+
+    <Style Selector="c|DialogHeader">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <DockPanel>
+                    <Border Name="PART_Icon" DockPanel.Dock="Left" Classes="iconCircle" Margin="0,0,12,0">
+                        <c:Icon Data="{TemplateBinding Glyph}"
+                                Size="20"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Classes="heading"
+                               Text="{TemplateBinding Title}"
+                               TextWrapping="Wrap"
+                               VerticalAlignment="Center" />
+                </DockPanel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="c|DialogHeader /template/ c|Icon">
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+    </Style>
+    <Style Selector="c|DialogHeader.danger /template/ Border#PART_Icon">
+        <Setter Property="Background" Value="{DynamicResource DangerSoftBrush}" />
+    </Style>
+    <Style Selector="c|DialogHeader.danger /template/ c|Icon">
+        <Setter Property="Foreground" Value="{DynamicResource DangerTextBrush}" />
+    </Style>
+    <Style Selector="c|DialogHeader.warning /template/ Border#PART_Icon">
+        <Setter Property="Background" Value="{DynamicResource WarningSoftBrush}" />
+    </Style>
+    <Style Selector="c|DialogHeader.warning /template/ c|Icon">
+        <Setter Property="Foreground" Value="{DynamicResource WarningTextBrush}" />
+    </Style>
+
+    <Style Selector="c|FormField">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <StackPanel Spacing="6">
+                    <TextBlock Classes="label"
+                               Text="{TemplateBinding Label}"
+                               IsVisible="{TemplateBinding Label, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" />
+                </StackPanel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="c|Icon.muted">
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+    </Style>
+    <Style Selector="c|Icon.accent">
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+    </Style>
+    <Style Selector="c|Icon.danger">
+        <Setter Property="Foreground" Value="{DynamicResource DangerTextBrush}" />
+    </Style>
+    <Style Selector="c|Icon.success">
+        <Setter Property="Foreground" Value="{DynamicResource SuccessTextBrush}" />
+    </Style>
+    <Style Selector="c|Icon.warning">
+        <Setter Property="Foreground" Value="{DynamicResource WarningTextBrush}" />
+    </Style>
+</Styles>
